@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { conditionByName, conditionDefinitions } from "@/lib/conditions";
 import { Modal } from "./ui";
 
@@ -13,17 +13,17 @@ export default function ConditionManager({
 }) {
   const [open, setOpen] = useState(false),
     [search, setSearch] = useState(""),
+    [selected, setSelected] = useState<string[]>(conditions),
     [busy, setBusy] = useState(false);
-  const available = useMemo(
+  const visible = useMemo(
     () =>
       conditionDefinitions.filter(
         (condition) =>
-          !conditions.includes(condition.name) &&
           condition.name
             .toLocaleLowerCase()
             .includes(search.toLocaleLowerCase()),
       ),
-    [conditions, search],
+    [search],
   );
   async function update(next: string[]) {
     setBusy(true);
@@ -37,9 +37,16 @@ export default function ConditionManager({
     <section className="condition-manager" aria-labelledby="conditions-title">
       <div className="condition-heading">
         <h3 id="conditions-title">Condições</h3>
-        <button disabled={busy} onClick={() => setOpen(true)}>
-          <Plus size={14} />
-          Adicionar
+        <button
+          disabled={busy}
+          onClick={() => {
+            setSelected(conditions);
+            setSearch("");
+            setOpen(true);
+          }}
+        >
+          <SlidersHorizontal size={14} />
+          Selecionar
         </button>
       </div>
       {!conditions.length ? (
@@ -73,7 +80,11 @@ export default function ConditionManager({
         </div>
       )}
       {open && (
-        <Modal wide title="Adicionar condição" onClose={() => setOpen(false)}>
+        <Modal title="Selecionar condições" onClose={() => setOpen(false)}>
+          <p className="help">
+            Marque somente as condições ativas. Os efeitos aparecem abaixo de
+            Bloqueio após salvar.
+          </p>
           <label>
             Buscar condição
             <input
@@ -83,27 +94,46 @@ export default function ConditionManager({
               placeholder="Ex.: Sangrando"
             />
           </label>
-          <div className="condition-catalog">
-            {available.map((condition) => (
-              <article key={condition.name}>
+          <div className="condition-selector">
+            {visible.map((condition) => (
+              <label key={condition.name}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(condition.name)}
+                  onChange={(event) =>
+                    setSelected((current) =>
+                      event.target.checked
+                        ? [...current, condition.name]
+                        : current.filter((name) => name !== condition.name),
+                    )
+                  }
+                />
                 <div>
                   <strong>{condition.name}</strong>
                   {condition.family && <small>{condition.family}</small>}
+                  <p>{condition.description}</p>
                 </div>
-                <p>{condition.description}</p>
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() => void update([...conditions, condition.name])}
-                >
-                  Adicionar
-                </button>
-              </article>
+              </label>
             ))}
           </div>
-          {!available.length && (
-            <p className="empty">Nenhuma condição disponível com essa busca.</p>
+          {!visible.length && (
+            <p className="empty">Nenhuma condição encontrada.</p>
           )}
+          <div className="modal-footer">
+            <button onClick={() => setOpen(false)}>Cancelar</button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() =>
+                void (async () => {
+                  await update(selected);
+                  setOpen(false);
+                })()
+              }
+            >
+              Salvar condições ({selected.length})
+            </button>
+          </div>
         </Modal>
       )}
     </section>
