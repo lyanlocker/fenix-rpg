@@ -322,7 +322,9 @@ export default function AgentEditor({
                 Adicionar
               </button>
             </div>
-            {a.inventory.map((i) => (
+            {a.inventory
+              .filter((i) => i.subtype !== "Maldição")
+              .map((i) => (
               <div className="item-editor" key={i.id}>
                 <div className="form-grid">
                   <label>
@@ -407,7 +409,7 @@ export default function AgentEditor({
                   <Trash2 size={14} /> Remover item
                 </button>
               </div>
-            ))}
+              ))}
           </>
         ) : null}
         {tab === "Anotações" ? (
