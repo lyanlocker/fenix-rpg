@@ -1,10 +1,25 @@
 "use client";
-import { createContext, useContext, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Flame, X } from "lucide-react";
 import { useStore } from "@/lib/use-store";
-const Context = createContext<ReturnType<typeof useStore> | null>(null);
+import {
+  accessHref as buildAccessHref,
+  parseAccessMode,
+  type AccessMode,
+} from "@/lib/access";
+type GameContext = ReturnType<typeof useStore> & {
+  access: AccessMode;
+  accessHref: (path: string) => string;
+};
+const Context = createContext<GameContext | null>(null);
 export function useGame() {
   const game = useContext(Context);
   if (!game) throw Error("Contexto indisponível");
@@ -12,26 +27,48 @@ export function useGame() {
 }
 export default function GameShell({ children }: { children: ReactNode }) {
   const game = useStore(),
-    path = usePathname();
+    path = usePathname(),
+    [access, setAccess] = useState<AccessMode>({
+      ready: false,
+      isPlayer: false,
+      agentId: null,
+    });
+  useEffect(() => {
+    setAccess(parseAccessMode(window.location.search));
+  }, [path]);
+  function accessHref(target: string) {
+    return buildAccessHref(target, access);
+  }
+  const value: GameContext = { ...game, access, accessHref };
   return (
-    <Context.Provider value={game}>
+    <Context.Provider value={value}>
       <a className="skip" href="#content">
         Ir ao conteúdo
       </a>
       <header className="topbar">
-        <Link className="logo" href="/">
+        <Link
+          className="logo"
+          href={accessHref(
+            access.isPlayer && access.agentId
+              ? `/agentes/${access.agentId}`
+              : "/",
+          )}
+        >
           <Flame size={24} />
           FÊNIX
         </Link>
         <nav aria-label="Principal">
-          {[
-            ["/", "Agentes"],
-            ["/campanhas", "Campanhas"],
-            ["/biblioteca", "Biblioteca"],
-          ].map(([url, label]) => (
+          {(access.isPlayer && access.agentId
+            ? [[`/agentes/${access.agentId}`, "Minha ficha"]]
+            : [
+                ["/", "Agentes"],
+                ["/campanhas", "Campanhas"],
+                ["/biblioteca", "Biblioteca"],
+              ]
+          ).map(([url, label]) => (
             <Link
               key={url}
-              href={url}
+              href={accessHref(url)}
               className={
                 (
                   url === "/"
@@ -49,7 +86,9 @@ export default function GameShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
       <div className="mode">
-        Sem cadastro · salvo neste navegador · exporte suas fichas para backup
+        {access.isPlayer
+          ? "Modo jogador · acesso limitado à ficha autorizada neste navegador"
+          : "Sem cadastro · salvo neste navegador · exporte suas fichas para backup"}
       </div>
       {game.notice && (
         <div role="alert" className="notice">

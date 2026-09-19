@@ -9,6 +9,7 @@ import {
   Pencil,
   Download,
   History,
+  Copy,
   X,
 } from "lucide-react";
 import { useGame } from "./game-shell";
@@ -32,7 +33,11 @@ import { CatalogPicker } from "./library";
 import ConditionManager from "./condition-manager";
 import CursePicker from "./curse-picker";
 import { effectiveCategory, toEnhancement } from "@/lib/curses";
+import { canAccessAgent } from "@/lib/access";
+import CharacterOverview from "./character-overview";
+import DiceRoller from "./dice-roller";
 const sections = [
+  "Resumo",
   "Armas",
   "Perícias",
   "Poderes",
@@ -43,7 +48,7 @@ const sections = [
 export default function CharacterSheet({ id }: { id: string }) {
   const game = useGame(),
     a = game.state.agents.find((x) => x.id === id);
-  const [section, setSection] = useState("Armas"),
+  const [section, setSection] = useState("Resumo"),
     [editing, setEditing] = useState(false),
     [item, setItem] = useState<Item | null>(null),
     [catalog, setCatalog] = useState<Item["kind"] | null>(null),
@@ -51,19 +56,31 @@ export default function CharacterSheet({ id }: { id: string }) {
     [history, setHistory] = useState(false),
     [busy, setBusy] = useState(false),
     [q, setQ] = useState(""),
-    [dice, setDice] = useState("1d20"),
     [adjust, setAdjust] = useState<Resource | null>(null),
     [delta, setDelta] = useState(-1),
     [note, setNote] = useState<string | null>(null),
     [useItem, setUseItem] = useState<Item | null>(null),
     [curseTarget, setCurseTarget] = useState<Item | null>(null);
-  if (!game.ready) return <div className="page">Carregando ficha…</div>;
+  if (!game.ready || !game.access.ready)
+    return <div className="page">Carregando ficha…</div>;
+  if (!canAccessAgent(game.access, id))
+    return (
+      <div className="page">
+        <h1>Acesso bloqueado</h1>
+        <p>Este link de jogador não autoriza o acesso a esta ficha.</p>
+        {game.access.agentId && (
+          <Link href={game.accessHref(`/agentes/${game.access.agentId}`)}>
+            Abrir minha ficha
+          </Link>
+        )}
+      </div>
+    );
   if (!a)
     return (
       <div className="page">
         <h1>Ficha não encontrada neste navegador</h1>
         <p>Importe o arquivo da ficha ou volte para seus personagens.</p>
-        <Link href="/">Agentes</Link>
+        <Link href={game.accessHref("/")}>Agentes</Link>
       </div>
     );
   const agent = a,
@@ -101,6 +118,13 @@ export default function CharacterSheet({ id }: { id: string }) {
   async function save(p: Partial<Agent>) {
     await game.save("agents", { ...agent, ...p });
   }
+  async function copyPlayerLink() {
+    const url = new URL(window.location.href);
+    url.pathname = `/agentes/${agent.id}`;
+    url.search = `?mode=player&agent=${encodeURIComponent(agent.id)}`;
+    await navigator.clipboard.writeText(url.toString());
+    game.setNotice("Link limitado do jogador copiado.");
+  }
   function add() {
     setItem({
       id: crypto.randomUUID(),
@@ -119,7 +143,11 @@ export default function CharacterSheet({ id }: { id: string }) {
   );
   return (
     <div className="page sheet">
-      <Link className="back" href="/">
+      <DiceRoller
+        busy={busy}
+        onRoll={(expression) => roll("Dados livres", 1, 0, expression)}
+      />
+      <Link className="back" href={game.accessHref("/")}>
         <ArrowLeft size={16} />
         Agentes
       </Link>
@@ -136,6 +164,12 @@ export default function CharacterSheet({ id }: { id: string }) {
           </p>
         </div>
         <div className="actions">
+          {!game.access.isPlayer && (
+            <button onClick={() => void copyPlayerLink()}>
+              <Copy size={16} />
+              Link do jogador
+            </button>
+          )}
           <button
             onClick={() => download(a.name + ".json", { version: 1, agent: a })}
           >
@@ -146,112 +180,102 @@ export default function CharacterSheet({ id }: { id: string }) {
             <Pencil size={16} />
             Editar ficha
           </button>
+          <button onClick={() => setHistory(true)}>
+            <History size={16} />
+            Histórico
+          </button>
         </div>
       </div>
-      <div className="sheet-layout">
-        <aside className="sheet-aside">
-          <section className="panel">
-            <h2>Atributos</h2>
-            <p className="hint">Clique para rolar um teste.</p>
-            <div className="attribute-dice">
-              {attributes.map((k) => (
-                <button
-                  key={k}
-                  disabled={busy}
-                  aria-label={"Rolar " + attributeNames[k]}
-                  onClick={() => void roll(attributeNames[k], a.attributes[k])}
-                >
-                  <span>{k}</span>
-                  <strong>{a.attributes[k]}</strong>
-                  <Dices size={15} />
-                </button>
+      <div
+        className={`sheet-layout ${section === "Resumo" ? "overview-mode" : ""}`}
+      >
+        {section !== "Resumo" && (
+          <aside className="sheet-aside">
+            <section className="panel">
+              <h2>Atributos</h2>
+              <p className="hint">Clique para rolar um teste.</p>
+              <div className="attribute-dice">
+                {attributes.map((k) => (
+                  <button
+                    key={k}
+                    disabled={busy}
+                    aria-label={"Rolar " + attributeNames[k]}
+                    onClick={() =>
+                      void roll(attributeNames[k], a.attributes[k])
+                    }
+                  >
+                    <span>{k}</span>
+                    <strong>{a.attributes[k]}</strong>
+                    <Dices size={15} />
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="panel">
+              <h2>Recursos</h2>
+              {resourceKeys(a).map((k) => (
+                <div className={"sheet-resource " + k} key={k}>
+                  <div>
+                    <label>{resourceLabels[k]}</label>
+                    <strong>
+                      {a.resources[k]} <small>/ {max[k]}</small>
+                    </strong>
+                  </div>
+                  <progress
+                    aria-label={resourceLabels[k]}
+                    value={a.resources[k]}
+                    max={max[k] || 1}
+                  />
+                  <button
+                    className="resource-action"
+                    onClick={() => {
+                      setAdjust(k);
+                      setDelta(-1);
+                    }}
+                  >
+                    Ajustar {resourceLabels[k].toLocaleLowerCase()}
+                  </button>
+                </div>
               ))}
-            </div>
-          </section>
-          <section className="panel">
-            <h2>Recursos</h2>
-            {resourceKeys(a).map((k) => (
-              <div className={"sheet-resource " + k} key={k}>
+              <details className="resource-calculation">
+                <summary>Como os máximos são calculados</summary>
+                {resourceKeys(a).map((key) => (
+                  <p key={key}>
+                    <strong>
+                      {resourceLabels[key]} {max[key]}
+                    </strong>
+                    <small>{maximumFormula(a, key)}</small>
+                  </p>
+                ))}
+              </details>
+              <div className="defenses">
                 <div>
-                  <label>{resourceLabels[k]}</label>
+                  Defesa
+                  <strong>{10 + a.attributes.AGI + a.defenseBonus}</strong>
+                </div>
+                <div>
+                  Esquiva
                   <strong>
-                    {a.resources[k]} <small>/ {max[k]}</small>
+                    {10 +
+                      a.attributes.AGI +
+                      a.defenseBonus +
+                      (a.skills.Reflexos || 0)}
                   </strong>
                 </div>
-                <progress
-                  aria-label={resourceLabels[k]}
-                  value={a.resources[k]}
-                  max={max[k] || 1}
-                />
-                <button
-                  className="resource-action"
-                  onClick={() => {
-                    setAdjust(k);
-                    setDelta(-1);
-                  }}
-                >
-                  Ajustar {resourceLabels[k].toLocaleLowerCase()}
-                </button>
+                <div>
+                  Bloqueio<strong>{a.skills.Fortitude || 0}</strong>
+                </div>
               </div>
-            ))}
-            <details className="resource-calculation">
-              <summary>Como os máximos são calculados</summary>
-              {resourceKeys(a).map((key) => (
-                <p key={key}>
-                  <strong>
-                    {resourceLabels[key]} {max[key]}
-                  </strong>
-                  <small>{maximumFormula(a, key)}</small>
-                </p>
-              ))}
-            </details>
-            <div className="defenses">
-              <div>
-                Defesa<strong>{10 + a.attributes.AGI + a.defenseBonus}</strong>
-              </div>
-              <div>
-                Esquiva
-                <strong>
-                  {10 +
-                    a.attributes.AGI +
-                    a.defenseBonus +
-                    (a.skills.Reflexos || 0)}
-                </strong>
-              </div>
-              <div>
-                Bloqueio<strong>{a.skills.Fortitude || 0}</strong>
-              </div>
-            </div>
-            <ConditionManager
-              conditions={a.conditions}
-              onChange={(conditions) => save({ conditions })}
-            />
-            <p className="hint">
-              Confira resistências e bônus situacionais antes de aplicar dano.
-            </p>
-          </section>
-          <section className="panel">
-            <h2>Dados livres</h2>
-            <div className="inline">
-              <input
-                aria-label="Expressão de dados"
-                value={dice}
-                onChange={(e) => setDice(e.target.value)}
+              <ConditionManager
+                conditions={a.conditions}
+                onChange={(conditions) => save({ conditions })}
               />
-              <button
-                disabled={busy}
-                aria-label="Rolar dados livres"
-                onClick={() => void roll("Dados livres", 1, 0, dice)}
-              >
-                <Dices size={18} />
-              </button>
-            </div>
-            <button className="history-button" onClick={() => setHistory(true)}>
-              <History size={16} />
-              Histórico de rolagens
-            </button>
-          </section>
-        </aside>
+              <p className="hint">
+                Confira resistências e bônus situacionais antes de aplicar dano.
+              </p>
+            </section>
+          </aside>
+        )}
         <div className="sheet-main">
           <nav className="sheet-tabs" aria-label="Seções do personagem">
             {sections.map((s) => (
@@ -264,7 +288,18 @@ export default function CharacterSheet({ id }: { id: string }) {
               </button>
             ))}
           </nav>
-          {section === "Perícias" ? (
+          {section === "Resumo" ? (
+            <CharacterOverview
+              agent={a}
+              maximums={max}
+              busy={busy}
+              onAttribute={(key) =>
+                void roll(attributeNames[key], a.attributes[key])
+              }
+              onSkill={(name) => test(name)}
+              onPortrait={(portrait) => save({ portrait })}
+            />
+          ) : section === "Perícias" ? (
             <section className="panel">
               <div className="section-title">
                 <h2>Perícias</h2>

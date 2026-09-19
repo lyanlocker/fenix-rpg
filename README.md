@@ -1,4 +1,4 @@
-# Fênix 0.6 — ficha primeiro, sem cadastro
+# Fênix 0.7 — ficha primeiro, sem cadastro
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. Não exige conta, não inicia sessão e não consulta dados privados do Supabase.
 
@@ -15,6 +15,12 @@ Node 22+; `npm ci`, `npm run dev`. Produção: `npm run build`, `npm start`.
 - `/campanhas`: organização local de personagens e anotações.
 
 Ataques usam atributo e treinamento da perícia da arma. Dano usa a expressão cadastrada. Armas têm alcance, crítico e maldições vinculadas como aprimoramentos. Rituais e poderes têm custo e efeitos descritivos, com formas discente e verdadeira. O gasto de recurso exige confirmação. Condições ficam abaixo de Bloqueio e exibem seus efeitos durante a sessão.
+
+A aba Resumo reúne aparência, atributos, perícias, recursos e poderes. Retratos locais são reduzidos e salvos dentro da própria ficha, inclusive no JSON exportado. O rolador flutuante aceita de 1 a 100 dados com 2 a 1.000.000 lados.
+
+## Modo jogador
+
+O link `/agentes/ID?mode=player&agent=ID` mostra somente a ficha indicada, bloqueia outras IDs e impede a criação de personagens. O botão “Link do jogador” gera esse endereço. Sem autenticação, esta é uma restrição de interface, não uma barreira de segurança contra alguém que remova os parâmetros da URL ou altere os dados do navegador.
 
 ## Dados e limites
 

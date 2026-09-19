@@ -16,6 +16,7 @@ import {
 import type { Campaign } from "@/lib/model";
 import { Modal, download } from "./ui";
 import CharacterOptions from "./character-options";
+import PortraitPicker from "./portrait-picker";
 export default function AgentEditor({
   agent,
   campaigns,
@@ -79,6 +80,13 @@ export default function AgentEditor({
       <fieldset disabled={readOnly || busy} className="editor-fields">
         {tab === "Ficha" ? (
           <>
+            <PortraitPicker
+              compact
+              value={a.portrait}
+              name={a.name}
+              color={a.color}
+              onChange={(portrait) => update("portrait", portrait)}
+            />
             <div className="form-grid">
               <label>
                 Nome
@@ -325,90 +333,90 @@ export default function AgentEditor({
             {a.inventory
               .filter((i) => i.subtype !== "Maldição")
               .map((i) => (
-              <div className="item-editor" key={i.id}>
-                <div className="form-grid">
+                <div className="item-editor" key={i.id}>
+                  <div className="form-grid">
+                    <label>
+                      Nome
+                      <input
+                        value={i.name}
+                        onChange={(e) =>
+                          itemUpdate(i.id, { name: e.target.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Tipo
+                      <select
+                        value={i.kind}
+                        onChange={(e) =>
+                          itemUpdate(i.id, {
+                            kind: e.target.value as Item["kind"],
+                          })
+                        }
+                      >
+                        {["Item", "Arma", "Ritual", "Poder"].map((t) => (
+                          <option key={t}>{t}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Quantidade
+                      <input
+                        type="number"
+                        min={1}
+                        value={i.quantity}
+                        onChange={(e) =>
+                          itemUpdate(i.id, {
+                            quantity: Math.max(1, +e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Espaços por unidade
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={i.spaces}
+                        onChange={(e) =>
+                          itemUpdate(i.id, {
+                            spaces: Math.max(0, +e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Dano (ex.: 2d6+3)
+                      <input
+                        value={i.damage}
+                        onChange={(e) =>
+                          itemUpdate(i.id, { damage: e.target.value })
+                        }
+                      />
+                    </label>
+                  </div>
                   <label>
-                    Nome
-                    <input
-                      value={i.name}
+                    Descrição e efeitos
+                    <textarea
+                      value={i.notes}
                       onChange={(e) =>
-                        itemUpdate(i.id, { name: e.target.value })
+                        itemUpdate(i.id, { notes: e.target.value })
                       }
                     />
                   </label>
-                  <label>
-                    Tipo
-                    <select
-                      value={i.kind}
-                      onChange={(e) =>
-                        itemUpdate(i.id, {
-                          kind: e.target.value as Item["kind"],
-                        })
-                      }
-                    >
-                      {["Item", "Arma", "Ritual", "Poder"].map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Quantidade
-                    <input
-                      type="number"
-                      min={1}
-                      value={i.quantity}
-                      onChange={(e) =>
-                        itemUpdate(i.id, {
-                          quantity: Math.max(1, +e.target.value),
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Espaços por unidade
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={i.spaces}
-                      onChange={(e) =>
-                        itemUpdate(i.id, {
-                          spaces: Math.max(0, +e.target.value),
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Dano (ex.: 2d6+3)
-                    <input
-                      value={i.damage}
-                      onChange={(e) =>
-                        itemUpdate(i.id, { damage: e.target.value })
-                      }
-                    />
-                  </label>
-                </div>
-                <label>
-                  Descrição e efeitos
-                  <textarea
-                    value={i.notes}
-                    onChange={(e) =>
-                      itemUpdate(i.id, { notes: e.target.value })
+                  <button
+                    className="button danger"
+                    onClick={() =>
+                      update(
+                        "inventory",
+                        a.inventory.filter((x) => x.id !== i.id),
+                      )
                     }
-                  />
-                </label>
-                <button
-                  className="button danger"
-                  onClick={() =>
-                    update(
-                      "inventory",
-                      a.inventory.filter((x) => x.id !== i.id),
-                    )
-                  }
-                >
-                  <Trash2 size={14} /> Remover item
-                </button>
-              </div>
+                  >
+                    <Trash2 size={14} /> Remover item
+                  </button>
+                </div>
               ))}
           </>
         ) : null}

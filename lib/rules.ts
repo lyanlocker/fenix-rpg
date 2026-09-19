@@ -74,6 +74,7 @@ export type Agent = {
   notes: string;
   conditions: string[];
   color: string;
+  portrait?: string;
 };
 export const attributes: Attribute[] = ["AGI", "FOR", "INT", "PRE", "VIG"];
 export const skillAttributes: Record<string, Attribute> = {
@@ -181,11 +182,11 @@ export function check(attribute: number, bonus = 0, roll = die) {
   };
 }
 export function damage(expression: string, roll = die) {
-  const m = /^(\d{1,2})d(4|6|8|10|12|20|100)([+-]\d{1,3})?$/.exec(
+  const m = /^(\d{1,3})d(\d{1,7})([+-]\d{1,6})?$/.exec(
     expression.replace(/\s/g, ""),
   );
-  if (!m || +m[1] < 1 || +m[1] > 40)
-    throw Error("Use entre 1 e 40 dados: 2d6+3, por exemplo.");
+  if (!m || +m[1] < 1 || +m[1] > 100 || +m[2] < 2 || +m[2] > 1000000)
+    throw Error("Use de 1 a 100 dados com 2 a 1.000.000 lados: 1d2 ou 2d37+3.");
   const dice = Array.from({ length: +m[1] }, () => roll(+m[2]));
   return {
     dice,
@@ -213,6 +214,7 @@ export function newAgent(name = "Novo agente"): Agent {
     notes: "",
     conditions: [],
     color: "#e9a466",
+    portrait: "",
   };
   a.resources = maximums(a);
   return a;

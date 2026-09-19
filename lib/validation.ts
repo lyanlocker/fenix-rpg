@@ -86,6 +86,13 @@ const schema = z.object({
   notes: z.string().max(50000),
   conditions: z.array(z.string().max(100)).max(50),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  portrait: z
+    .string()
+    .max(2100000)
+    .refine(
+      (value) => !value || /^data:image\/(?:png|jpeg|webp);base64,/.test(value),
+    )
+    .optional(),
 });
 export function validateAgentImport(raw: unknown): Agent {
   const result = z

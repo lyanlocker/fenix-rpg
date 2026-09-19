@@ -15,8 +15,9 @@ import {
   type ClassName,
 } from "@/lib/rules";
 import { classGuide, originSkills, attributeNames } from "@/lib/creation";
-import CharacterOptions from './character-options';
-import {addBenefits,originSkillsFor} from '@/lib/books';
+import CharacterOptions from "./character-options";
+import { addBenefits, originSkillsFor } from "@/lib/books";
+import PortraitPicker from "./portrait-picker";
 export default function CharacterCreator() {
   const game = useGame(),
     router = useRouter(),
@@ -36,12 +37,24 @@ export default function CharacterCreator() {
     (a.className === "Sobrevivente"
       ? 1
       : a.className === "Combatente"
-      ? 3
-      : a.className === "Especialista"
-        ? 7
-      : 5) +
+        ? 3
+        : a.className === "Especialista"
+          ? 7
+          : 5) +
     a.attributes.INT +
     2;
+  if (game.access.ready && game.access.isPlayer)
+    return (
+      <div className="page">
+        <h1>Acesso restrito</h1>
+        <p>O modo jogador não permite criar novas fichas.</p>
+        {game.access.agentId && (
+          <Link href={game.accessHref(`/agentes/${game.access.agentId}`)}>
+            Voltar para minha ficha
+          </Link>
+        )}
+      </div>
+    );
   function next() {
     setError("");
     if (step === 0 && !a.name.trim()) return setError("Informe o nome.");
@@ -61,7 +74,9 @@ export default function CharacterCreator() {
         return setError(
           `Selecione ${target} perícias treinadas para esta configuração básica.`,
         );
-      if ((originSkills[a.origin] || originSkillsFor(a)).some((s) => !a.skills[s]))
+      if (
+        (originSkills[a.origin] || originSkillsFor(a)).some((s) => !a.skills[s])
+      )
         return setError("Inclua as perícias da origem.");
       if (
         a.className === "Ocultista" &&
@@ -128,6 +143,15 @@ export default function CharacterCreator() {
         </h2>
         {step === 0 && (
           <div className="form-grid">
+            <div className="span-all creator-portrait">
+              <PortraitPicker
+                compact
+                value={a.portrait}
+                name={a.name}
+                color={a.color}
+                onChange={(portrait) => setA({ ...a, portrait })}
+              />
+            </div>
             <label className="span-all">
               Nome do personagem
               <input
@@ -192,7 +216,8 @@ export default function CharacterCreator() {
                       ...a,
                       className: c,
                       nex: c === "Sobrevivente" ? 0 : 5,
-                      track: "", trackId: undefined,
+                      track: "",
+                      trackId: undefined,
                     })
                   }
                 >
@@ -238,7 +263,8 @@ export default function CharacterCreator() {
                 <p>Proficiências: {guide.proficiencies}</p>
                 <p>
                   Perícias da origem:{" "}
-                  {(originSkills[a.origin] || originSkillsFor(a)).join(" e ") || "defina com o mestre"}
+                  {(originSkills[a.origin] || originSkillsFor(a)).join(" e ") ||
+                    "defina com o mestre"}
                   .
                 </p>
                 <small>
@@ -301,7 +327,9 @@ export default function CharacterCreator() {
             <div className="help">
               <p>
                 {a.origin}:{" "}
-                {(originSkills[a.origin] || originSkillsFor(a)).join(" e ") || "defina com o mestre"}.
+                {(originSkills[a.origin] || originSkillsFor(a)).join(" e ") ||
+                  "defina com o mestre"}
+                .
               </p>
               <button
                 onClick={() =>
@@ -310,7 +338,9 @@ export default function CharacterCreator() {
                     skills: {
                       ...a.skills,
                       ...Object.fromEntries(
-                        (originSkills[a.origin] || originSkillsFor(a)).map((s) => [s, 5]),
+                        (originSkills[a.origin] || originSkillsFor(a)).map(
+                          (s) => [s, 5],
+                        ),
                       ),
                       ...(a.className === "Ocultista"
                         ? { Ocultismo: 5, Vontade: 5 }

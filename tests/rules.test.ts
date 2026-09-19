@@ -2,11 +2,26 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { check, damage, maximums, newAgent } from "../lib/rules";
 import { validateAgentImport } from "../lib/validation";
+import { accessHref, canAccessAgent, parseAccessMode } from "../lib/access";
 test("zero chooses the worst die; positive attributes choose the best", () => {
   let i = 0;
   assert.equal(check(0, 5, () => [19, 3][i++]).total, 8);
   i = 0;
   assert.equal(check(2, 5, () => [19, 3][i++]).total, 24);
+});
+
+test("player mode stays scoped to the authorized agent", () => {
+  const access = parseAccessMode("?mode=player&agent=agent-1");
+  assert.equal(canAccessAgent(access, "agent-1"), true);
+  assert.equal(canAccessAgent(access, "agent-2"), false);
+  assert.equal(
+    accessHref("/agentes/agent-1", access),
+    "/agentes/agent-1?mode=player&agent=agent-1",
+  );
+  assert.equal(
+    canAccessAgent(parseAccessMode("?mode=player"), "agent-1"),
+    false,
+  );
 });
 test("combatant NEX 65 base resources and determination", () => {
   const a = newAgent();
@@ -36,9 +51,11 @@ test("resource adjustments preserve special effects", () => {
   assert.equal(maximums(a).pv, 28);
   assert.equal(maximums(a).san, 12);
 });
-test("damage accepts supported dice with modifier and rejects code/unbounded input", () => {
+test("damage accepts arbitrary bounded dice and rejects code/unbounded input", () => {
   assert.equal(damage("2d6+3", () => 4).total, 11);
-  for (const s of ["100d6", "0d6", "2d3", "alert(1)", "1d20+Infinity", "-2d6"])
+  assert.equal(damage("1d2", () => 2).total, 2);
+  assert.equal(damage("2d37-2", () => 10).total, 18);
+  for (const s of ["101d6", "0d6", "2d1", "alert(1)", "1d20+Infinity", "-2d6"])
     assert.throws(() => damage(s));
 });
 test("import preserves valid sheet and rejects corrupted input", () => {
@@ -55,6 +72,7 @@ test("import preserves valid sheet and rejects corrupted input", () => {
 
 test("import preserves attack and ritual fields without an account", () => {
   const a = newAgent("Teste");
+  a.portrait = "data:image/webp;base64,AAAA";
   a.inventory = [
     {
       id: "weapon",
@@ -83,5 +101,6 @@ test("import preserves attack and ritual fields without an account", () => {
   const restored = validateAgentImport({ version: 1, agent: a });
   assert.equal(restored.inventory[0].attackSkill, "Pontaria");
   assert.equal(restored.inventory[1].cost, 3);
+  assert.equal(restored.portrait, a.portrait);
   assert.equal(restored.inventory[1].discente, "Efeito discente");
 });
