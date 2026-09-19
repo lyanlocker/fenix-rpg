@@ -33,7 +33,7 @@ import ConditionManager from "./condition-manager";
 import CursePicker from "./curse-picker";
 import { effectiveCategory, toEnhancement } from "@/lib/curses";
 const sections = [
-  "Combate",
+  "Armas",
   "Perícias",
   "Poderes",
   "Rituais",
@@ -43,7 +43,7 @@ const sections = [
 export default function CharacterSheet({ id }: { id: string }) {
   const game = useGame(),
     a = game.state.agents.find((x) => x.id === id);
-  const [section, setSection] = useState("Combate"),
+  const [section, setSection] = useState("Armas"),
     [editing, setEditing] = useState(false),
     [item, setItem] = useState<Item | null>(null),
     [catalog, setCatalog] = useState<Item["kind"] | null>(null),
@@ -69,7 +69,7 @@ export default function CharacterSheet({ id }: { id: string }) {
   const agent = a,
     max = maximums(a),
     kind: Item["kind"] =
-      section === "Combate"
+      section === "Armas"
         ? "Arma"
         : section === "Poderes"
           ? "Poder"
@@ -114,7 +114,7 @@ export default function CharacterSheet({ id }: { id: string }) {
   }
   const items = a.inventory.filter((i) =>
     section === "Inventário"
-      ? i.kind === "Arma" || i.kind === "Item"
+      ? i.kind === "Item" && i.subtype !== "Maldição"
       : i.kind === kind,
   );
   return (
@@ -325,7 +325,7 @@ export default function CharacterSheet({ id }: { id: string }) {
           ) : (
             <section className="panel">
               <div className="section-title">
-                <h2>{section === "Combate" ? "Ataques" : section}</h2>
+                <h2>{section}</h2>
                 <div className="actions">
                   <button onClick={() => setCatalog(kind)}>Biblioteca</button>
                   <button onClick={add}>
@@ -334,7 +334,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                   </button>
                 </div>
               </div>
-              {section === "Combate" && (
+              {section === "Armas" && (
                 <div className="combat-tests">
                   {[
                     "Iniciativa",
@@ -367,8 +367,8 @@ export default function CharacterSheet({ id }: { id: string }) {
               {items.length === 0 ? (
                 <div className="empty">
                   <h3>
-                    {section === "Combate"
-                      ? "Nenhum ataque cadastrado"
+                    {section === "Armas"
+                      ? "Nenhuma arma cadastrada"
                       : "Nenhum registro nesta seção"}
                   </h3>
                   <p>
