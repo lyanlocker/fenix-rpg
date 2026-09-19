@@ -85,6 +85,7 @@ export default function CharacterOverview({
           value={agent.portrait}
           name={agent.name}
           color={agent.color}
+          hero
           onChange={onPortrait}
         />
       </div>

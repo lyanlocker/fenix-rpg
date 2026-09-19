@@ -10,12 +10,14 @@ export default function PortraitPicker({
   color,
   onChange,
   compact = false,
+  hero = false,
 }: {
   value?: string;
   name: string;
   color: string;
   onChange: (value: string) => void | Promise<void>;
   compact?: boolean;
+  hero?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null),
     [busy, setBusy] = useState(false),
@@ -36,7 +38,9 @@ export default function PortraitPicker({
   }
 
   return (
-    <div className={`portrait-picker ${compact ? "compact" : ""}`}>
+    <div
+      className={`portrait-picker ${compact ? "compact" : ""} ${hero ? "hero" : ""}`}
+    >
       <div className="portrait-preview" style={{ color }}>
         {value ? (
           <Image
@@ -51,18 +55,25 @@ export default function PortraitPicker({
         )}
       </div>
       <div className="portrait-actions">
-        <button disabled={busy} onClick={() => input.current?.click()}>
+        <button
+          disabled={busy}
+          aria-label={value ? "Trocar imagem" : "Adicionar aparência"}
+          title={value ? "Trocar imagem" : "Adicionar aparência"}
+          onClick={() => input.current?.click()}
+        >
           <ImagePlus size={16} />
-          {value ? "Trocar imagem" : "Adicionar aparência"}
+          <span>{value ? "Trocar imagem" : "Adicionar aparência"}</span>
         </button>
         {value && (
           <button
             disabled={busy}
             className="danger"
+            aria-label="Remover imagem"
+            title="Remover imagem"
             onClick={() => void onChange("")}
           >
             <Trash2 size={15} />
-            Remover
+            <span>Remover</span>
           </button>
         )}
       </div>
@@ -74,7 +85,7 @@ export default function PortraitPicker({
         onChange={(event) => void choose(event.target.files?.[0])}
       />
       {error && <p className="error">{error}</p>}
-      {!compact && (
+      {!compact && !hero && (
         <small>Salva na ficha e incluída nos arquivos de exportação.</small>
       )}
     </div>
