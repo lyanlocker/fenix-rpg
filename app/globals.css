@@ -684,6 +684,48 @@ progress::-moz-progress-bar {
   margin: 8px 0 0;
   font-size: 12px;
 }
+.condition-selector {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 520px);
+  overflow-y: auto;
+  margin-top: 16px;
+  padding-right: 5px;
+}
+.condition-selector > label {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.condition-selector > label:has(input:checked) {
+  border-color: var(--accent);
+  background: #201a16;
+}
+.condition-selector input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.condition-selector label > div {
+  min-width: 0;
+}
+.condition-selector small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.condition-selector p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
 .weapon-curses {
   border-top: 1px solid var(--border);
   padding-top: 15px;
