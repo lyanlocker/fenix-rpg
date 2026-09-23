@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { demoState } from "./demo";
 import {
   emptyState,
@@ -10,6 +10,7 @@ import {
   type Roll,
 } from "./model";
 import { check, damage, maximums, type Agent, type Resource } from "./rules";
+import { getShareCredentials, rollSharedAgent, saveSharedAgent } from "./share";
 const KEY = "fenix.workspace.v1";
 export function useStore() {
   const [state, setState] = useState<State>(emptyState),
@@ -63,40 +64,75 @@ export function useStore() {
     expression = "",
     secret = false,
     campaignId: string | null = null,
+    explicitShareToken?: string,
   ) {
-    const value: Roll = {
-      ...(expression ? damage(expression) : check(attribute, bonus)),
-      id: crypto.randomUUID(),
-      campaign_id: a?.campaign_id || campaignId,
-      agentName: a?.name || "Dados livres",
-      label,
-      secret,
-      created_at: new Date().toISOString(),
-    };
+    const storedToken = a ? getShareCredentials(a.id)?.masterToken : null;
+    const shareToken = explicitShareToken || storedToken;
+    const value: Roll =
+      a && shareToken
+        ? await rollSharedAgent(
+            a,
+            shareToken,
+            label,
+            attribute,
+            bonus,
+            expression,
+          )
+        : {
+            ...(expression ? damage(expression) : check(attribute, bonus)),
+            id: crypto.randomUUID(),
+            campaign_id: a?.campaign_id || campaignId,
+            agentName: a?.name || "Dados livres",
+            label,
+            secret,
+            created_at: new Date().toISOString(),
+          };
     setState((s) => ({ ...s, rolls: [value, ...s.rolls].slice(0, 100) }));
     return value;
   }
-  async function adjustResource(a: Agent, key: Resource, delta: number) {
+  async function syncSharedAgent(a: Agent, explicitShareToken?: string) {
+    const token = explicitShareToken || getShareCredentials(a.id)?.masterToken;
+    if (token) await saveSharedAgent(a, token);
+  }
+  const mergeSharedAgent = useCallback((a: Agent, rolls: Roll[]) => {
+    setState((current) => {
+      const rollMap = new Map(
+        [...rolls, ...current.rolls].map((roll) => [roll.id, roll]),
+      );
+      return {
+        ...current,
+        agents: [a, ...current.agents.filter((value) => value.id !== a.id)],
+        rolls: [...rollMap.values()]
+          .sort((left, right) =>
+            right.created_at.localeCompare(left.created_at),
+          )
+          .slice(0, 100),
+      };
+    });
+  }, []);
+  async function adjustResource(
+    a: Agent,
+    key: Resource,
+    delta: number,
+    explicitShareToken?: string,
+  ) {
     if (!Number.isInteger(delta) || Math.abs(delta) > 10000)
       throw Error("Informe uma alteração inteira entre -10000 e 10000.");
+    const updated: Agent = {
+      ...a,
+      resources: {
+        ...a.resources,
+        [key]: Math.max(
+          0,
+          Math.min(maximums(a)[key], a.resources[key] + delta),
+        ),
+      },
+    };
+    await syncSharedAgent(updated, explicitShareToken);
     setState((s) => ({
       ...s,
       agents: s.agents.map((current) =>
-        current.id === a.id
-          ? {
-              ...current,
-              resources: {
-                ...current.resources,
-                [key]: Math.max(
-                  0,
-                  Math.min(
-                    maximums(current)[key],
-                    current.resources[key] + delta,
-                  ),
-                ),
-              },
-            }
-          : current,
+        current.id === a.id ? updated : current,
       ),
     }));
   }
@@ -108,6 +144,8 @@ export function useStore() {
     save,
     remove,
     roll,
+    syncSharedAgent,
+    mergeSharedAgent,
     adjustResource,
   };
 }

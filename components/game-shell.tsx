@@ -32,6 +32,7 @@ export default function GameShell({ children }: { children: ReactNode }) {
       ready: false,
       isPlayer: false,
       agentId: null,
+      shareToken: null,
     });
   useEffect(() => {
     setAccess(parseAccessMode(window.location.search));
@@ -87,7 +88,7 @@ export default function GameShell({ children }: { children: ReactNode }) {
       </header>
       <div className="mode">
         {access.isPlayer
-          ? "Modo jogador · acesso limitado à ficha autorizada neste navegador"
+          ? "Modo jogador · ficha compartilhada e sincronizada"
           : "Sem cadastro · salvo neste navegador · exporte suas fichas para backup"}
       </div>
       {game.notice && (

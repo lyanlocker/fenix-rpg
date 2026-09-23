@@ -1,6 +1,6 @@
 "use client";
 import RuleDetails from "./rule-details";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -36,6 +36,11 @@ import { effectiveCategory, toEnhancement } from "@/lib/curses";
 import { canAccessAgent } from "@/lib/access";
 import CharacterOverview from "./character-overview";
 import DiceRoller from "./dice-roller";
+import {
+  getShareCredentials,
+  loadSharedAgent,
+  publishSharedAgent,
+} from "@/lib/share";
 const sections = [
   "Resumo",
   "Armas",
@@ -60,7 +65,44 @@ export default function CharacterSheet({ id }: { id: string }) {
     [delta, setDelta] = useState(-1),
     [note, setNote] = useState<string | null>(null),
     [useItem, setUseItem] = useState<Item | null>(null),
-    [curseTarget, setCurseTarget] = useState<Item | null>(null);
+    [curseTarget, setCurseTarget] = useState<Item | null>(null),
+    [sharedToken, setSharedToken] = useState<string | null>(null),
+    [sharedError, setSharedError] = useState("");
+  useEffect(() => {
+    if (!game.access.ready) return;
+    const token =
+      game.access.shareToken ||
+      sharedToken ||
+      getShareCredentials(id)?.masterToken ||
+      null;
+    setSharedToken(token);
+    setSharedError("");
+    if (!token) return;
+
+    let active = true;
+    async function refresh() {
+      try {
+        const shared = await loadSharedAgent(id, token as string);
+        if (!active) return;
+        game.mergeSharedAgent(shared.agent, shared.rolls);
+        setSharedError("");
+      } catch (reason) {
+        if (active) setSharedError((reason as Error).message);
+      }
+    }
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 2500);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [
+    game.access.ready,
+    game.access.shareToken,
+    game.mergeSharedAgent,
+    id,
+    sharedToken,
+  ]);
   if (!game.ready || !game.access.ready)
     return <div className="page">Carregando ficha…</div>;
   if (!canAccessAgent(game.access, id))
@@ -75,11 +117,22 @@ export default function CharacterSheet({ id }: { id: string }) {
         )}
       </div>
     );
+  if (!a && (game.access.shareToken || sharedToken))
+    return (
+      <div className="page">
+        <h1>
+          {sharedError
+            ? "Não foi possível abrir a ficha compartilhada"
+            : "Carregando ficha compartilhada…"}
+        </h1>
+        {sharedError && <p>{sharedError}</p>}
+      </div>
+    );
   if (!a)
     return (
       <div className="page">
-        <h1>Ficha não encontrada neste navegador</h1>
-        <p>Importe o arquivo da ficha ou volte para seus personagens.</p>
+        <h1>Link de jogador antigo ou incompleto</h1>
+        <p>Peça ao mestre para clicar novamente em “Link do jogador”.</p>
         <Link href={game.accessHref("/")}>Agentes</Link>
       </div>
     );
@@ -105,7 +158,18 @@ export default function CharacterSheet({ id }: { id: string }) {
   }
   async function roll(label: string, attr: number, bonus = 0, expression = "") {
     await run(async () =>
-      setResult(await game.roll(agent, label, attr, bonus, expression)),
+      setResult(
+        await game.roll(
+          agent,
+          label,
+          attr,
+          bonus,
+          expression,
+          false,
+          null,
+          game.access.shareToken || undefined,
+        ),
+      ),
     );
   }
   function test(s: string, bonus = 0, label = s) {
@@ -116,14 +180,23 @@ export default function CharacterSheet({ id }: { id: string }) {
     );
   }
   async function save(p: Partial<Agent>) {
-    await game.save("agents", { ...agent, ...p });
+    const updated = { ...agent, ...p };
+    await game.syncSharedAgent(updated, game.access.shareToken || undefined);
+    await game.save("agents", updated);
   }
   async function copyPlayerLink() {
-    const url = new URL(window.location.href);
-    url.pathname = `/agentes/${agent.id}`;
-    url.search = `?mode=player&agent=${encodeURIComponent(agent.id)}`;
-    await navigator.clipboard.writeText(url.toString());
-    game.setNotice("Link limitado do jogador copiado.");
+    await run(async () => {
+      const credentials = await publishSharedAgent(agent);
+      setSharedToken(credentials.masterToken);
+      const url = new URL(window.location.origin + `/agentes/${agent.id}`);
+      url.searchParams.set("mode", "player");
+      url.searchParams.set("agent", agent.id);
+      url.searchParams.set("share", credentials.playerToken);
+      await navigator.clipboard.writeText(url.toString());
+      game.setNotice(
+        "Ficha publicada e link do jogador copiado. Alterações e rolagens serão sincronizadas.",
+      );
+    });
   }
   function add() {
     setItem({
@@ -567,7 +640,13 @@ export default function CharacterSheet({ id }: { id: string }) {
         <AgentEditor
           agent={a}
           campaigns={game.state.campaigns}
-          onSave={async (value) => game.save("agents", value)}
+          onSave={async (value) => {
+            await game.syncSharedAgent(
+              value,
+              game.access.shareToken || undefined,
+            );
+            await game.save("agents", value);
+          }}
           onClose={() => setEditing(false)}
           onRoll={(_, s) => test(s)}
         />
@@ -648,7 +727,12 @@ export default function CharacterSheet({ id }: { id: string }) {
             disabled={busy}
             onClick={() =>
               void run(async () => {
-                await game.adjustResource(agent, adjust, delta);
+                await game.adjustResource(
+                  agent,
+                  adjust,
+                  delta,
+                  game.access.shareToken || undefined,
+                );
                 setAdjust(null);
               })
             }
@@ -671,7 +755,12 @@ export default function CharacterSheet({ id }: { id: string }) {
                 const key = agent.determination ? "pd" : "pe";
                 if (agent.resources[key] < (useItem.cost || 0))
                   throw Error("Recurso insuficiente.");
-                await game.adjustResource(agent, key, -(useItem.cost || 0));
+                await game.adjustResource(
+                  agent,
+                  key,
+                  -(useItem.cost || 0),
+                  game.access.shareToken || undefined,
+                );
                 setUseItem(null);
               })
             }

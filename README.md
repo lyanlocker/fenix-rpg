@@ -1,4 +1,4 @@
-# Fênix 0.7 — ficha primeiro, sem cadastro
+# Fênix 0.8 — ficha compartilhada, sem cadastro
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. Não exige conta, não inicia sessão e não consulta dados privados do Supabase.
 
@@ -18,13 +18,15 @@ Ataques usam atributo e treinamento da perícia da arma. Dano usa a expressão c
 
 A aba Resumo reúne aparência, atributos, perícias, recursos e poderes. Retratos locais são reduzidos e salvos dentro da própria ficha, inclusive no JSON exportado. O rolador flutuante aceita de 1 a 100 dados com 2 a 1.000.000 lados.
 
-## Modo jogador
+## Modo jogador e sincronização
 
-O link `/agentes/ID?mode=player&agent=ID` mostra somente a ficha indicada, bloqueia outras IDs e impede a criação de personagens. O botão “Link do jogador” gera esse endereço. Sem autenticação, esta é uma restrição de interface, não uma barreira de segurança contra alguém que remova os parâmetros da URL ou altere os dados do navegador.
+O botão “Link do jogador” publica a ficha no banco e gera um endereço no formato `/agentes/ID?mode=player&agent=ID&share=CHAVE`. A chave de alta entropia autoriza somente aquela ficha. O jogador abre o endereço diretamente, sem importar JSON e sem preencher login. Ficha e histórico de rolagens são sincronizados entre os aparelhos aproximadamente a cada 2,5 segundos.
+
+As chaves do mestre ficam somente no armazenamento local do navegador que publicou a ficha. O banco guarda apenas hashes dessas chaves. Clicar novamente em “Link do jogador” preserva o endereço enquanto as credenciais locais existirem.
 
 ## Dados e limites
 
-Dados ficam em `fenix.workspace.v1` no armazenamento do navegador, compatível com fichas locais anteriores. Exportar fichas e biblioteca cria backups JSON. Limpar os dados do navegador pode apagar as fichas; exporte antes. Não há sincronização automática entre dispositivos ou sessões compartilhadas em tempo real nesta versão.
+Fichas não publicadas continuam em `fenix.workspace.v1` no armazenamento do navegador. Fichas publicadas também ficam no Supabase e podem ser abertas pelo link secreto. Exportar fichas e biblioteca continua criando backups JSON. Limpar os dados do navegador do mestre remove sua chave administrativa local; mantenha um backup da ficha e não compartilhe o endereço do mestre.
 
 Catálogo inicial não é uma cópia integral dos livros. Rituais e poderes podem ser criados ou importados em bibliotecas próprias. Não há PDFs ou catálogo privado incorporados ao código. Banco anterior permanece inalterado e privado.
 

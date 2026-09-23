@@ -22,6 +22,14 @@ test("player mode stays scoped to the authorized agent", () => {
     canAccessAgent(parseAccessMode("?mode=player"), "agent-1"),
     false,
   );
+  const shared = parseAccessMode(
+    "?mode=player&agent=agent-1&share=secret-token",
+  );
+  assert.equal(shared.shareToken, "secret-token");
+  assert.equal(
+    accessHref("/agentes/agent-1", shared),
+    "/agentes/agent-1?mode=player&agent=agent-1&share=secret-token",
+  );
 });
 test("combatant NEX 65 base resources and determination", () => {
   const a = newAgent();
