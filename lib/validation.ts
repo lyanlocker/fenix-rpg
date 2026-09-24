@@ -68,6 +68,9 @@ const schema = z.object({
         resistance: z.string().max(300).optional(),
         attackSkill: z.string().max(100).optional(),
         attackBonus: num.int().min(-100).max(100).optional(),
+        weaponType: z
+          .enum(["Corpo a corpo", "Disparo", "Arma de fogo"])
+          .optional(),
         critical: z.string().max(100).optional(),
         range: z.string().max(100).optional(),
         category: z.string().max(100).optional(),

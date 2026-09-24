@@ -18,6 +18,16 @@ import {
 } from "../lib/rules";
 import { isAccessoryCurse } from "../lib/curses";
 import { validateAgentImport } from "../lib/validation";
+import {
+  availableModifications,
+  toWeaponModification,
+  weaponAttackBonus,
+  weaponCritical,
+  weaponDamage,
+  weaponRange,
+  weaponSpaces,
+  weaponModifications,
+} from "../lib/weapon-modifications";
 
 test("class resource formulas match the rulebook at NEX 5", () => {
   const expected = {
@@ -75,6 +85,92 @@ test("weapon curses attach to a weapon and raise its category", () => {
     agent: { ...newAgent(), inventory: [weapon] },
   });
   assert.equal(restored.inventory[0].enhancements?.[0].name, "Lancinante");
+});
+
+test("weapon modifications change category and applicable roll and load values", () => {
+  const chosen = (name: string) =>
+    toWeaponModification(
+      weaponModifications.find((entry) => entry.name === name)!,
+    );
+  const weapon: Item = {
+    id: "knife",
+    name: "Adaga",
+    kind: "Arma",
+    weaponType: "Corpo a corpo",
+    quantity: 1,
+    spaces: 1,
+    damage: "1d4+1",
+    critical: "19/x2",
+    category: "I",
+    notes: "",
+    enhancements: [chosen("Certeira"), chosen("Cruel"), chosen("Discreta")],
+  };
+  assert.equal(weaponAttackBonus(weapon), 2);
+  assert.equal(weaponDamage(weapon), "1d4+3");
+  assert.equal(weaponSpaces(weapon), 0);
+  assert.equal(effectiveCategory(weapon), "IV");
+  assert.equal(inventorySpaces({ ...newAgent(), inventory: [weapon] }), 0);
+  assert.equal(
+    availableModifications(weapon).some((entry) => entry.name === "Mira Laser"),
+    false,
+  );
+  weapon.enhancements!.push(
+    toEnhancement(
+      bookCatalog.find(
+        (entry) => entry.name === "Lancinante" && entry.bookId === "01",
+      )!,
+    ),
+  );
+  assert.equal(effectiveCategory(weapon), "VI");
+  const restored = validateAgentImport({
+    version: 1,
+    agent: { ...newAgent(), inventory: [weapon] },
+  });
+  assert.equal(restored.inventory[0].enhancements?.[0].subtype, "Modificação");
+  assert.equal(restored.inventory[0].weaponType, "Corpo a corpo");
+  const withoutCruel = {
+    ...weapon,
+    enhancements: weapon.enhancements!.filter((entry) => entry.name !== "Cruel"),
+  };
+  assert.equal(weaponDamage(withoutCruel), "1d4+1");
+  assert.equal(effectiveCategory(withoutCruel), "V");
+});
+
+test("firearm modifications stay separate from ammunition and update derived values", () => {
+  const chosen = (name: string) =>
+    toWeaponModification(
+      weaponModifications.find((entry) => entry.name === name)!,
+    );
+  const weapon: Item = {
+    id: "gun",
+    name: "Pistola",
+    kind: "Arma",
+    quantity: 1,
+    spaces: 1,
+    damage: "2d6",
+    critical: "19/x3",
+    range: "Curto",
+    category: "I",
+    notes: "",
+    enhancements: [
+      chosen("Alongada"),
+      chosen("Calibre Grosso"),
+      chosen("Mira Laser"),
+      chosen("Mira Telescópica"),
+    ],
+  };
+  assert.equal(weaponAttackBonus(weapon), 2);
+  assert.equal(weaponDamage(weapon), "3d6");
+  assert.equal(weaponCritical(weapon), "17/x3");
+  assert.equal(weaponRange(weapon), "médio");
+  assert.equal(
+    availableModifications(weapon).some((entry) => entry.name === "Certeira"),
+    false,
+  );
+  assert.equal(
+    availableModifications(weapon).some((entry) => entry.name === "Dum Dum"),
+    false,
+  );
 });
 
 test("expert training and equipment bonuses remain independent", () => {

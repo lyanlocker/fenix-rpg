@@ -137,9 +137,14 @@ const categoryValues: Record<string, number> = {
 };
 const categoryLabels = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 export function effectiveCategory(item: Item) {
-  const count =
+  const curses =
     item.enhancements?.filter((entry) => entry.subtype === "Maldição").length ||
     0;
+  const modifications =
+    item.kind === "Arma"
+      ? item.enhancements?.filter((entry) => entry.subtype === "Modificação")
+          .length || 0
+      : 0;
   const base = categoryValues[(item.category || "").toUpperCase()];
   if (base === undefined) return item.category || "não definida";
   const improvements = accessoryType(item)
@@ -147,6 +152,6 @@ export function effectiveCategory(item: Item) {
       Number(!!item.extraSkill) +
       Number(!!item.extraSkill && item.extraBonus === 5)
     : 0;
-  const value = base + improvements + (count ? count + 1 : 0);
+  const value = base + improvements + modifications + (curses ? curses + 1 : 0);
   return categoryLabels[value] || String(value);
 }

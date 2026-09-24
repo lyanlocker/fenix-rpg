@@ -1,3 +1,5 @@
+import { weaponSpaces } from "./weapon-modifications";
+
 export type Attribute = "AGI" | "FOR" | "INT" | "PRE" | "VIG";
 export type ClassName =
   | "Combatente"
@@ -38,6 +40,7 @@ export type Item = {
   resistance?: string;
   attackSkill?: string;
   attackBonus?: number;
+  weaponType?: "Corpo a corpo" | "Disparo" | "Arma de fogo";
   critical?: string;
   range?: string;
   category?: string;
@@ -175,7 +178,13 @@ export function skillBonus(agent: Agent, skill: string) {
 export function inventorySpaces(agent: Agent) {
   return agent.inventory
     .filter((item) => item.kind === "Arma" || item.kind === "Item")
-    .reduce((sum, item) => sum + item.spaces * item.quantity, 0);
+    .reduce(
+      (sum, item) =>
+        sum +
+        (item.kind === "Arma" ? weaponSpaces(item) : item.spaces) *
+          item.quantity,
+      0,
+    );
 }
 export function carryingCapacity(agent: Agent) {
   const strength = effectiveAttributes(agent).FOR;

@@ -7,6 +7,7 @@ import {
   Dices,
   Plus,
   Pencil,
+  Trash2,
   Download,
   History,
   Copy,
@@ -39,7 +40,18 @@ import ItemForm from "./item-form";
 import { CatalogPicker } from "./library";
 import ConditionManager from "./condition-manager";
 import CursePicker from "./curse-picker";
+import WeaponModificationPicker from "./weapon-modification-picker";
 import { effectiveCategory, toEnhancement } from "@/lib/curses";
+import {
+  hasWeaponModification,
+  toWeaponModification,
+  weaponAttackBonus,
+  weaponCritical,
+  weaponDamage,
+  weaponRange,
+  weaponSpaces,
+  type WeaponModification,
+} from "@/lib/weapon-modifications";
 import { canAccessAgent } from "@/lib/access";
 import CharacterOverview from "./character-overview";
 import DiceRoller from "./dice-roller";
@@ -73,6 +85,7 @@ export default function CharacterSheet({ id }: { id: string }) {
     [note, setNote] = useState<string | null>(null),
     [useItem, setUseItem] = useState<Item | null>(null),
     [curseTarget, setCurseTarget] = useState<Item | null>(null),
+    [modificationTarget, setModificationTarget] = useState<Item | null>(null),
     [sharedToken, setSharedToken] = useState<string | null>(null),
     [sharedError, setSharedError] = useState("");
   useEffect(() => {
@@ -192,6 +205,13 @@ export default function CharacterSheet({ id }: { id: string }) {
     await game.syncSharedAgent(updated, game.access.shareToken || undefined);
     await game.save("agents", updated);
   }
+  function removeItem(itemId: string) {
+    void run(() =>
+      save({
+        inventory: agent.inventory.filter((entry) => entry.id !== itemId),
+      }),
+    );
+  }
   async function copyPlayerLink() {
     await run(async () => {
       const credentials = await publishSharedAgent(agent);
@@ -213,6 +233,7 @@ export default function CharacterSheet({ id }: { id: string }) {
       kind,
       quantity: 1,
       spaces: kind === "Arma" || kind === "Item" ? 1 : 0,
+      category: kind === "Arma" ? "0" : undefined,
       damage: "",
       notes: "",
     });
@@ -559,18 +580,29 @@ export default function CharacterSheet({ id }: { id: string }) {
                           {accessoryType(i)
                             ? `${accessoryType(i)} · ${i.equipped === false ? "sem uso" : "em uso"} · ${i.accessorySkill || "perícia a definir"} +${i.accessoryBonus || 2} · Categoria ${effectiveCategory(i)}`
                             : i.kind === "Arma"
-                              ? `${i.damage || "Dano não definido"} · Crítico ${i.critical || "—"} · ${i.range || "Alcance não definido"} · Categoria ${effectiveCategory(i)}`
+                              ? `${weaponDamage(i) || "Dano não definido"} · Crítico ${weaponCritical(i) || "—"} · ${weaponRange(i) || "Alcance não definido"} · ${weaponSpaces(i)} espaços · Categoria ${effectiveCategory(i)}`
                               : i.kind === "Ritual"
                                 ? `${i.circle || 1}º círculo · ${i.element || "Elemento não definido"} · ${i.cost || 0} ${a.determination ? "PD" : "PE"}`
                                 : `${i.kind} · ${i.quantity} un.`}
                         </p>
                       </div>
-                      <button
-                        aria-label={"Editar " + i.name}
-                        onClick={() => setItem(i)}
-                      >
-                        <Pencil size={16} />
-                      </button>
+                      <div className="item-controls">
+                        <button
+                          disabled={busy}
+                          aria-label={"Editar " + i.name}
+                          onClick={() => setItem(i)}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          disabled={busy}
+                          aria-label={"Remover " + i.name + " da ficha"}
+                          title="Remover da ficha"
+                          onClick={() => removeItem(i.id)}
+                        >
+                          <Trash2 size={16} /> Remover
+                        </button>
+                      </div>
                     </div>
                     {i.kind === "Arma" && (
                       <>
@@ -581,7 +613,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                             onClick={() =>
                               test(
                                 i.attackSkill || "Luta",
-                                i.attackBonus || 0,
+                                weaponAttackBonus(i),
                                 "Ataque · " + i.name,
                               )
                             }
@@ -589,12 +621,17 @@ export default function CharacterSheet({ id }: { id: string }) {
                             <Dices size={16} />
                             Atacar · +
                             {skillBonus(a, i.attackSkill || "Luta").total +
-                              (i.attackBonus || 0)}
+                              weaponAttackBonus(i)}
                           </button>
                           <button
-                            disabled={busy || !i.damage}
+                            disabled={busy || !weaponDamage(i)}
                             onClick={() =>
-                              void roll("Dano · " + i.name, 1, 0, i.damage)
+                              void roll(
+                                "Dano · " + i.name,
+                                1,
+                                0,
+                                weaponDamage(i),
+                              )
                             }
                           >
                             <Dices size={16} />
@@ -603,11 +640,16 @@ export default function CharacterSheet({ id }: { id: string }) {
                           <button onClick={() => setCurseTarget(i)}>
                             Adicionar maldição
                           </button>
+                          <button onClick={() => setModificationTarget(i)}>
+                            Adicionar modificação
+                          </button>
                         </div>
                         {!!i.enhancements?.length && (
                           <div className="weapon-curses">
                             <div className="curse-summary">
-                              <strong>Maldições aplicadas</strong>
+                              <strong>
+                                Maldições e modificações aplicadas
+                              </strong>
                               <small>
                                 Categoria final {effectiveCategory(i)}
                               </small>
@@ -617,28 +659,36 @@ export default function CharacterSheet({ id }: { id: string }) {
                                 <div>
                                   <strong>{enhancement.name}</strong>
                                   <span>
-                                    {[enhancement.element, enhancement.source]
+                                    {[
+                                      enhancement.subtype,
+                                      enhancement.element,
+                                      enhancement.source,
+                                    ]
                                       .filter(Boolean)
                                       .join(" · ")}
                                   </span>
                                   <button
+                                    disabled={busy}
                                     aria-label={`Remover ${enhancement.name} de ${i.name}`}
                                     onClick={() =>
-                                      void save({
-                                        inventory: a.inventory.map((entry) =>
-                                          entry.id === i.id
-                                            ? {
-                                                ...entry,
-                                                enhancements: (
-                                                  entry.enhancements || []
-                                                ).filter(
-                                                  (value) =>
-                                                    value.id !== enhancement.id,
-                                                ),
-                                              }
-                                            : entry,
-                                        ),
-                                      })
+                                      void run(() =>
+                                        save({
+                                          inventory: a.inventory.map((entry) =>
+                                            entry.id === i.id
+                                              ? {
+                                                  ...entry,
+                                                  enhancements: (
+                                                    entry.enhancements || []
+                                                  ).filter(
+                                                    (value) =>
+                                                      value.id !==
+                                                      enhancement.id,
+                                                  ),
+                                                }
+                                              : entry,
+                                          ),
+                                        }),
+                                      )
                                     }
                                   >
                                     <X size={14} />
@@ -877,6 +927,38 @@ export default function CharacterSheet({ id }: { id: string }) {
                 ),
               });
               setCurseTarget(null);
+            })
+          }
+        />
+      )}
+      {modificationTarget && (
+        <WeaponModificationPicker
+          target={modificationTarget}
+          busy={busy}
+          onClose={() => setModificationTarget(null)}
+          onChoose={(modification: WeaponModification) =>
+            void run(async () => {
+              const target = a.inventory.find(
+                (entry) => entry.id === modificationTarget.id,
+              );
+              if (!target || target.kind !== "Arma")
+                throw Error("Arma não encontrada na ficha.");
+              if (hasWeaponModification(target, modification.name))
+                throw Error("Essa modificação já foi aplicada à arma.");
+              await save({
+                inventory: a.inventory.map((entry) =>
+                  entry.id === target.id
+                    ? {
+                        ...entry,
+                        enhancements: [
+                          ...(entry.enhancements || []),
+                          toWeaponModification(modification),
+                        ],
+                      }
+                    : entry,
+                ),
+              });
+              setModificationTarget(null);
             })
           }
         />

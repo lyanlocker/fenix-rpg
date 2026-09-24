@@ -1200,6 +1200,15 @@ progress::-moz-progress-bar {
   gap: 15px;
   margin-bottom: 18px;
 }
+.item-controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.item-controls button:last-child:hover {
+  color: #e49494;
+  border-color: #e49494;
+}
 .section-title h2,
 .section-title h3 {
   margin: 0;

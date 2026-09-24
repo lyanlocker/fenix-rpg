@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Modal } from "./ui";
 import { skillAttributes, damage, accessoryType, type Item } from "@/lib/rules";
 import { effectiveCategory } from "@/lib/curses";
+import { availableModifications, weaponType } from "@/lib/weapon-modifications";
 export default function ItemForm({
   item,
   onSave,
@@ -45,6 +46,14 @@ export default function ItemForm({
       return setError("Selecione a perícia beneficiada pelo acessório.");
     if (accessory && i.accessorySkill === i.extraSkill)
       return setError("A função adicional deve beneficiar outra perícia.");
+    if (i.kind === "Arma") {
+      const compatible = new Set(availableModifications(i).map((entry) => entry.name));
+      const invalid = i.enhancements?.find(
+        (entry) => entry.subtype === "Modificação" && !compatible.has(entry.name),
+      );
+      if (invalid)
+        return setError(`Remova ${invalid.name} antes de mudar o tipo da arma.`);
+    }
     try {
       if (i.damage) damage(i.damage, () => 1);
       setBusy(true);
@@ -186,6 +195,22 @@ export default function ItemForm({
           )}
           {i.kind === "Arma" && (
             <>
+              <label>
+                Tipo de arma (modificações compatíveis)
+                <select
+                  value={weaponType(i)}
+                  onChange={(e) =>
+                    setI({
+                      ...i,
+                      weaponType: e.target.value as Item["weaponType"],
+                    })
+                  }
+                >
+                  <option>Corpo a corpo</option>
+                  <option>Disparo</option>
+                  <option>Arma de fogo</option>
+                </select>
+              </label>
               <label>
                 Perícia de ataque
                 <select
