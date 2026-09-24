@@ -7,9 +7,16 @@ import {
   maximumFormula,
   maximums,
   newAgent,
+  carryingCapacity,
+  inventorySpaces,
+  effectiveAttributes,
+  skillBonus,
+  activeAccessories,
+  accessoryDefenseBonus,
   type Agent,
   type Item,
 } from "../lib/rules";
+import { isAccessoryCurse } from "../lib/curses";
 import { validateAgentImport } from "../lib/validation";
 
 test("class resource formulas match the rulebook at NEX 5", () => {
@@ -68,6 +75,154 @@ test("weapon curses attach to a weapon and raise its category", () => {
     agent: { ...newAgent(), inventory: [weapon] },
   });
   assert.equal(restored.inventory[0].enhancements?.[0].name, "Lancinante");
+});
+
+test("expert training and equipment bonuses remain independent", () => {
+  const agent = newAgent("Expert");
+  agent.skills.Reflexos = 5;
+  agent.skills.Artes = 0;
+  agent.skills.Fortitude = 0;
+  agent.skillAdjustments = { Fortitude: 4 };
+  agent.inventory = [
+    {
+      id: "vest",
+      name: "Jaqueta",
+      kind: "Item",
+      accessoryType: "Vestimenta",
+      equipped: true,
+      accessorySkill: "Reflexos",
+      accessoryBonus: 5,
+      extraSkill: "Artes",
+      extraBonus: 5,
+      category: "I",
+      quantity: 1,
+      spaces: 1,
+      damage: "",
+      notes: "",
+    },
+    {
+      id: "utensil",
+      name: "Pincel",
+      kind: "Item",
+      accessoryType: "Utensílio",
+      equipped: true,
+      accessorySkill: "Artes",
+      accessoryBonus: 5,
+      category: "I",
+      quantity: 1,
+      spaces: 1,
+      damage: "",
+      notes: "",
+    },
+  ];
+  assert.equal(skillBonus(agent, "Reflexos").total, 10);
+  assert.equal(skillBonus(agent, "Artes").total, 10);
+  assert.equal(skillBonus(agent, "Fortitude").total, 4);
+  assert.equal(effectiveCategory(agent.inventory[0]), "IV");
+  agent.skills.Artes = 15;
+  assert.equal(skillBonus(agent, "Artes").total, 25);
+  agent.inventory[1].equipped = false;
+  assert.equal(skillBonus(agent, "Artes").total, 20);
+  const restored = validateAgentImport({ version: 1, agent });
+  assert.equal(restored.skills.Artes, 15);
+  assert.equal(restored.skillAdjustments?.Fortitude, 4);
+  assert.equal(restored.inventory[0].extraSkill, "Artes");
+});
+
+test("Pujança on an active vestment raises Strength and capacity", () => {
+  const agent = newAgent();
+  agent.attributes.FOR = 1;
+  const curse = bookCatalog.find(
+    (entry) => entry.name === "Pujança" && entry.bookId === "01",
+  )!;
+  assert.ok(isAccessoryCurse(curse));
+  agent.inventory = [
+    {
+      id: "vest",
+      name: "Vestimenta",
+      kind: "Item",
+      quantity: 1,
+      spaces: 1,
+      damage: "",
+      notes: "",
+      category: "I",
+      accessorySkill: "Reflexos",
+      accessoryBonus: 5,
+      enhancements: [toEnhancement(curse)],
+    },
+    {
+      id: "case",
+      name: "Mala",
+      kind: "Item",
+      quantity: 1,
+      spaces: 9,
+      damage: "",
+      notes: "",
+    },
+  ];
+  assert.equal(inventorySpaces(agent), 10);
+  assert.equal(effectiveAttributes(agent).FOR, 2);
+  assert.equal(carryingCapacity(agent), 10);
+  assert.equal(effectiveCategory(agent.inventory[0]), "IV");
+  agent.inventory[0].equipped = false;
+  assert.equal(carryingCapacity(agent), 5);
+  assert.equal(skillBonus(agent, "Reflexos").total, 0);
+});
+
+test("at most two worn vestments contribute bonuses", () => {
+  const agent = newAgent();
+  agent.inventory = Array.from({ length: 3 }, (_, index) => ({
+    id: `vest-${index}`,
+    name: "Vestimenta",
+    kind: "Item" as const,
+    accessoryType: "Vestimenta" as const,
+    accessorySkill: "Artes",
+    accessoryBonus: 5 as const,
+    equipped: true,
+    quantity: 1,
+    spaces: 1,
+    damage: "",
+    notes: "",
+  }));
+  assert.equal(activeAccessories(agent).length, 2);
+  assert.equal(skillBonus(agent, "Artes").total, 10);
+});
+
+test("static accessory curses update defenses and day-gated maximums", () => {
+  const agent = newAgent();
+  const curse = (name: string) =>
+    toEnhancement(
+      bookCatalog.find(
+        (entry) => entry.bookId === "01" && entry.name === name,
+      )!,
+    );
+  agent.inventory = [
+    {
+      id: "ac",
+      name: "Utensílio",
+      kind: "Item",
+      quantity: 1,
+      spaces: 1,
+      damage: "",
+      notes: "",
+      accessorySkill: "Artes",
+      enhancements: [
+        curse("Defesa"),
+        curse("Vitalidade"),
+        curse("Esforço Adicional"),
+        curse("Carisma"),
+      ],
+    },
+  ];
+  assert.equal(accessoryDefenseBonus(agent), 5);
+  assert.equal(effectiveAttributes(agent).PRE, agent.attributes.PRE + 1);
+  assert.equal(maximums(agent).pe, 5); // Carisma não fornece PE adicionais.
+  agent.inventory[0].attuned = true;
+  assert.equal(maximums(agent).pv, 33);
+  assert.equal(maximums(agent).pe, 10);
+  agent.inventory[0].equipped = false;
+  assert.equal(accessoryDefenseBonus(agent), 0);
+  assert.equal(maximums(agent).pv, 18);
 });
 
 test("supplement rituals retain printed element, circle and cost", () => {

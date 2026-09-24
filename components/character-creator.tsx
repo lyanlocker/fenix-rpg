@@ -359,6 +359,13 @@ export default function CharacterCreator() {
                 ? "Complete o treinamento inicial."
                 : "Confira treinamento e aumentos conforme o NEX da ficha."}
             </p>
+            {a.nex < 70 && (
+              <p className="hint">
+                Expert +15 está disponível para ajustes aprovados pelo mestre;
+                na progressão padrão, o segundo aumento de treinamento ocorre em
+                NEX 70%.
+              </p>
+            )}
             <div className="skill-picker">
               {Object.entries(skillAttributes).map(([s, k]) => (
                 <label key={s}>
@@ -378,7 +385,7 @@ export default function CharacterCreator() {
                       0,
                       5,
                       ...(a.nex >= 35 ? [10] : []),
-                      ...(a.nex >= 70 ? [15] : []),
+                      15,
                     ].map((n) => (
                       <option value={n} key={n}>
                         {

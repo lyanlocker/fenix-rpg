@@ -1,4 +1,4 @@
-import type { Item, ItemEnhancement } from "./rules";
+import { accessoryType, type Item, type ItemEnhancement } from "./rules";
 
 const baseWeaponCurses = new Set([
   "Antielemento",
@@ -13,6 +13,21 @@ const baseWeaponCurses = new Set([
   "Lancinante",
   "Predadora",
   "Sanguinária",
+]);
+const baseAccessoryCurses = new Set([
+  "Carisma",
+  "Conjuração",
+  "Escudo Mental",
+  "Reflexão",
+  "Sagacidade",
+  "Defesa",
+  "Destreza",
+  "Potência",
+  "Esforço Adicional",
+  "Disposição",
+  "Pujança",
+  "Vitalidade",
+  "Proteção Elemental",
 ]);
 
 const arsenalWeaponCurses = new Set([
@@ -88,6 +103,13 @@ export function isWeaponCurse(item: Item) {
   if (item.bookId === "05") return arsenalWeaponCurses.has(item.name);
   return true;
 }
+export function isAccessoryCurse(item: Item) {
+  return (
+    item.subtype === "Maldição" &&
+    item.bookId === "01" &&
+    baseAccessoryCurses.has(item.name)
+  );
+}
 
 export function toEnhancement(item: Item): ItemEnhancement {
   return {
@@ -120,6 +142,11 @@ export function effectiveCategory(item: Item) {
     0;
   const base = categoryValues[(item.category || "").toUpperCase()];
   if (base === undefined) return item.category || "não definida";
-  const value = base + (count ? count + 1 : 0);
+  const improvements = accessoryType(item)
+    ? Number(item.accessoryBonus === 5) +
+      Number(!!item.extraSkill) +
+      Number(!!item.extraSkill && item.extraBonus === 5)
+    : 0;
+  const value = base + improvements + (count ? count + 1 : 0);
   return categoryLabels[value] || String(value);
 }

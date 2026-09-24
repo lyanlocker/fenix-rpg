@@ -6,6 +6,11 @@ import {
   skillAttributes,
   maximums,
   maximumFormula,
+  carryingCapacity,
+  inventorySpaces,
+  skillBonus,
+  effectiveAttributes,
+  accessoryDefenseBonus,
   resourceLabels,
   resourceKeys,
   type Agent,
@@ -257,7 +262,12 @@ export default function AgentEditor({
               </label>
               <p className="defense">
                 <Shield size={20} /> Defesa{" "}
-                <b>{10 + a.attributes.AGI + a.defenseBonus}</b>
+                <b>
+                  {10 +
+                    effectiveAttributes(a).AGI +
+                    a.defenseBonus +
+                    accessoryDefenseBonus(a)}
+                </b>
               </p>
             </div>
           </>
@@ -265,8 +275,9 @@ export default function AgentEditor({
         {tab === "Perícias" ? (
           <>
             <p className="muted">
-              O treinamento soma +5, +10 ou +15 ao dado escolhido. A rolagem usa
-              a ficha salva.
+              Treinamento: +5 (treinado), +10 (veterano), +15 (expert). Ajustes
+              de poderes e equipamentos aparecem separados e entram nas
+              rolagens.
             </p>
             <div className="skills-grid">
               {Object.entries(skillAttributes).map(([s, attr]) => (
@@ -284,10 +295,40 @@ export default function AgentEditor({
                   >
                     {[0, 5, 10, 15].map((n) => (
                       <option key={n} value={n}>
-                        +{n}
+                        {n === 0
+                          ? "Destreinado"
+                          : n === 5
+                            ? "Treinado +5"
+                            : n === 10
+                              ? "Veterano +10"
+                              : "Expert +15"}
                       </option>
                     ))}
                   </select>
+                  <label>
+                    <span className="sr-only">Bônus de poder em {s}</span>
+                    <input
+                      type="number"
+                      min={-100}
+                      max={100}
+                      aria-label={`Ajuste de poder em ${s}`}
+                      title="Bônus permanente de poder ou efeito especial, separado do equipamento"
+                      value={a.skillAdjustments?.[s] || 0}
+                      onChange={(e) =>
+                        update("skillAdjustments", {
+                          ...a.skillAdjustments,
+                          [s]: Math.max(
+                            -100,
+                            Math.min(100, Math.trunc(+e.target.value || 0)),
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <strong title="Treinamento + poder + acessórios ativos">
+                    Total {skillBonus(a, s).total >= 0 ? "+" : ""}
+                    {skillBonus(a, s).total}
+                  </strong>
                   <button
                     className="icon-btn"
                     title={`Rolar ${s}`}
@@ -305,9 +346,11 @@ export default function AgentEditor({
           <>
             <div className="section-line">
               <p className="muted">
-                {a.inventory.reduce((n, i) => n + i.spaces * i.quantity, 0)}{" "}
-                espaços utilizados · capacidade base{" "}
-                {a.attributes.FOR === 0 ? 2 : a.attributes.FOR * 5}
+                {inventorySpaces(a)} espaços utilizados · capacidade{" "}
+                {carryingCapacity(a)}
+                {effectiveAttributes(a).FOR !== a.attributes.FOR
+                  ? " (inclui Pujança)"
+                  : ""}
               </p>
               <button
                 className="button secondary"

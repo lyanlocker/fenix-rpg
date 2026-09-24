@@ -51,6 +51,13 @@ export type Item = {
   discente?: string;
   verdadeiro?: string;
   enhancements?: ItemEnhancement[];
+  accessoryType?: "Vestimenta" | "Utensílio";
+  equipped?: boolean;
+  attuned?: boolean;
+  accessorySkill?: string;
+  accessoryBonus?: 2 | 5;
+  extraSkill?: string;
+  extraBonus?: 2 | 5;
 };
 export type Agent = {
   id: string;
@@ -67,6 +74,7 @@ export type Agent = {
   determination: boolean;
   attributes: Record<Attribute, number>;
   skills: Record<string, number>;
+  skillAdjustments?: Record<string, number>;
   resources: Record<Resource, number>;
   adjustments: Record<Resource, number>;
   defenseBonus: number;
@@ -107,6 +115,90 @@ export const skillAttributes: Record<string, Attribute> = {
   Tecnologia: "INT",
   Vontade: "PRE",
 };
+export function accessoryType(item: Item): Item["accessoryType"] {
+  if (item.kind !== "Item") return undefined;
+  if (item.accessoryType) return item.accessoryType;
+  if (/^vestimenta$/i.test(item.name)) return "Vestimenta";
+  if (/^utens[ií]lio$/i.test(item.name)) return "Utensílio";
+  return undefined;
+}
+export function activeAccessories(agent: Agent) {
+  let worn = 0;
+  return agent.inventory.filter((item) => {
+    const type = accessoryType(item);
+    if (!type || item.equipped === false) return false;
+    if (type === "Vestimenta" && ++worn > 2) return false;
+    return true;
+  });
+}
+export function effectiveAttributes(agent: Agent): Record<Attribute, number> {
+  const result = { ...agent.attributes };
+  const curses: Partial<Record<string, Attribute>> = {
+    Pujança: "FOR",
+    Destreza: "AGI",
+    Disposição: "VIG",
+    Sagacidade: "INT",
+    Carisma: "PRE",
+  };
+  for (const item of activeAccessories(agent)) {
+    for (const enhancement of item.enhancements || []) {
+      if (enhancement.bookId !== "01") continue;
+      const attribute = curses[enhancement.name];
+      if (attribute) result[attribute] += 1;
+    }
+  }
+  return result;
+}
+export function skillBonus(agent: Agent, skill: string) {
+  const training = agent.skills[skill] || 0;
+  const adjustment = agent.skillAdjustments?.[skill] || 0;
+  const sources: { name: string; bonus: number }[] = [];
+  for (const item of activeAccessories(agent)) {
+    if (item.accessorySkill === skill)
+      sources.push({ name: item.name, bonus: item.accessoryBonus || 2 });
+    if (item.extraSkill === skill)
+      sources.push({
+        name: `${item.name} (função adicional)`,
+        bonus: item.extraBonus || 2,
+      });
+  }
+  return {
+    training,
+    adjustment,
+    sources,
+    total:
+      training +
+      adjustment +
+      sources.reduce((sum, source) => sum + source.bonus, 0),
+  };
+}
+export function inventorySpaces(agent: Agent) {
+  return agent.inventory
+    .filter((item) => item.kind === "Arma" || item.kind === "Item")
+    .reduce((sum, item) => sum + item.spaces * item.quantity, 0);
+}
+export function carryingCapacity(agent: Agent) {
+  const strength = effectiveAttributes(agent).FOR;
+  return strength === 0 ? 2 : strength * 5;
+}
+export function accessoryDefenseBonus(agent: Agent) {
+  return (
+    activeAccessories(agent)
+      .flatMap((item) => item.enhancements || [])
+      .filter((entry) => entry.bookId === "01" && entry.name === "Defesa")
+      .length * 5
+  );
+}
+export function accessoryResourceBonus(agent: Agent, resource: "pv" | "pe") {
+  const curse = resource === "pv" ? "Vitalidade" : "Esforço Adicional";
+  return (
+    activeAccessories(agent)
+      .filter((item) => item.attuned)
+      .flatMap((item) => item.enhancements || [])
+      .filter((entry) => entry.bookId === "01" && entry.name === curse).length *
+    (resource === "pv" ? 15 : 5)
+  );
+}
 const bases: Record<ClassName, number[]> = {
   Combatente: [20, 4, 2, 2, 12, 3, 6, 3],
   Especialista: [16, 3, 3, 3, 16, 4, 8, 4],
@@ -119,16 +211,24 @@ export function maximums(a: Agent): Record<Resource, number> {
   const levels = s
     ? Math.max(0, a.stage - 1)
     : Math.max(0, (a.nex === 99 ? 20 : a.nex / 5) - 1);
-  const vig = a.attributes.VIG,
+  const vig = effectiveAttributes(a).VIG,
     pre = a.attributes.PRE;
   return {
     pv: Math.max(
       1,
-      b[0] + vig + levels * (b[1] + (s ? 0 : vig)) + a.adjustments.pv,
+      b[0] +
+        vig +
+        levels * (b[1] + (s ? 0 : vig)) +
+        a.adjustments.pv +
+        accessoryResourceBonus(a, "pv"),
     ),
     pe: Math.max(
       0,
-      b[2] + pre + levels * (b[3] + (s ? 0 : pre)) + a.adjustments.pe,
+      b[2] +
+        pre +
+        levels * (b[3] + (s ? 0 : pre)) +
+        a.adjustments.pe +
+        accessoryResourceBonus(a, "pe"),
     ),
     san: Math.max(0, b[4] + levels * b[5] + a.adjustments.san),
     pd: Math.max(
@@ -147,13 +247,14 @@ export function maximumFormula(a: Agent, key: Resource) {
     survivor = a.className === "Sobrevivente",
     advances = advancementCount(a),
     adjustment = a.adjustments[key],
+    vigor = effectiveAttributes(a).VIG,
     suffix = adjustment
       ? ` ${adjustment > 0 ? "+" : "−"} ajuste ${Math.abs(adjustment)}`
       : "";
   if (key === "pv")
-    return `${b[0]} + VIG ${a.attributes.VIG}${advances ? ` + ${advances} avanço${advances > 1 ? "s" : ""} × (${b[1]}${survivor ? "" : ` + VIG ${a.attributes.VIG}`})` : ""}${suffix}`;
+    return `${b[0]} + VIG ${vigor}${advances ? ` + ${advances} avanço${advances > 1 ? "s" : ""} × (${b[1]}${survivor ? "" : ` + VIG ${vigor}`})` : ""}${suffix}${accessoryResourceBonus(a, "pv") ? ` + acessórios ${accessoryResourceBonus(a, "pv")}` : ""}`;
   if (key === "pe")
-    return `${b[2]} + PRE ${a.attributes.PRE}${advances ? ` + ${advances} avanço${advances > 1 ? "s" : ""} × (${b[3]}${survivor ? "" : ` + PRE ${a.attributes.PRE}`})` : ""}${suffix}`;
+    return `${b[2]} + PRE ${a.attributes.PRE}${advances ? ` + ${advances} avanço${advances > 1 ? "s" : ""} × (${b[3]}${survivor ? "" : ` + PRE ${a.attributes.PRE}`})` : ""}${suffix}${accessoryResourceBonus(a, "pe") ? ` + acessórios ${accessoryResourceBonus(a, "pe")}` : ""}`;
   if (key === "san")
     return `${b[4]}${advances ? ` + ${advances} avanço${advances > 1 ? "s" : ""} × ${b[5]}` : ""}${suffix}`;
   return `${b[6]} + PRE ${a.attributes.PRE}${advances ? ` + ${advances} avanço${advances > 1 ? "s" : ""} × (${b[7]}${survivor ? "" : ` + PRE ${a.attributes.PRE}`})` : ""}${suffix}`;

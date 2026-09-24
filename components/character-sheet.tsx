@@ -16,6 +16,13 @@ import { useGame } from "./game-shell";
 import {
   attributes,
   skillAttributes,
+  skillBonus,
+  effectiveAttributes,
+  carryingCapacity,
+  inventorySpaces,
+  accessoryType,
+  activeAccessories,
+  accessoryDefenseBonus,
   maximums,
   maximumFormula,
   resourceKeys,
@@ -138,6 +145,7 @@ export default function CharacterSheet({ id }: { id: string }) {
     );
   const agent = a,
     max = maximums(a),
+    effective = effectiveAttributes(a),
     kind: Item["kind"] =
       section === "Armas"
         ? "Arma"
@@ -175,8 +183,8 @@ export default function CharacterSheet({ id }: { id: string }) {
   function test(s: string, bonus = 0, label = s) {
     void roll(
       label,
-      agent.attributes[skillAttributes[s] || "INT"],
-      (agent.skills[s] || 0) + bonus,
+      effectiveAttributes(agent)[skillAttributes[s] || "INT"],
+      skillBonus(agent, s).total + bonus,
     );
   }
   async function save(p: Partial<Agent>) {
@@ -209,10 +217,31 @@ export default function CharacterSheet({ id }: { id: string }) {
       notes: "",
     });
   }
+  function addAccessory(type: "Vestimenta" | "Utensílio") {
+    setItem({
+      id: crypto.randomUUID(),
+      name: type,
+      kind: "Item",
+      accessoryType: type,
+      equipped:
+        type !== "Vestimenta" ||
+        activeAccessories(agent).filter(
+          (i) => accessoryType(i) === "Vestimenta",
+        ).length < 2,
+      quantity: 1,
+      spaces: 1,
+      damage: "",
+      notes: "",
+      category: "I",
+      accessoryBonus: 2,
+    });
+  }
   const items = a.inventory.filter((i) =>
     section === "Inventário"
       ? i.kind === "Item" && i.subtype !== "Maldição"
-      : i.kind === kind,
+      : section === "Armas"
+        ? i.kind === "Arma" || !!accessoryType(i)
+        : i.kind === kind,
   );
   return (
     <div className="page sheet">
@@ -273,12 +302,10 @@ export default function CharacterSheet({ id }: { id: string }) {
                     key={k}
                     disabled={busy}
                     aria-label={"Rolar " + attributeNames[k]}
-                    onClick={() =>
-                      void roll(attributeNames[k], a.attributes[k])
-                    }
+                    onClick={() => void roll(attributeNames[k], effective[k])}
                   >
                     <span>{k}</span>
-                    <strong>{a.attributes[k]}</strong>
+                    <strong>{effective[k]}</strong>
                     <Dices size={15} />
                   </button>
                 ))}
@@ -324,19 +351,25 @@ export default function CharacterSheet({ id }: { id: string }) {
               <div className="defenses">
                 <div>
                   Defesa
-                  <strong>{10 + a.attributes.AGI + a.defenseBonus}</strong>
+                  <strong>
+                    {10 +
+                      effective.AGI +
+                      a.defenseBonus +
+                      accessoryDefenseBonus(a)}
+                  </strong>
                 </div>
                 <div>
                   Esquiva
                   <strong>
                     {10 +
-                      a.attributes.AGI +
+                      effective.AGI +
                       a.defenseBonus +
-                      (a.skills.Reflexos || 0)}
+                      accessoryDefenseBonus(a) +
+                      skillBonus(a, "Reflexos").total}
                   </strong>
                 </div>
                 <div>
-                  Bloqueio<strong>{a.skills.Fortitude || 0}</strong>
+                  Bloqueio<strong>{skillBonus(a, "Fortitude").total}</strong>
                 </div>
               </div>
               <ConditionManager
@@ -384,7 +417,8 @@ export default function CharacterSheet({ id }: { id: string }) {
                 />
               </div>
               <p className="hint">
-                O teste usa o atributo indicado e soma o treinamento.
+                O teste soma treinamento, ajuste de poder e bônus de acessórios
+                ativos.
               </p>
               <div className="skill-table">
                 {Object.entries(skillAttributes)
@@ -395,14 +429,22 @@ export default function CharacterSheet({ id }: { id: string }) {
                     <button
                       key={s}
                       disabled={busy}
-                      aria-label={"Rolar " + s}
+                      aria-label={`Rolar ${s}, bônus total ${skillBonus(a, s).total}`}
+                      title={`Treinamento +${skillBonus(a, s).training}; poder ${skillBonus(a, s).adjustment >= 0 ? "+" : ""}${skillBonus(a, s).adjustment}${skillBonus(
+                        a,
+                        s,
+                      )
+                        .sources.map(
+                          (source) => `; ${source.name} +${source.bonus}`,
+                        )
+                        .join("")}`}
                       onClick={() => test(s)}
                     >
                       <span>{s}</span>
                       <small>
                         {k} {a.attributes[k]}
                       </small>
-                      <b>+{a.skills[s] || 0}</b>
+                      <b>+{skillBonus(a, s).total}</b>
                       <Dices size={17} />
                     </button>
                   ))}
@@ -461,16 +503,36 @@ export default function CharacterSheet({ id }: { id: string }) {
               )}
               {section === "Inventário" && (
                 <p className="help">
-                  Espaços ocupados:{" "}
-                  <b>
-                    {a.inventory
-                      .filter((i) => i.kind === "Item" || i.kind === "Arma")
-                      .reduce((s, i) => s + i.spaces * i.quantity, 0)}
-                  </b>
-                  . Capacidade básica:{" "}
-                  <b>{a.attributes.FOR === 0 ? 2 : a.attributes.FOR * 5}</b>.
-                  Confira modificadores de poderes.
+                  Espaços ocupados: <b>{inventorySpaces(a)}</b>. Capacidade:{" "}
+                  <b>{carryingCapacity(a)}</b>
+                  {effective.FOR !== a.attributes.FOR
+                    ? " (inclui +1 de Força por Pujança ativa)"
+                    : ""}
+                  .
+                  {inventorySpaces(a) > carryingCapacity(a)
+                    ? " Sobrecarregado: penalidade de carga; confira com o mestre."
+                    : ""}
                 </p>
+              )}
+              {section === "Armas" && (
+                <div className="accessory-toolbar">
+                  <strong>Acessórios</strong>
+                  <span>
+                    Vestimentas e utensílios também aparecem aqui para
+                    configurar perícias e maldições.
+                  </span>
+                  <div className="actions">
+                    <button onClick={() => addAccessory("Vestimenta")}>
+                      + Vestimenta
+                    </button>
+                    <button onClick={() => addAccessory("Utensílio")}>
+                      + Utensílio
+                    </button>
+                    <button onClick={() => setCatalog("Item")}>
+                      Buscar na biblioteca
+                    </button>
+                  </div>
+                </div>
               )}
               {items.length === 0 ? (
                 <div className="empty">
@@ -494,11 +556,13 @@ export default function CharacterSheet({ id }: { id: string }) {
                       <div>
                         <h3>{i.name}</h3>
                         <p>
-                          {i.kind === "Arma"
-                            ? `${i.damage || "Dano não definido"} · Crítico ${i.critical || "—"} · ${i.range || "Alcance não definido"} · Categoria ${effectiveCategory(i)}`
-                            : i.kind === "Ritual"
-                              ? `${i.circle || 1}º círculo · ${i.element || "Elemento não definido"} · ${i.cost || 0} ${a.determination ? "PD" : "PE"}`
-                              : `${i.kind} · ${i.quantity} un.`}
+                          {accessoryType(i)
+                            ? `${accessoryType(i)} · ${i.equipped === false ? "sem uso" : "em uso"} · ${i.accessorySkill || "perícia a definir"} +${i.accessoryBonus || 2} · Categoria ${effectiveCategory(i)}`
+                            : i.kind === "Arma"
+                              ? `${i.damage || "Dano não definido"} · Crítico ${i.critical || "—"} · ${i.range || "Alcance não definido"} · Categoria ${effectiveCategory(i)}`
+                              : i.kind === "Ritual"
+                                ? `${i.circle || 1}º círculo · ${i.element || "Elemento não definido"} · ${i.cost || 0} ${a.determination ? "PD" : "PE"}`
+                                : `${i.kind} · ${i.quantity} un.`}
                         </p>
                       </div>
                       <button
@@ -524,7 +588,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                           >
                             <Dices size={16} />
                             Atacar · +
-                            {(a.skills[i.attackSkill || "Luta"] || 0) +
+                            {skillBonus(a, i.attackSkill || "Luta").total +
                               (i.attackBonus || 0)}
                           </button>
                           <button
@@ -575,6 +639,98 @@ export default function CharacterSheet({ id }: { id: string }) {
                                             : entry,
                                         ),
                                       })
+                                    }
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                                <p>{enhancement.notes}</p>
+                              </article>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {!!accessoryType(i) && (
+                      <>
+                        <div className="actions">
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              void run(async () => {
+                                if (
+                                  i.equipped === false &&
+                                  accessoryType(i) === "Vestimenta" &&
+                                  activeAccessories(a).filter(
+                                    (entry) =>
+                                      accessoryType(entry) === "Vestimenta",
+                                  ).length >= 2
+                                )
+                                  throw Error(
+                                    "Você já tem duas vestimentas ativas. Desative uma antes.",
+                                  );
+                                await save({
+                                  inventory: a.inventory.map((entry) =>
+                                    entry.id === i.id
+                                      ? {
+                                          ...entry,
+                                          equipped: i.equipped === false,
+                                        }
+                                      : entry,
+                                  ),
+                                });
+                              })
+                            }
+                          >
+                            {i.equipped === false
+                              ? accessoryType(i) === "Vestimenta"
+                                ? "Vestir"
+                                : "Empunhar"
+                              : "Desativar bônus"}
+                          </button>
+                          <button onClick={() => setCurseTarget(i)}>
+                            Adicionar maldição
+                          </button>
+                        </div>
+                        <p className="item-meta">
+                          {i.accessorySkill
+                            ? `${i.accessorySkill} +${i.accessoryBonus || 2}`
+                            : "Configure a perícia no editor."}
+                          {i.extraSkill
+                            ? ` · ${i.extraSkill} +${i.extraBonus || 2} (função adicional)`
+                            : ""}
+                        </p>
+                        {!!i.enhancements?.length && (
+                          <div className="weapon-curses">
+                            <strong>
+                              Maldições no acessório · categoria{" "}
+                              {effectiveCategory(i)}
+                            </strong>
+                            {i.enhancements.map((enhancement) => (
+                              <article key={enhancement.id}>
+                                <div>
+                                  <strong>{enhancement.name}</strong>
+                                  <button
+                                    aria-label={`Remover ${enhancement.name} de ${i.name}`}
+                                    onClick={() =>
+                                      void run(async () =>
+                                        save({
+                                          inventory: a.inventory.map((entry) =>
+                                            entry.id === i.id
+                                              ? {
+                                                  ...entry,
+                                                  enhancements: (
+                                                    entry.enhancements || []
+                                                  ).filter(
+                                                    (value) =>
+                                                      value.id !==
+                                                      enhancement.id,
+                                                  ),
+                                                }
+                                              : entry,
+                                          ),
+                                        }),
+                                      )
                                     }
                                   >
                                     <X size={14} />
@@ -655,11 +811,23 @@ export default function CharacterSheet({ id }: { id: string }) {
         <ItemForm
           item={item}
           onClose={() => setItem(null)}
-          onSave={async (i) =>
-            save({
-              inventory: [...a.inventory.filter((x) => x.id !== i.id), i],
-            })
-          }
+          onSave={async (i) => {
+            const inventory = [...a.inventory.filter((x) => x.id !== i.id), i];
+            const equipped = inventory.filter(
+              (entry) =>
+                accessoryType(entry) === "Vestimenta" &&
+                entry.equipped !== false,
+            );
+            if (
+              equipped.length > 2 &&
+              accessoryType(i) === "Vestimenta" &&
+              i.equipped !== false
+            )
+              throw Error(
+                "No máximo duas vestimentas podem conceder bônus ao mesmo tempo.",
+              );
+            await save({ inventory });
+          }}
         />
       )}
       {catalog && (
@@ -668,7 +836,22 @@ export default function CharacterSheet({ id }: { id: string }) {
           onClose={() => setCatalog(null)}
           onChoose={(i) =>
             void run(async () => {
-              await save({ inventory: [...agent.inventory, i] });
+              const type = accessoryType(i);
+              const worn = activeAccessories(a).filter(
+                (entry) => accessoryType(entry) === "Vestimenta",
+              ).length;
+              const added = type
+                ? {
+                    ...i,
+                    accessoryType: type,
+                    equipped: type !== "Vestimenta" || worn < 2,
+                  }
+                : i;
+              await save({ inventory: [...agent.inventory, added] });
+              if (type)
+                game.setNotice(
+                  `Acessório adicionado. Edite ${added.name} para escolher a perícia e o bônus.`,
+                );
             })
           }
         />

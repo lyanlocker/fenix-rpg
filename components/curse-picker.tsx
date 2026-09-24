@@ -2,8 +2,8 @@
 import { useMemo, useState } from "react";
 import { bookCatalog, bookNames } from "@/lib/books";
 import { normalize } from "@/lib/catalog";
-import { curseElement, isWeaponCurse } from "@/lib/curses";
-import type { Item } from "@/lib/rules";
+import { curseElement, isAccessoryCurse, isWeaponCurse } from "@/lib/curses";
+import { accessoryType, type Item } from "@/lib/rules";
 import { useGame } from "./game-shell";
 import RuleDetails from "./rule-details";
 import { Modal } from "./ui";
@@ -18,12 +18,16 @@ export default function CursePicker({
   onClose: () => void;
 }) {
   const game = useGame(),
+    accessory = !!accessoryType(target),
     [search, setSearch] = useState(""),
     [source, setSource] = useState(""),
     [page, setPage] = useState(0);
   const entries = useMemo(
-    () => [...game.state.brews, ...bookCatalog].filter(isWeaponCurse),
-    [game.state.brews],
+    () =>
+      [...game.state.brews, ...bookCatalog].filter(
+        accessory ? isAccessoryCurse : isWeaponCurse,
+      ),
+    [game.state.brews, accessory],
   );
   const applied = new Set(
     (target.enhancements || []).map(
@@ -42,8 +46,9 @@ export default function CursePicker({
   return (
     <Modal wide title={`Aplicar maldição em ${target.name}`} onClose={onClose}>
       <p className="help">
-        A maldição fica vinculada à arma. A primeira aumenta a categoria em II;
-        cada maldição adicional aumenta em I.
+        A maldição fica vinculada {accessory ? "ao acessório" : "à arma"}. A
+        primeira aumenta a categoria em II; cada maldição adicional aumenta em
+        I.
       </p>
       <div className="list-tools">
         <input
@@ -93,7 +98,9 @@ export default function CursePicker({
                   disabled={already}
                   onClick={() => onChoose(entry)}
                 >
-                  {already ? "Já aplicada" : "Aplicar à arma"}
+                  {already
+                    ? "Já aplicada"
+                    : `Aplicar ${accessory ? "ao acessório" : "à arma"}`}
                 </button>
               </div>
               <RuleDetails item={entry} />

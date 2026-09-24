@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Modal } from "./ui";
-import { skillAttributes, damage, type Item } from "@/lib/rules";
+import { skillAttributes, damage, accessoryType, type Item } from "@/lib/rules";
+import { effectiveCategory } from "@/lib/curses";
 export default function ItemForm({
   item,
   onSave,
@@ -14,6 +15,7 @@ export default function ItemForm({
   const [i, setI] = useState(item),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const accessory = accessoryType(i);
   const text = (key: keyof Item, label: string, placeholder = "") => (
     <label key={key}>
       {label}
@@ -39,6 +41,10 @@ export default function ItemForm({
   async function submit() {
     setError("");
     if (!i.name.trim()) return setError("Informe o nome.");
+    if (accessory && !i.accessorySkill)
+      return setError("Selecione a perícia beneficiada pelo acessório.");
+    if (accessory && i.accessorySkill === i.extraSkill)
+      return setError("A função adicional deve beneficiar outra perícia.");
     try {
       if (i.damage) damage(i.damage, () => 1);
       setBusy(true);
@@ -61,6 +67,123 @@ export default function ItemForm({
           {text("name", "Nome")}
           {text("source", "Fonte / autoria")}
           {text("category", "Categoria")}
+          {i.kind === "Item" && (
+            <label>
+              Tipo de acessório
+              <select
+                value={accessory || ""}
+                onChange={(e) =>
+                  setI({
+                    ...i,
+                    accessoryType: (e.target.value ||
+                      undefined) as Item["accessoryType"],
+                    equipped: !!e.target.value,
+                  })
+                }
+              >
+                <option value="">Item comum</option>
+                <option value="Vestimenta">Vestimenta</option>
+                <option value="Utensílio">Utensílio</option>
+              </select>
+            </label>
+          )}
+          {accessory && (
+            <>
+              <label className="check span-all">
+                <input
+                  type="checkbox"
+                  checked={i.equipped !== false}
+                  onChange={(e) => setI({ ...i, equipped: e.target.checked })}
+                />
+                {accessory === "Vestimenta"
+                  ? "Vestida (bônus ativo)"
+                  : "Empunhado (bônus ativo)"}
+              </label>
+              {(i.enhancements || []).some(
+                (entry) =>
+                  entry.bookId === "01" &&
+                  ["Vitalidade", "Esforço Adicional"].includes(entry.name),
+              ) && (
+                <label className="check span-all">
+                  <input
+                    type="checkbox"
+                    checked={!!i.attuned}
+                    onChange={(e) => setI({ ...i, attuned: e.target.checked })}
+                  />
+                  Efeito após um dia de uso ativado (Vitalidade/Esforço
+                  Adicional)
+                </label>
+              )}
+              <label>
+                Perícia beneficiada
+                <select
+                  value={i.accessorySkill || ""}
+                  onChange={(e) =>
+                    setI({ ...i, accessorySkill: e.target.value })
+                  }
+                >
+                  <option value="">Selecione uma perícia</option>
+                  {Object.keys(skillAttributes)
+                    .filter((s) => s !== "Luta" && s !== "Pontaria")
+                    .map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                Bônus do acessório
+                <select
+                  value={i.accessoryBonus || 2}
+                  onChange={(e) =>
+                    setI({ ...i, accessoryBonus: +e.target.value as 2 | 5 })
+                  }
+                >
+                  <option value={2}>+2 básico</option>
+                  <option value={5}>+5 aprimorado (categoria +I)</option>
+                </select>
+              </label>
+              <label>
+                Função adicional (opcional)
+                <select
+                  value={i.extraSkill || ""}
+                  onChange={(e) =>
+                    setI({ ...i, extraSkill: e.target.value || undefined })
+                  }
+                >
+                  <option value="">Nenhuma</option>
+                  {Object.keys(skillAttributes)
+                    .filter(
+                      (s) =>
+                        s !== "Luta" &&
+                        s !== "Pontaria" &&
+                        s !== i.accessorySkill,
+                    )
+                    .map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                </select>
+              </label>
+              {i.extraSkill && (
+                <label>
+                  Bônus da função adicional
+                  <select
+                    value={i.extraBonus || 2}
+                    onChange={(e) =>
+                      setI({ ...i, extraBonus: +e.target.value as 2 | 5 })
+                    }
+                  >
+                    <option value={2}>+2</option>
+                    <option value={5}>+5 aprimorado (categoria +I)</option>
+                  </select>
+                </label>
+              )}
+              <p className="hint span-all">
+                O bônus da perícia entra nos testes quando o acessório está em
+                uso. Máximo de duas vestimentas ativas. Categoria efetiva:{" "}
+                {effectiveCategory(i)}.
+              </p>
+            </>
+          )}
           {i.kind === "Arma" && (
             <>
               <label>

@@ -7,6 +7,8 @@ import {
   resourceKeys,
   resourceLabels,
   skillAttributes,
+  skillBonus,
+  effectiveAttributes,
   type Agent,
   type Resource,
 } from "@/lib/rules";
@@ -27,8 +29,10 @@ export default function CharacterOverview({
   onSkill: (name: string) => void;
   onPortrait: (portrait: string) => Promise<void>;
 }) {
+  const effective = effectiveAttributes(agent);
   const skills = Object.entries(skillAttributes).sort(([left], [right]) => {
-      const trained = (agent.skills[right] || 0) - (agent.skills[left] || 0);
+      const trained =
+        skillBonus(agent, right).total - skillBonus(agent, left).total;
       return trained || left.localeCompare(right, "pt-BR");
     }),
     powers = agent.inventory
@@ -57,7 +61,7 @@ export default function CharacterOverview({
               aria-label={`Rolar ${attributeNames[key]}`}
             >
               <span>{attributeNames[key]}</span>
-              <strong>{agent.attributes[key]}</strong>
+              <strong>{effective[key]}</strong>
               <small>{key}</small>
               <Dices size={15} />
             </button>
@@ -74,7 +78,17 @@ export default function CharacterOverview({
             >
               <span>{name}</span>
               <small>{attribute}</small>
-              <strong>+{agent.skills[name] || 0}</strong>
+              <strong
+                title={`Treinamento +${skillBonus(agent, name).training}, poderes ${skillBonus(agent, name).adjustment >= 0 ? "+" : ""}${skillBonus(agent, name).adjustment}${skillBonus(
+                  agent,
+                  name,
+                )
+                  .sources.map((source) => `, ${source.name} +${source.bonus}`)
+                  .join("")}`}
+              >
+                {skillBonus(agent, name).total >= 0 ? "+" : ""}
+                {skillBonus(agent, name).total}
+              </strong>
             </button>
           ))}
         </div>

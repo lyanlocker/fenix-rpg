@@ -1223,6 +1223,25 @@ progress::-moz-progress-bar {
   font-size: 11px;
   padding: 7px 10px;
 }
+.accessory-toolbar {
+  padding: 16px;
+  margin: 18px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.accessory-toolbar > strong {
+  display: block;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.accessory-toolbar > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.accessory-toolbar .actions {
+  margin-top: 12px;
+}
 .skill-table {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1386,6 +1405,35 @@ summary {
 }
 .editor-fields label {
   margin-bottom: 8px;
+}
+.skill-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+.skill-row > span {
+  grid-column: 1 / -1;
+}
+.skill-row > span small {
+  margin-right: 8px;
+  color: var(--muted);
+}
+.skill-row select {
+  min-width: 0;
+}
+.skill-row label {
+  margin: 0;
+}
+.skill-row input {
+  width: 66px;
+}
+.skill-row > strong {
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--accent);
 }
 .modal-footer {
   display: flex;
