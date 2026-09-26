@@ -21,6 +21,7 @@ export default function CharacterOverview({
   onAttribute,
   onSkill,
   onPortrait,
+  onDoubleClickFace,
 }: {
   agent: Agent;
   maximums: Record<Resource, number>;
@@ -28,6 +29,7 @@ export default function CharacterOverview({
   onAttribute: (key: (typeof attributes)[number]) => void;
   onSkill: (name: string) => void;
   onPortrait: (portrait: string) => Promise<void>;
+  onDoubleClickFace?: () => void;
 }) {
   const effective = effectiveAttributes(agent);
   const skills = Object.entries(skillAttributes).sort(([left], [right]) => {
@@ -101,6 +103,7 @@ export default function CharacterOverview({
           color={agent.color}
           hero
           onChange={onPortrait}
+          onDoubleClickFace={onDoubleClickFace}
         />
       </div>
 

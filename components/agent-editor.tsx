@@ -29,6 +29,7 @@ export default function AgentEditor({
   onClose,
   onRoll,
   readOnly = false,
+  lockedNex,
 }: {
   agent: Agent;
   campaigns: Campaign[];
@@ -36,6 +37,7 @@ export default function AgentEditor({
   onClose: () => void;
   onRoll: (a: Agent, s: string) => void;
   readOnly?: boolean;
+  lockedNex?: number;
 }) {
   const [a, setA] = useState<Agent>(() => structuredClone(agent)),
     [tab, setTab] = useState("Ficha"),
@@ -112,7 +114,9 @@ export default function AgentEditor({
                       className: cls,
                       track: "",
                       trackId: undefined,
-                      nex: cls === "Sobrevivente" ? 0 : Math.max(5, p.nex),
+                      nex:
+                        lockedNex ??
+                        (cls === "Sobrevivente" ? 0 : Math.max(5, p.nex)),
                     }));
                   }}
                 >
@@ -142,6 +146,7 @@ export default function AgentEditor({
                 <label>
                   NEX
                   <select
+                    disabled={lockedNex !== undefined}
                     value={a.nex}
                     onChange={(e) => update("nex", +e.target.value)}
                   >
@@ -159,6 +164,7 @@ export default function AgentEditor({
               <label>
                 Campanha
                 <select
+                  disabled={lockedNex !== undefined}
                   value={a.campaign_id || ""}
                   onChange={(e) =>
                     update("campaign_id", e.target.value || null)

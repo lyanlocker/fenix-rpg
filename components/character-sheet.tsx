@@ -53,6 +53,13 @@ import {
   type WeaponModification,
 } from "@/lib/weapon-modifications";
 import { canAccessAgent } from "@/lib/access";
+import {
+  alternateAgent,
+  alternateIsApproved,
+  faceFromAgent,
+  validateAlternateFace,
+  isAllowedAtNex,
+} from "@/lib/alternate";
 import CharacterOverview from "./character-overview";
 import DiceRoller from "./dice-roller";
 import {
@@ -71,8 +78,9 @@ const sections = [
 ];
 export default function CharacterSheet({ id }: { id: string }) {
   const game = useGame(),
-    a = game.state.agents.find((x) => x.id === id);
-  const [section, setSection] = useState("Resumo"),
+    stored = game.state.agents.find((x) => x.id === id);
+  const [otherFace, setOtherFace] = useState(false),
+    [section, setSection] = useState("Resumo"),
     [editing, setEditing] = useState(false),
     [item, setItem] = useState<Item | null>(null),
     [catalog, setCatalog] = useState<Item["kind"] | null>(null),
@@ -88,6 +96,11 @@ export default function CharacterSheet({ id }: { id: string }) {
     [modificationTarget, setModificationTarget] = useState<Item | null>(null),
     [sharedToken, setSharedToken] = useState<string | null>(null),
     [sharedError, setSharedError] = useState("");
+  const campaign = game.state.campaigns.find(
+      (entry) => entry.id === stored?.campaign_id,
+    ),
+    faceAvailable = !!stored && alternateIsApproved(stored, campaign),
+    a = stored && otherFace && faceAvailable ? alternateAgent(stored) : stored;
   useEffect(() => {
     if (!game.access.ready) return;
     const token =
@@ -201,9 +214,42 @@ export default function CharacterSheet({ id }: { id: string }) {
     );
   }
   async function save(p: Partial<Agent>) {
-    const updated = { ...agent, ...p };
+    const updated =
+      otherFace && faceAvailable && stored?.alternate
+        ? {
+            ...stored,
+            alternate: {
+              ...stored.alternate,
+              face: faceFromAgent({ ...agent, ...p, nex: 35 }),
+            },
+          }
+        : { ...agent, ...p };
+    if (otherFace && faceAvailable && updated.alternate)
+      validateAlternateFace(updated.alternate.face);
     await game.syncSharedAgent(updated, game.access.shareToken || undefined);
     await game.save("agents", updated);
+  }
+  async function changeResource(key: Resource, change: number) {
+    if (!Number.isInteger(change) || Math.abs(change) > 10000)
+      throw Error("Informe uma alteração inteira entre -10000 e 10000.");
+    if (otherFace && faceAvailable) {
+      await save({
+        resources: {
+          ...agent.resources,
+          [key]: Math.max(
+            0,
+            Math.min(maximums(agent)[key], agent.resources[key] + change),
+          ),
+        },
+      });
+    } else {
+      await game.adjustResource(
+        agent,
+        key,
+        change,
+        game.access.shareToken || undefined,
+      );
+    }
   }
   function removeItem(itemId: string) {
     void run(() =>
@@ -214,7 +260,7 @@ export default function CharacterSheet({ id }: { id: string }) {
   }
   async function copyPlayerLink() {
     await run(async () => {
-      const credentials = await publishSharedAgent(agent);
+      const credentials = await publishSharedAgent(stored || agent);
       setSharedToken(credentials.masterToken);
       const url = new URL(window.location.origin + `/agentes/${agent.id}`);
       url.searchParams.set("mode", "player");
@@ -265,7 +311,9 @@ export default function CharacterSheet({ id }: { id: string }) {
         : i.kind === kind,
   );
   return (
-    <div className="page sheet">
+    <div
+      className={`page sheet ${otherFace && faceAvailable ? "alternate-face" : ""}`}
+    >
       <DiceRoller
         busy={busy}
         onRoll={(expression) => roll("Dados livres", 1, 0, expression)}
@@ -294,7 +342,9 @@ export default function CharacterSheet({ id }: { id: string }) {
             </button>
           )}
           <button
-            onClick={() => download(a.name + ".json", { version: 1, agent: a })}
+            onClick={() =>
+              download(a.name + ".json", { version: 1, agent: stored || a })
+            }
           >
             <Download size={16} />
             Exportar
@@ -425,6 +475,15 @@ export default function CharacterSheet({ id }: { id: string }) {
               }
               onSkill={(name) => test(name)}
               onPortrait={(portrait) => save({ portrait })}
+              onDoubleClickFace={
+                faceAvailable
+                  ? () => {
+                      setOtherFace((current) => !current);
+                      setSection("Resumo");
+                      setResult(null);
+                    }
+                  : undefined
+              }
             />
           ) : section === "Perícias" ? (
             <section className="panel">
@@ -846,13 +905,8 @@ export default function CharacterSheet({ id }: { id: string }) {
         <AgentEditor
           agent={a}
           campaigns={game.state.campaigns}
-          onSave={async (value) => {
-            await game.syncSharedAgent(
-              value,
-              game.access.shareToken || undefined,
-            );
-            await game.save("agents", value);
-          }}
+          lockedNex={otherFace && faceAvailable ? 35 : undefined}
+          onSave={(value) => save(value)}
           onClose={() => setEditing(false)}
           onRoll={(_, s) => test(s)}
         />
@@ -860,8 +914,17 @@ export default function CharacterSheet({ id }: { id: string }) {
       {item && (
         <ItemForm
           item={item}
+          requireCircle={otherFace && faceAvailable}
           onClose={() => setItem(null)}
           onSave={async (i) => {
+            if (
+              otherFace &&
+              faceAvailable &&
+              !isAllowedAtNex(i, a.className, 35)
+            )
+              throw Error(
+                "Este ritual ou poder não está disponível no NEX 35%.",
+              );
             const inventory = [...a.inventory.filter((x) => x.id !== i.id), i];
             const equipped = inventory.filter(
               (entry) =>
@@ -886,6 +949,27 @@ export default function CharacterSheet({ id }: { id: string }) {
           onClose={() => setCatalog(null)}
           onChoose={(i) =>
             void run(async () => {
+              if (
+                otherFace &&
+                faceAvailable &&
+                i.kind === "Ritual" &&
+                !i.circle
+              ) {
+                setCatalog(null);
+                setItem(i);
+                game.setNotice(
+                  "Defina o círculo deste ritual antes de adicioná-lo à face NEX 35%.",
+                );
+                return;
+              }
+              if (
+                otherFace &&
+                faceAvailable &&
+                !isAllowedAtNex(i, a.className, 35)
+              )
+                throw Error(
+                  "Este ritual ou poder não está disponível no NEX 35%.",
+                );
               const type = accessoryType(i);
               const worn = activeAccessories(a).filter(
                 (entry) => accessoryType(entry) === "Vestimenta",
@@ -992,12 +1076,7 @@ export default function CharacterSheet({ id }: { id: string }) {
             disabled={busy}
             onClick={() =>
               void run(async () => {
-                await game.adjustResource(
-                  agent,
-                  adjust,
-                  delta,
-                  game.access.shareToken || undefined,
-                );
+                await changeResource(adjust, delta);
                 setAdjust(null);
               })
             }
@@ -1020,12 +1099,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                 const key = agent.determination ? "pd" : "pe";
                 if (agent.resources[key] < (useItem.cost || 0))
                   throw Error("Recurso insuficiente.");
-                await game.adjustResource(
-                  agent,
-                  key,
-                  -(useItem.cost || 0),
-                  game.access.shareToken || undefined,
-                );
+                await changeResource(key, -(useItem.cost || 0));
                 setUseItem(null);
               })
             }

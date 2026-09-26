@@ -86,7 +86,34 @@ export type Agent = {
   conditions: string[];
   color: string;
   portrait?: string;
+  alternate?: {
+    approvedCampaignId: string;
+    face: AlternateFace;
+  };
 };
+export type AlternateFace = Pick<
+  Agent,
+  | "name"
+  | "className"
+  | "origin"
+  | "originId"
+  | "track"
+  | "trackId"
+  | "nex"
+  | "stage"
+  | "determination"
+  | "attributes"
+  | "skills"
+  | "skillAdjustments"
+  | "resources"
+  | "adjustments"
+  | "defenseBonus"
+  | "inventory"
+  | "notes"
+  | "conditions"
+  | "color"
+  | "portrait"
+>;
 export const attributes: Attribute[] = ["AGI", "FOR", "INT", "PRE", "VIG"];
 export const skillAttributes: Record<string, Attribute> = {
   Acrobacia: "AGI",

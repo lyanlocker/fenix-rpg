@@ -11,6 +11,7 @@ export default function PortraitPicker({
   onChange,
   compact = false,
   hero = false,
+  onDoubleClickFace,
 }: {
   value?: string;
   name: string;
@@ -18,10 +19,19 @@ export default function PortraitPicker({
   onChange: (value: string) => void | Promise<void>;
   compact?: boolean;
   hero?: boolean;
+  onDoubleClickFace?: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null),
+    lastTap = useRef(0),
+    lastToggle = useRef(0),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+
+  function switchFace() {
+    if (!onDoubleClickFace || Date.now() - lastToggle.current < 600) return;
+    lastToggle.current = Date.now();
+    onDoubleClickFace();
+  }
 
   async function choose(file?: File) {
     if (!file) return;
@@ -41,7 +51,34 @@ export default function PortraitPicker({
     <div
       className={`portrait-picker ${compact ? "compact" : ""} ${hero ? "hero" : ""}`}
     >
-      <div className="portrait-preview" style={{ color }}>
+      <div
+        className="portrait-preview"
+        style={{ color }}
+        onDoubleClick={onDoubleClickFace ? switchFace : undefined}
+        onTouchEnd={
+          onDoubleClickFace
+            ? (event) => {
+                if (Date.now() - lastTap.current < 400) {
+                  event.preventDefault();
+                  switchFace();
+                }
+                lastTap.current = Date.now();
+              }
+            : undefined
+        }
+        onKeyDown={
+          onDoubleClickFace
+            ? (event) => {
+                if (event.key !== "Enter") return;
+                if (Date.now() - lastTap.current < 500) switchFace();
+                lastTap.current = Date.now();
+              }
+            : undefined
+        }
+        role={onDoubleClickFace ? "button" : undefined}
+        tabIndex={onDoubleClickFace ? 0 : undefined}
+        aria-label={onDoubleClickFace ? "Aparência do personagem" : undefined}
+      >
         {value ? (
           <Image
             unoptimized

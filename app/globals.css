@@ -1209,6 +1209,56 @@ progress::-moz-progress-bar {
   color: #e49494;
   border-color: #e49494;
 }
+.campaign-face-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.campaign-face-row .campaign-agent {
+  flex: 1 1 260px;
+}
+.campaign-face-row > small {
+  color: var(--accent);
+}
+.alternate-feed {
+  margin: 26px 0;
+}
+.alternate-feed article {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.alternate-feed article.alternate-unread {
+  border-left: 3px solid var(--accent);
+}
+.alternate-feed article span {
+  flex: 1 1 210px;
+}
+.alternate-feed article time {
+  color: var(--muted);
+  font-size: 12px;
+}
+.alternate-face {
+  --accent: #b69ae2;
+}
+.alternate-face .overview-card {
+  background:
+    radial-gradient(circle at 52% 22%, #7651a32a, transparent 38%),
+    linear-gradient(90deg, #191822 0 27%, #0d0d15 27% 70%, #191822 70% 100%);
+}
+.alternate-face .portrait-preview {
+  border-color: #554272;
+  cursor: pointer;
+}
+.portrait-preview[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
 .section-title h2,
 .section-title h3 {
   margin: 0;

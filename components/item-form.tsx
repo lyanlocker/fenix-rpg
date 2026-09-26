@@ -8,10 +8,12 @@ export default function ItemForm({
   item,
   onSave,
   onClose,
+  requireCircle = false,
 }: {
   item: Item;
   onSave: (i: Item) => Promise<void>;
   onClose: () => void;
+  requireCircle?: boolean;
 }) {
   const [i, setI] = useState(item),
     [error, setError] = useState(""),
@@ -42,17 +44,24 @@ export default function ItemForm({
   async function submit() {
     setError("");
     if (!i.name.trim()) return setError("Informe o nome.");
+    if (requireCircle && i.kind === "Ritual" && !i.circle)
+      return setError("Defina o círculo deste ritual antes de adicioná-lo.");
     if (accessory && !i.accessorySkill)
       return setError("Selecione a perícia beneficiada pelo acessório.");
     if (accessory && i.accessorySkill === i.extraSkill)
       return setError("A função adicional deve beneficiar outra perícia.");
     if (i.kind === "Arma") {
-      const compatible = new Set(availableModifications(i).map((entry) => entry.name));
+      const compatible = new Set(
+        availableModifications(i).map((entry) => entry.name),
+      );
       const invalid = i.enhancements?.find(
-        (entry) => entry.subtype === "Modificação" && !compatible.has(entry.name),
+        (entry) =>
+          entry.subtype === "Modificação" && !compatible.has(entry.name),
       );
       if (invalid)
-        return setError(`Remova ${invalid.name} antes de mudar o tipo da arma.`);
+        return setError(
+          `Remova ${invalid.name} antes de mudar o tipo da arma.`,
+        );
     }
     try {
       if (i.damage) damage(i.damage, () => 1);
@@ -281,9 +290,12 @@ export default function ItemForm({
                   <label>
                     Círculo
                     <select
-                      value={i.circle || 1}
+                      value={requireCircle ? i.circle || "" : i.circle || 1}
                       onChange={(e) => setI({ ...i, circle: +e.target.value })}
                     >
+                      {requireCircle && (
+                        <option value="">Selecione o círculo</option>
+                      )}
                       {[1, 2, 3, 4].map((n) => (
                         <option key={n}>{n}</option>
                       ))}

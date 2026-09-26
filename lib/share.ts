@@ -15,6 +15,14 @@ export type ShareCredentials = {
   playerToken: string;
 };
 
+export type AlternateEdit = {
+  id: string;
+  agent_id: string;
+  actor: "master" | "player";
+  summary: string;
+  created_at: string;
+};
+
 type PublishedAgent = {
   agent_id: string;
   master_token: string;
@@ -26,6 +34,7 @@ type SharedPayload = {
   rolls: Roll[];
   role: "master" | "player";
   updated_at: string;
+  alternate_edits?: AlternateEdit[];
 };
 
 async function rpc<T>(name: string, body: Record<string, unknown>) {
@@ -98,6 +107,9 @@ export async function loadSharedAgent(agentId: string, token: string) {
     ...value,
     agent: validateAgentImport({ version: 1, agent: value.agent }),
     rolls: Array.isArray(value.rolls) ? value.rolls : [],
+    alternate_edits: Array.isArray(value.alternate_edits)
+      ? value.alternate_edits
+      : [],
   };
 }
 

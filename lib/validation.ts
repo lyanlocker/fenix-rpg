@@ -105,9 +105,20 @@ const schema = z.object({
     )
     .optional(),
 });
+const faceSchema = schema.omit({ id: true, campaign_id: true }).extend({
+  nex: z.literal(35),
+});
+const sharedSchema = schema.extend({
+  alternate: z
+    .object({
+      approvedCampaignId: z.string().uuid(),
+      face: faceSchema,
+    })
+    .optional(),
+});
 export function validateAgentImport(raw: unknown): Agent {
   const result = z
-    .object({ version: z.literal(1), agent: schema })
+    .object({ version: z.literal(1), agent: sharedSchema })
     .safeParse(raw);
   if (!result.success)
     throw Error(
