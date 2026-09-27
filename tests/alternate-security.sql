@@ -69,6 +69,34 @@ begin
   exception when others then
     if sqlerrm <> 'Ritual ou habilidade indisponível no NEX 35' then raise; end if;
   end;
+  begin
+    perform public.fenix_save_shared_agent(sheet_id, player_token,
+      jsonb_set(edit_data, '{alternate,face,inventory}',
+        '[{"kind":"Poder","requirements":"NEX 45%"}]'::jsonb));
+    raise exception 'O jogador adicionou poder de NEX 45';
+  exception when others then
+    if sqlerrm <> 'Ritual ou habilidade indisponível no NEX 35' then raise; end if;
+  end;
+  alternate := jsonb_set(alternate, '{inheritance}',
+    '{"version":1,"selectedPowerIds":["power-1"]}'::jsonb);
+  perform public.fenix_save_shared_agent(sheet_id, master_token,
+    base || jsonb_build_object('alternate', alternate));
+  begin
+    perform public.fenix_save_shared_agent(sheet_id, player_token,
+      base || jsonb_build_object('alternate',
+        jsonb_set(alternate, '{inheritance,selectedPowerIds}',
+          '["power-2"]'::jsonb)));
+    raise exception 'O jogador alterou o sorteio autorizado';
+  exception when others then
+    if sqlerrm <> 'Somente o mestre pode liberar a face alternativa' then raise; end if;
+  end;
+  perform public.fenix_save_shared_agent(sheet_id, player_token,
+    base || jsonb_build_object('alternate',
+      jsonb_set(alternate, '{face,name}', '"Nome depois do sorteio"'::jsonb)));
+  if (select data #>> '{alternate,inheritance,selectedPowerIds,0}'
+      from public.fenix_shared_agents where id = sheet_id) <> 'power-1' then
+    raise exception 'Sorteio autorizado não foi mantido após edição do jogador';
+  end if;
   if (select data ->> 'name' from public.fenix_shared_agents where id = sheet_id) <> 'Ficha de teste' then
     raise exception 'Editar a segunda face alterou a ficha original';
   end if;

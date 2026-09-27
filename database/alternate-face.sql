@@ -99,6 +99,9 @@ begin
         or (item ->> 'nex' is not null and
           case when (item ->> 'nex') ~ '^[0-9]+$' then (item ->> 'nex')::integer
             else 99 end > 35)
+        or (item ->> 'kind' = 'Poder' and
+          ((item ->> 'subtype' = 'Habilidade de trilha' and item ->> 'nex' is null)
+           or (item ->> 'requirements') ~* 'NEX[[:space:]]*(3[6-9]|[4-9][0-9])[[:space:]]*%'))
     ) then
       raise exception 'Ritual ou habilidade indisponível no NEX 35';
     end if;

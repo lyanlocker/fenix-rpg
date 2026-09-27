@@ -89,6 +89,11 @@ export type Agent = {
   alternate?: {
     approvedCampaignId: string;
     face: AlternateFace;
+    inheritance?: {
+      version: 1;
+      selectedPowerIds: string[];
+      inheritedRitualIds?: string[];
+    };
   };
 };
 export type AlternateFace = Pick<

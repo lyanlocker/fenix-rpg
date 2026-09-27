@@ -113,6 +113,13 @@ const sharedSchema = schema.extend({
     .object({
       approvedCampaignId: z.string().uuid(),
       face: faceSchema,
+      inheritance: z
+        .object({
+          version: z.literal(1),
+          selectedPowerIds: z.array(z.string().max(200)).max(300),
+          inheritedRitualIds: z.array(z.string().max(200)).max(500).optional(),
+        })
+        .optional(),
     })
     .optional(),
 });

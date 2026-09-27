@@ -5,7 +5,11 @@ import { Plus, ArrowRight } from "lucide-react";
 import { useGame } from "./game-shell";
 import CampaignEditor from "./campaign-editor";
 import type { Campaign } from "@/lib/model";
-import { isApocalypsisCampaign, makeAlternateFace } from "@/lib/alternate";
+import {
+  deriveAlternateFace,
+  isApocalypsisCampaign,
+  refreshAlternateInheritance,
+} from "@/lib/alternate";
 import {
   getShareCredentials,
   loadSharedAgent,
@@ -76,11 +80,12 @@ export default function Campaigns() {
         );
       if (shared.agent.alternate)
         throw Error("Esta ficha já tem a face alternativa liberada.");
+      const derived = deriveAlternateFace(shared.agent);
       const updated = {
         ...shared.agent,
         alternate: {
           approvedCampaignId: campaign.id,
-          face: makeAlternateFace(shared.agent),
+          ...derived,
         },
       };
       await saveSharedAgent(updated, credentials.masterToken);
@@ -98,6 +103,39 @@ export default function Campaigns() {
         },
         ...prev,
       ]);
+    } catch (error) {
+      game.setNotice((error as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+  async function refreshInheritance(agentId: string, campaign: Campaign) {
+    setBusyId(agentId);
+    try {
+      const token = getShareCredentials(agentId)?.masterToken;
+      if (!token)
+        throw Error(
+          "Esta ficha exige a chave de mestre salva neste navegador.",
+        );
+      const shared = await loadSharedAgent(agentId, token);
+      if (shared.role !== "master" || shared.agent.campaign_id !== campaign.id)
+        throw Error(
+          "Somente o mestre desta campanha pode atualizar a herança.",
+        );
+      const updated = refreshAlternateInheritance(shared.agent);
+      const before = shared.agent.alternate!.face.inventory;
+      const after = updated.alternate!.face.inventory;
+      await saveSharedAgent(updated, token);
+      await game.save("agents", updated);
+      const rituals = after.filter(
+        (entry) =>
+          entry.kind === "Ritual" &&
+          !before.some((item) => item.id === entry.id),
+      ).length;
+      const powers = after.filter((entry) => entry.kind === "Poder").length;
+      game.setNotice(
+        `Herança atualizada: ${rituals} rituais incluídos e ${powers} poderes nesta face. Nome, aparência e demais edições preservados.`,
+      );
     } catch (error) {
       game.setNotice((error as Error).message);
     } finally {
@@ -162,7 +200,15 @@ export default function Campaigns() {
                   {isApocalypsisCampaign(c) &&
                     !game.access.isPlayer &&
                     (a.alternate ? (
-                      <small>Face NEX 35 liberada</small>
+                      <button
+                        disabled={busyId === a.id}
+                        title="Inclui rituais elegíveis adicionados depois da liberação e seleciona metade dos poderes originais; preserva outras edições."
+                        onClick={() => void refreshInheritance(a.id, c)}
+                      >
+                        {busyId === a.id
+                          ? "Atualizando…"
+                          : "Atualizar herança NEX 35"}
+                      </button>
                     ) : (
                       <button
                         disabled={busyId === a.id}
