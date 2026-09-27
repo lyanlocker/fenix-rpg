@@ -30,6 +30,10 @@ Se a ficha original recebeu rituais ou poderes depois da liberação da segunda 
 
 A campanha apresenta o registro de alterações da segunda face, com campo alterado, agente, autor e horário, atualizado a cada 10 segundos. Os avisos dependem das chaves de mestre salvas no navegador da campanha e do acesso ao banco; são visíveis **na tela Campanhas**, não são notificações por celular com o site fechado. A edição e a auditoria da face publicada exigem o SQL `database/alternate-face.sql` no mesmo projeto Supabase de compartilhamento. As migrações já foram aplicadas ao projeto configurado nesta instalação.
 
+### Infecção
+
+Na página **Campanhas**, o mestre pode clicar em **Liberar Infecção** para cada personagem NEX 35 vinculado à campanha (inclusive a face alternativa NEX 35). A barra começa em 0/100 e aparece sob os recursos da ficha, tanto no Resumo quanto nas outras abas. Jogador e mestre podem usar os botões − e + para ajustar de um em um; somente a chave de mestre pode liberar ou desativar a barra. Ao desativar e reativar, o valor anterior é preservado. O valor é sincronizado entre os aparelhos pelo banco, sem depender da exportação JSON, e cada alteração aparece no histórico privado da campanha. O SQL `database/infection.sql` cria esse recurso após as migrações de compartilhamento e de face alternativa; já foi aplicado ao projeto configurado nesta instalação.
+
 ## Modo jogador e sincronização
 
 O botão “Link do jogador” publica a ficha no banco e gera um endereço no formato `/agentes/ID?mode=player&agent=ID&share=CHAVE`. A chave de alta entropia autoriza somente aquela ficha. O jogador abre o endereço diretamente, sem importar JSON e sem preencher login. Ficha e histórico de rolagens são sincronizados entre os aparelhos aproximadamente a cada 2,5 segundos.

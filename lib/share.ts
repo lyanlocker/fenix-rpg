@@ -23,6 +23,9 @@ export type AlternateEdit = {
   created_at: string;
 };
 
+export type InfectionStatus = { enabled: boolean; value: number };
+export const inactiveInfection: InfectionStatus = { enabled: false, value: 0 };
+
 type PublishedAgent = {
   agent_id: string;
   master_token: string;
@@ -35,6 +38,7 @@ type SharedPayload = {
   role: "master" | "player";
   updated_at: string;
   alternate_edits?: AlternateEdit[];
+  infection?: InfectionStatus;
 };
 
 async function rpc<T>(name: string, body: Record<string, unknown>) {
@@ -110,7 +114,29 @@ export async function loadSharedAgent(agentId: string, token: string) {
     alternate_edits: Array.isArray(value.alternate_edits)
       ? value.alternate_edits
       : [],
+    infection:
+      value.infection &&
+      typeof value.infection.enabled === "boolean" &&
+      Number.isInteger(value.infection.value) &&
+      value.infection.value >= 0 &&
+      value.infection.value <= 100
+        ? value.infection
+        : inactiveInfection,
   };
+}
+
+export async function updateSharedInfection(
+  agentId: string,
+  token: string,
+  operation: "enable" | "disable" | "adjust",
+  change = 0,
+) {
+  return rpc<InfectionStatus>("fenix_update_infection", {
+    requested_agent_id: agentId,
+    share_token: token,
+    operation,
+    change,
+  });
 }
 
 export async function saveSharedAgent(agent: Agent, token: string) {

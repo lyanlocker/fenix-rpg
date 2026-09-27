@@ -62,10 +62,14 @@ import {
 } from "@/lib/alternate";
 import CharacterOverview from "./character-overview";
 import DiceRoller from "./dice-roller";
+import InfectionBar from "./infection-bar";
 import {
   getShareCredentials,
+  inactiveInfection,
   loadSharedAgent,
   publishSharedAgent,
+  updateSharedInfection,
+  type InfectionStatus,
 } from "@/lib/share";
 const sections = [
   "Resumo",
@@ -95,12 +99,14 @@ export default function CharacterSheet({ id }: { id: string }) {
     [curseTarget, setCurseTarget] = useState<Item | null>(null),
     [modificationTarget, setModificationTarget] = useState<Item | null>(null),
     [sharedToken, setSharedToken] = useState<string | null>(null),
+    [infection, setInfection] = useState<InfectionStatus>(inactiveInfection),
     [sharedError, setSharedError] = useState("");
   const campaign = game.state.campaigns.find(
       (entry) => entry.id === stored?.campaign_id,
     ),
     faceAvailable = !!stored && alternateIsApproved(stored, campaign),
-    a = stored && otherFace && faceAvailable ? alternateAgent(stored) : stored;
+    a = stored && otherFace && faceAvailable ? alternateAgent(stored) : stored,
+    infectionFace = a?.nex === 35;
   useEffect(() => {
     if (!game.access.ready) return;
     const token =
@@ -110,7 +116,10 @@ export default function CharacterSheet({ id }: { id: string }) {
       null;
     setSharedToken(token);
     setSharedError("");
-    if (!token) return;
+    if (!token) {
+      setInfection(inactiveInfection);
+      return;
+    }
 
     let active = true;
     async function refresh() {
@@ -118,6 +127,7 @@ export default function CharacterSheet({ id }: { id: string }) {
         const shared = await loadSharedAgent(id, token as string);
         if (!active) return;
         game.mergeSharedAgent(shared.agent, shared.rolls);
+        setInfection(shared.infection);
         setSharedError("");
       } catch (reason) {
         if (active) setSharedError((reason as Error).message);
@@ -250,6 +260,18 @@ export default function CharacterSheet({ id }: { id: string }) {
         game.access.shareToken || undefined,
       );
     }
+  }
+  function changeInfection(delta: -1 | 1) {
+    void run(async () => {
+      const token = game.access.shareToken || sharedToken;
+      if (!token)
+        throw Error(
+          "Abra a ficha pelo link compartilhado para ajustar a Infecção.",
+        );
+      setInfection(
+        await updateSharedInfection(agent.id, token, "adjust", delta),
+      );
+    });
   }
   function removeItem(itemId: string) {
     void run(() =>
@@ -408,6 +430,13 @@ export default function CharacterSheet({ id }: { id: string }) {
                   </button>
                 </div>
               ))}
+              {infectionFace && infection.enabled && (
+                <InfectionBar
+                  infection={infection}
+                  busy={busy || !sharedToken}
+                  onAdjust={changeInfection}
+                />
+              )}
               <details className="resource-calculation">
                 <summary>Como os máximos são calculados</summary>
                 {resourceKeys(a).map((key) => (
@@ -475,6 +504,9 @@ export default function CharacterSheet({ id }: { id: string }) {
               }
               onSkill={(name) => test(name)}
               onPortrait={(portrait) => save({ portrait })}
+              infection={infectionFace ? infection : undefined}
+              infectionBusy={busy || !sharedToken}
+              onInfectionAdjust={changeInfection}
               onDoubleClickFace={
                 faceAvailable
                   ? () => {

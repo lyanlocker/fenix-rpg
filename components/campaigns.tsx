@@ -12,16 +12,20 @@ import {
 } from "@/lib/alternate";
 import {
   getShareCredentials,
+  inactiveInfection,
   loadSharedAgent,
   publishSharedAgent,
   saveSharedAgent,
+  updateSharedInfection,
   type AlternateEdit,
+  type InfectionStatus,
 } from "@/lib/share";
 export default function Campaigns() {
   const game = useGame(),
     [edit, setEdit] = useState<Campaign | null>(null),
     [selected, setSelected] = useState<string | null>(null),
     [events, setEvents] = useState<AlternateEdit[]>([]),
+    [infections, setInfections] = useState<Record<string, InfectionStatus>>({}),
     [seenAt, setSeenAt] = useState(""),
     [busyId, setBusyId] = useState<string | null>(null),
     [feedError, setFeedError] = useState(""),
@@ -37,18 +41,29 @@ export default function Campaigns() {
       const results = await Promise.allSettled(
         participants.map(async (a) => {
           const token = getShareCredentials(a.id)?.masterToken;
-          if (!token) return [];
+          if (!token)
+            return { agentId: a.id, events: [], infection: inactiveInfection };
           const payload = await loadSharedAgent(a.id, token);
-          return payload.role === "master" ? payload.alternate_edits : [];
+          return {
+            agentId: a.id,
+            events: payload.role === "master" ? payload.alternate_edits : [],
+            infection: payload.infection,
+          };
         }),
       );
       if (!active) return;
+      const loaded = results.flatMap((result) =>
+        result.status === "fulfilled" ? [result.value] : [],
+      );
       setEvents(
-        results
-          .flatMap((result) =>
-            result.status === "fulfilled" ? result.value : [],
-          )
+        loaded
+          .flatMap((item) => item.events)
           .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+      );
+      setInfections(
+        Object.fromEntries(
+          loaded.map((item) => [item.agentId, item.infection]),
+        ),
       );
       setFeedError(
         results.some((result) => result.status === "rejected")
@@ -142,6 +157,38 @@ export default function Campaigns() {
       setBusyId(null);
     }
   }
+  async function setInfectionEnabled(
+    agentId: string,
+    campaign: Campaign,
+    enabled: boolean,
+  ) {
+    setBusyId(agentId);
+    try {
+      const local = game.state.agents.find((agent) => agent.id === agentId);
+      if (!local || local.campaign_id !== campaign.id)
+        throw Error("Adicione primeiro o personagem a esta campanha.");
+      const credentials =
+        getShareCredentials(agentId) || (await publishSharedAgent(local));
+      const shared = await loadSharedAgent(agentId, credentials.masterToken);
+      if (shared.role !== "master" || shared.agent.campaign_id !== campaign.id)
+        throw Error("Somente o mestre desta campanha pode liberar Infecção.");
+      const status = await updateSharedInfection(
+        agentId,
+        credentials.masterToken,
+        enabled ? "enable" : "disable",
+      );
+      setInfections((current) => ({ ...current, [agentId]: status }));
+      game.setNotice(
+        enabled
+          ? "Infecção liberada para a ficha NEX 35."
+          : "Barra de Infecção desativada.",
+      );
+    } catch (error) {
+      game.setNotice((error as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
   return (
     <div className="page">
       <div className="page-heading">
@@ -217,6 +264,33 @@ export default function Campaigns() {
                         {busyId === a.id ? "Liberando…" : "Liberar face NEX 35"}
                       </button>
                     ))}
+                  {!game.access.isPlayer &&
+                    (a.nex === 35 || a.alternate?.face.nex === 35) && (
+                      <div className="campaign-infection-action">
+                        <small>
+                          Infecção:{" "}
+                          {infections[a.id]?.enabled
+                            ? `${infections[a.id].value}/100`
+                            : "não liberada"}
+                        </small>
+                        <button
+                          disabled={busyId === a.id}
+                          onClick={() =>
+                            void setInfectionEnabled(
+                              a.id,
+                              c,
+                              !infections[a.id]?.enabled,
+                            )
+                          }
+                        >
+                          {busyId === a.id
+                            ? "Salvando…"
+                            : infections[a.id]?.enabled
+                              ? "Desativar Infecção"
+                              : "Liberar Infecção"}
+                        </button>
+                      </div>
+                    )}
                 </div>
               ))}
             {isApocalypsisCampaign(c) && !game.access.isPlayer && (

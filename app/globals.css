@@ -976,6 +976,49 @@ progress::-webkit-progress-value {
 progress::-moz-progress-bar {
   background: #ae6467;
 }
+.infection-bar {
+  padding: 10px 12px;
+  border: 1px solid #71516c;
+  border-radius: 8px;
+  background: rgba(113, 81, 108, 0.12);
+}
+.infection-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.infection-heading > span {
+  color: #e8a2d2;
+  font-size: 12px;
+  font-weight: 600;
+}
+.infection-heading strong {
+  float: none;
+  font-size: 18px;
+}
+.infection-heading small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.infection-bar progress::-webkit-progress-value,
+.infection-bar progress::-moz-progress-bar {
+  background: #c576b1;
+}
+.infection-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.infection-controls button {
+  min-width: 36px;
+  min-height: 34px;
+  padding: 2px 9px;
+  font-size: 20px;
+  line-height: 1;
+}
 .resource-action {
   font-size: 11px;
   padding: 3px 0;
@@ -1221,6 +1264,15 @@ progress::-moz-progress-bar {
 }
 .campaign-face-row > small {
   color: var(--accent);
+}
+.campaign-infection-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.campaign-infection-action small {
+  color: #e8a2d2;
 }
 .alternate-feed {
   margin: 26px 0;

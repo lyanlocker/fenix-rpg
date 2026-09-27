@@ -13,6 +13,8 @@ import {
   type Resource,
 } from "@/lib/rules";
 import PortraitPicker from "./portrait-picker";
+import InfectionBar from "./infection-bar";
+import type { InfectionStatus } from "@/lib/share";
 
 export default function CharacterOverview({
   agent,
@@ -22,6 +24,9 @@ export default function CharacterOverview({
   onSkill,
   onPortrait,
   onDoubleClickFace,
+  infection,
+  infectionBusy = false,
+  onInfectionAdjust,
 }: {
   agent: Agent;
   maximums: Record<Resource, number>;
@@ -30,6 +35,9 @@ export default function CharacterOverview({
   onSkill: (name: string) => void;
   onPortrait: (portrait: string) => Promise<void>;
   onDoubleClickFace?: () => void;
+  infection?: InfectionStatus;
+  infectionBusy?: boolean;
+  onInfectionAdjust?: (delta: -1 | 1) => void;
 }) {
   const effective = effectiveAttributes(agent);
   const skills = Object.entries(skillAttributes).sort(([left], [right]) => {
@@ -124,6 +132,13 @@ export default function CharacterOverview({
               <progress value={agent.resources[key]} max={maximums[key] || 1} />
             </div>
           ))}
+          {infection?.enabled && onInfectionAdjust && (
+            <InfectionBar
+              infection={infection}
+              busy={infectionBusy}
+              onAdjust={onInfectionAdjust}
+            />
+          )}
         </div>
         <div className="overview-feature">
           <h3>Poderes em destaque</h3>
