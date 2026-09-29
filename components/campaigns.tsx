@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, ArrowRight } from "lucide-react";
 import { useGame } from "./game-shell";
+import dynamic from "next/dynamic";
+const CampaignCombat = dynamic(() => import("./campaign-combat"));
 import CampaignEditor from "./campaign-editor";
 import type { Campaign } from "@/lib/model";
 import {
@@ -189,6 +191,14 @@ export default function Campaigns() {
       setBusyId(null);
     }
   }
+  if (!game.access.ready || !game.ready) return <p>Carregando campanhas…</p>;
+  if (game.access.isPlayer)
+    return (
+      <div className="page">
+        <h1>Área do mestre</h1>
+        <p>Use seu link compartilhado para acessar sua ficha.</p>
+      </div>
+    );
   return (
     <div className="page">
       <div className="page-heading">
@@ -355,6 +365,7 @@ export default function Campaigns() {
                 )}
               </section>
             )}
+            <CampaignCombat key={c.id} campaignId={c.id} />
             <h3>Anotações</h3>
             <p className="prose">{c.notes || "Nenhuma anotação."}</p>
           </section>

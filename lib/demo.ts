@@ -79,5 +79,6 @@ export function demoState(): State {
     rolls: [],
     encounters: [],
     brews: [],
+    threats: [],
   };
 }

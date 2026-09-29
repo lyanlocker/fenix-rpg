@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import type { Threat } from "./threats";
 import { demoState } from "./demo";
 import {
   emptyState,
@@ -42,8 +43,8 @@ export function useStore() {
     }
   }, [state, ready, storageBlocked]);
   async function save(
-    kind: "agents" | "campaigns" | "encounters" | "brews",
-    value: Agent | Campaign | Encounter | Brew,
+    kind: "agents" | "campaigns" | "encounters" | "brews" | "threats",
+    value: Agent | Campaign | Encounter | Brew | Threat,
   ) {
     setState((s) => ({
       ...s,
@@ -51,7 +52,7 @@ export function useStore() {
     }));
   }
   async function remove(
-    kind: "agents" | "campaigns" | "encounters" | "brews",
+    kind: "agents" | "campaigns" | "encounters" | "brews" | "threats",
     id: string,
   ) {
     setState((s) => ({ ...s, [kind]: s[kind].filter((x) => x.id !== id) }));

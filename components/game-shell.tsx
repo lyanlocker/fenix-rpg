@@ -65,6 +65,7 @@ export default function GameShell({ children }: { children: ReactNode }) {
                 ["/", "Agentes"],
                 ["/campanhas", "Campanhas"],
                 ["/biblioteca", "Biblioteca"],
+                ["/ameacas", "Ameaças"],
               ]
           ).map(([url, label]) => (
             <Link
@@ -74,7 +75,8 @@ export default function GameShell({ children }: { children: ReactNode }) {
                 (
                   url === "/"
                     ? !path.startsWith("/campanhas") &&
-                      !path.startsWith("/biblioteca")
+                      !path.startsWith("/biblioteca") &&
+                      !path.startsWith("/ameacas")
                     : path.startsWith(url)
                 )
                   ? "active"

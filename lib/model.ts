@@ -1,3 +1,4 @@
+import type { Threat } from "./threats";
 import type { Agent, Item } from "./rules";
 export type Campaign = {
   id: string;
@@ -29,6 +30,13 @@ export type Participant = {
   maxPv: number;
   hidden: boolean;
   conditions: string;
+  threatId?: string;
+  agentId?: string;
+  face?: "main" | "alternate";
+  defense?: number;
+  initiativeTest?: string;
+  initiativeAttribute?: number;
+  initiativeBonus?: number;
 };
 export type Encounter = {
   id: string;
@@ -37,6 +45,7 @@ export type Encounter = {
   round: number;
   turn: number;
   active: boolean;
+  started?: boolean;
   participants: Participant[];
 };
 export type Brew = Item & { version: number; source: string };
@@ -53,6 +62,7 @@ export type State = {
   rolls: Roll[];
   encounters: Encounter[];
   brews: Brew[];
+  threats: Threat[];
 };
 export const emptyState: State = {
   agents: [],
@@ -60,4 +70,5 @@ export const emptyState: State = {
   rolls: [],
   encounters: [],
   brews: [],
+  threats: [],
 };

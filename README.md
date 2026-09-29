@@ -53,3 +53,13 @@ Poderes de origem/classe/trilha, pré-requisitos, bônus de dano, críticos e ef
 Testes de regras, importação e equipamentos; compilação de produção com TypeScript. Testes de navegador registrados separadamente no andamento do projeto.
 
 `database/schema.sql` e `tests/permissions.sql` são referências históricas da versão conectada, não necessárias para rodar a versão sem cadastro.
+
+## Ameaças e combate
+
+- `/ameacas`: catálogo de 140 registros do Livro de Regras, Sobrevivendo ao Horror, Arquivos Secretos 06/07 e EaF — Guia das Marcas. Busca por nome, elemento principal/secundário, origem e VD máximo; referência do livro/página, estatísticas e texto de ações. Ameaças próprias podem ser criadas, editadas, removidas e importadas/exportadas. As fichas não numéricas permanecem como referência especial.
+- `/campanhas`: selecione uma campanha e use **Combate → Criar combate**. Adicione personagens (face principal ou NEX 35 autorizada), ameaças do catálogo ou participantes avulsos. As cópias de criaturas têm PV independentes. Role ou edite iniciativas, inicie o combate e avance/retorne turnos, com rodadas automáticas, pausa e reinício.
+- Ataques e dano das ameaças podem ser rolados com histórico na campanha. Ajuste o dano final após resistências, imunidades, críticos e efeitos especiais; essas regras não são automatizadas. Condições são selecionadas no encontro e seus efeitos podem ser consultados.
+- Dano/cura em personagens vinculados lê a ficha compartilhada com a chave de mestre antes de atualizar somente os PV da face escolhida. A face principal permanece intacta ao ajustar NEX 35. **Atualizar fichas** recarrega PV, Defesa e iniciativa. As condições do encontro são anotações do combate; não alteram as condições da ficha.
+- Combates e ameaças próprias são persistidos no navegador do mestre, preservando o armazenamento anterior. Turnos não são transmitidos aos jogadores nesta versão; o modo jogador bloqueia as telas de campanha e ameaças. A marca de oculto distingue participantes e rolagens privadas na preparação do mestre, sem criar um link público do combate.
+
+O catálogo mantém as diferenças entre regras oficiais e o suplemento EaF por origem. Regras de metamorfose, hierarquias e ritos permanecem na referência da ameaça, com os valores da ficha inicial. Os PDFs originais não entram no repositório. Para regenerar o catálogo a partir das mesmas fontes locais: `python3 scripts/build-threat-catalog.py /caminho/das/fontes` (PyMuPDF).

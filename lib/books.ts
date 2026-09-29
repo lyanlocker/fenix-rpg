@@ -5,7 +5,7 @@ import {normalize} from './catalog';
 export type CharacterOption=Item & {subtype:'Origem'|'Trilha';skillsText?:string;grantName?:string;grantNotes?:string};
 export const bookCatalog=raw as Item[];
 export const characterOptions=options as CharacterOption[];
-export const bookNames:Record<string,string>={'01':'Livro de Regras v1.3','07':'Sobrevivendo ao Horror','03':'EaF — Biblioteca Ritualística 0.7.5','05':'EaF — Arsenal dos Agentes 0.91','04':'Arquivos Secretos #7 v1.1','06':'Arquivos Secretos #6 v1.0'};
+export const bookNames:Record<string,string>={'02':'EaF — Guia das Marcas 0.6.7','01':'Livro de Regras v1.3','07':'Sobrevivendo ao Horror','03':'EaF — Biblioteca Ritualística 0.7.5','05':'EaF — Arsenal dos Agentes 0.91','04':'Arquivos Secretos #7 v1.1','06':'Arquivos Secretos #6 v1.0'};
 export function selectedOption(a:Agent,type:'Origem'|'Trilha') {
  const id=type==='Origem'?a.originId:a.trackId,name=type==='Origem'?a.origin:a.track;
  return characterOptions.find(o=>id?o.id===id:o.subtype===type&&o.name===name&&(!o.className||o.className===a.className));
