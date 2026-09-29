@@ -117,6 +117,12 @@ test("catalog entries match representative printed stat blocks and do not fabric
   assert.equal(hikikomori.defense, 16);
   assert.equal(hikikomori.vd, 20);
   assert.equal(hikikomori.initiative, "2d20+5");
+  assert.ok(hikikomori.details.includes("HIKIKOMORI"));
+  assert.ok(hikikomori.details.includes("Fortitude 1d20"));
+  assert.ok(hikikomori.attacks[0].name.includes("DISPARO INFECTADO"));
+  for (const threat of threatCatalog) {
+    assert.ok(!/[A-ZÀ-Ý]1d20[A-ZÀ-Ý]/.test(threat.details));
+  }
   assert.equal(
     threatCatalog.find((t) => t.name === "Amigo Imaginário")!.pv,
     1000,

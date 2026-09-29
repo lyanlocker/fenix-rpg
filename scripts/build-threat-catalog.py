@@ -7,11 +7,15 @@ soh={128:'Sepultado',130:'Mescla',134:'Espectro Inesquecido',136:'O Uivar',138:'
 as6={28:'Alice Cruzes',33:'Ketan Arjuna',37:'Laila Verdante',41:'Dr. Neruda',56:'Cientista da Panacea',57:'Manda-Chuva da Panacea',58:'Segurança da Panacea',60:'Hikikomori',61:'Marca-Passo',62:'Estímulo',63:'Experimento Ssabáka'}
 as7={40:'Raziel',41:'O Verdadeiro Raziel',42:'Alvira',43:'Sabara',44:'Velisar',45:'Zéfero',65:'Incinerado',67:'Strzyga',70:'Apóstata'}
 elements=['Sangue','Morte','Conhecimento','Energia','Medo']
-D=r'(?:[–−-]?\d*)O(?:\s*[+]\s*\d+)?'
+D=r'(?<!\w)(?:[–−-]?\d*)O(?!\w)(?:\s*[+]\s*\d+)?'
 def clean(t):
  t=re.sub(r'(?m)^.*[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}.*$','',t)
  t=re.sub(r'(?<=\w)-\n(?=[a-záàãâéêíóôõúç])','',t)
- t=re.sub(r'(\d*)O',lambda m:(m[1] or '1')+'d20',t)
+ # Only dice glyphs at token boundaries; uppercase O inside words is ordinary text.
+ t=re.sub(r'(?<!\w)(\d+)O(?!\w)',lambda m:m[1]+'d20',t)
+ t=re.sub(r'(?<!\w)O(?=\s*\+\s*\d)', '1d20', t)
+ t=re.sub(r'(\b(?:PERCEPÇÃO|INICIATIVA|FORTITUDE|REFLEXOS|VONTADE|TESTE)\s+)O(?!\w)',lambda m:m[1]+'1d20',t,flags=re.I)
+ t=re.sub(r'(?m)^\s*O\s*$', '1d20', t)
  for old,new in [('',' · '),('',' — '),('',' — '),('',' alcance '),('',' quadrados')]:t=t.replace(old,new)
  return re.sub(r'[\ue000-\uf8ff]','',t).strip()
 def slug(s):return re.sub(r'[^a-z0-9]+','-',unicodedata.normalize('NFKD',s).encode('ascii','ignore').decode().lower()).strip('-')
