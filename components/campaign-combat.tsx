@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Eye,
   EyeOff,
@@ -26,7 +26,16 @@ import {
   getShareCredentials,
   loadSharedAgent,
   saveSharedAgent,
+  publishSharedAgent,
 } from "@/lib/share";
+import {
+  adjustSharedCombatHp,
+  combatMasterKey,
+  loadMasterCombat,
+  saveMasterCombat,
+  clearSharedCombat,
+  withCombatRevision,
+} from "@/lib/shared-combat";
 import { conditionDefinitions } from "@/lib/conditions";
 import type { Agent } from "@/lib/rules";
 import type { Encounter, Participant } from "@/lib/model";
@@ -41,6 +50,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     [hpAmount, setHpAmount] = useState("1"),
     [target, setTarget] = useState("");
   const lock = useRef(false);
+  const remoteRevision = useRef(0);
+  const remoteEncounterId = useRef<string | null>(null);
   const encounters = game.state.encounters.filter(
     (e) => e.campaign_id === campaignId,
   );
@@ -48,6 +59,34 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
   const threats = [...game.state.threats, ...threatCatalog];
   const current = encounter?.participants[encounter.turn];
   const agents = game.state.agents.filter((a) => a.campaign_id === campaignId);
+  useEffect(() => {
+    if (!game.ready || game.access.isPlayer) return;
+    let active = true,
+      fetching = false;
+    async function refresh() {
+      const key = combatMasterKey(campaignId);
+      if (!key || lock.current || fetching) return;
+      fetching = true;
+      try {
+        const payload = await loadMasterCombat(campaignId, key);
+        if (!active || lock.current) return;
+        remoteRevision.current = payload.revision;
+        remoteEncounterId.current = payload.encounter?.id || null;
+        const next = withCombatRevision(payload);
+        if (next) game.mergeSharedEncounter(next);
+      } catch (error) {
+        if (active) game.setNotice((error as Error).message);
+      } finally {
+        fetching = false;
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 2500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [campaignId, game.ready, game.access.isPlayer, game.mergeSharedEncounter]);
   async function run(action: () => Promise<void>) {
     if (lock.current || game.access.isPlayer || !game.ready) return;
     lock.current = true;
@@ -62,7 +101,45 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     }
   }
   async function save(e: Encounter) {
-    await game.save("encounters", e);
+    if (
+      !e.started &&
+      (e.sharedRevision === undefined ||
+        (remoteEncounterId.current && remoteEncounterId.current !== e.id))
+    ) {
+      await game.save("encounters", { ...e, sharedRevision: undefined });
+      return;
+    }
+    const key = combatMasterKey(campaignId, true)!;
+    const agentKeys = [];
+    for (const a of agents) {
+      const credentials =
+        getShareCredentials(a.id) || (await publishSharedAgent(a));
+      agentKeys.push({ agentId: a.id, masterToken: credentials.masterToken });
+    }
+    try {
+      const payload = await saveMasterCombat(
+        {
+          ...e,
+          sharedRevision:
+            remoteEncounterId.current === e.id
+              ? (e.sharedRevision ?? remoteRevision.current)
+              : remoteRevision.current,
+        },
+        key,
+        agentKeys,
+      );
+      remoteRevision.current = payload.revision;
+      remoteEncounterId.current = payload.encounter?.id || null;
+      const next = withCombatRevision(payload);
+      if (next) game.mergeSharedEncounter(next);
+    } catch (error) {
+      const payload = await loadMasterCombat(campaignId, key);
+      remoteRevision.current = payload.revision;
+      remoteEncounterId.current = payload.encounter?.id || null;
+      const latest = withCombatRevision(payload);
+      if (latest) game.mergeSharedEncounter(latest);
+      throw error;
+    }
   }
   async function create() {
     const e: Encounter = {
@@ -118,6 +195,15 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
   }
   async function adjustHp(p: Participant, delta: number) {
     if (!encounter) return;
+    const key = combatMasterKey(campaignId);
+    if (key && encounter.sharedRevision !== undefined) {
+      const payload = await adjustSharedCombatHp(encounter, key, p.id, delta);
+      remoteRevision.current = payload.revision;
+      if (payload.agent) await game.save("agents", payload.agent);
+      const next = withCombatRevision(payload);
+      if (next) game.mergeSharedEncounter(next);
+      return;
+    }
     let next = changeHitPoints(p, delta);
     if (p.agentId) {
       const { agent, token } = await freshAgent(p.agentId);
@@ -191,7 +277,11 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         p.hidden,
         campaignId,
       );
-      participants.push({ ...p, initiative: roll.total });
+      participants.push({
+        ...p,
+        initiative: roll.total,
+        initiativeRolled: true,
+      });
     }
     await save(reorderEncounter({ ...encounter, participants }));
   }
@@ -224,7 +314,11 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
           <Swords size={20} />
           Combate
         </h3>
-        <span className="muted small">Salvo neste navegador do mestre</span>
+        <span className="muted small">
+          {encounter?.started && encounter.sharedRevision !== undefined
+            ? "Visível nos links dos jogadores · sincronizado"
+            : "Preparação do mestre · aparece aos jogadores ao iniciar"}
+        </span>
       </div>
       <fieldset disabled={busy} className="combat-controls">
         <div className="combat-toolbar">
@@ -296,6 +390,16 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                 title="Excluir combate"
                 onClick={() =>
                   void run(async () => {
+                    const key = combatMasterKey(campaignId);
+                    if (
+                      key &&
+                      encounter.sharedRevision !== undefined &&
+                      remoteEncounterId.current === encounter.id
+                    ) {
+                      const payload = await clearSharedCombat(encounter, key);
+                      remoteRevision.current = payload.revision;
+                      remoteEncounterId.current = null;
+                    }
                     await game.remove("encounters", encounter.id);
                     setSelected(null);
                   })
@@ -342,6 +446,12 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                 >
                   {encounter.active ? "Pausar" : "Iniciar / Retomar"}
                 </button>
+                {encounter.started &&
+                  encounter.sharedRevision === undefined && (
+                    <button onClick={() => void run(() => save(encounter))}>
+                      Mostrar aos jogadores
+                    </button>
+                  )}
                 <button
                   aria-label="Turno anterior"
                   disabled={
@@ -378,6 +488,17 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                 >
                   Reiniciar rodadas
                 </button>
+                {encounter.started && (
+                  <button
+                    onClick={() =>
+                      void run(() =>
+                        save({ ...encounter, active: false, started: false }),
+                      )
+                    }
+                  >
+                    Encerrar combate
+                  </button>
+                )}
               </div>
             </div>
             {!encounter.participants.length && (
@@ -444,6 +565,9 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
               Dano e cura em personagens vinculados atualizam a ficha escolhida,
               incluindo NEX 35. Aplique o valor final após resistências,
               imunidades e efeitos especiais.
+              {encounter.started
+                ? " Os jogadores veem o combate na própria ficha. Revele as ameaças pelo ícone de olho para mostrá-las na ordem dos turnos."
+                : " Ao iniciar, as fichas desta campanha serão compartilhadas para permitir o combate sincronizado."}
             </p>
             <ol className="combat-participants">
               {encounter.participants.map((p, index) => {
@@ -519,7 +643,11 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                                     participants: encounter.participants.map(
                                       (x) =>
                                         x.id === p.id
-                                          ? { ...x, initiative: n }
+                                          ? {
+                                              ...x,
+                                              initiative: n,
+                                              initiativeRolled: true,
+                                            }
                                           : x,
                                     ),
                                   }),

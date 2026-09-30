@@ -1,5 +1,7 @@
 "use client";
 import RuleDetails from "./rule-details";
+import dynamic from "next/dynamic";
+const PlayerCombat = dynamic(() => import("./player-combat"));
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -340,6 +342,9 @@ export default function CharacterSheet({ id }: { id: string }) {
         busy={busy}
         onRoll={(expression) => roll("Dados livres", 1, 0, expression)}
       />
+      {game.access.isPlayer && stored && game.access.shareToken && (
+        <PlayerCombat agent={stored} token={game.access.shareToken} />
+      )}
       <Link className="back" href={game.accessHref("/")}>
         <ArrowLeft size={16} />
         Agentes

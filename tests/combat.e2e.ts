@@ -2,6 +2,7 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { newAgent } from "../lib/rules";
+import type { Encounter } from "../lib/model";
 async function verifyUI() {
   const browser = await chromium.launch({
     executablePath: process.env.FENIX_TEST_BROWSER || undefined,
@@ -25,6 +26,8 @@ async function verifyUI() {
   main.alternate = { approvedCampaignId: id, face: relative };
   let shared = structuredClone(main),
     writes = 0;
+  let combat: Encounter | null = null,
+    revision = 0;
   await context.route("**/rest/v1/rpc/**", async (route) => {
     const body = route.request().postDataJSON();
     const path = new URL(route.request().url()).pathname;
@@ -43,6 +46,37 @@ async function verifyUI() {
       shared = body.agent_data;
       writes++;
       await route.fulfill({ json: null });
+    } else if (path.endsWith("/fenix_load_master_combat")) {
+      await route.fulfill({ json: { encounter: combat, revision } });
+    } else if (path.endsWith("/fenix_save_combat")) {
+      combat = body.encounter_data;
+      await route.fulfill({
+        json: { encounter: combat, revision: ++revision },
+      });
+    } else if (path.endsWith("/fenix_adjust_combat_hp")) {
+      const participant = combat!.participants.find(
+        (p) => p.id === body.participant_id,
+      )!;
+      participant.pv = Math.max(
+        0,
+        Math.min(participant.maxPv, participant.pv + body.change),
+      );
+      if (participant.agentId) {
+        shared.alternate!.face.resources.pv = participant.pv;
+        writes++;
+      }
+      await route.fulfill({
+        json: {
+          encounter: combat,
+          revision: ++revision,
+          agent: participant.agentId ? shared : null,
+        },
+      });
+    } else if (path.endsWith("/fenix_clear_combat")) {
+      combat = null;
+      await route.fulfill({
+        json: { encounter: combat, revision: ++revision },
+      });
     } else
       await route.fulfill({
         status: 500,

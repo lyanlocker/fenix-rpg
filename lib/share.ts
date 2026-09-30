@@ -41,7 +41,7 @@ type SharedPayload = {
   infection?: InfectionStatus;
 };
 
-async function rpc<T>(name: string, body: Record<string, unknown>) {
+export async function rpc<T>(name: string, body: Record<string, unknown>) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {

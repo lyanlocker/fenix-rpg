@@ -111,6 +111,15 @@ export function useStore() {
       };
     });
   }, []);
+  const mergeSharedEncounter = useCallback((encounter: Encounter) => {
+    setState((s) => ({
+      ...s,
+      encounters: [
+        encounter,
+        ...s.encounters.filter((e) => e.id !== encounter.id),
+      ],
+    }));
+  }, []);
   async function adjustResource(
     a: Agent,
     key: Resource,
@@ -147,6 +156,7 @@ export function useStore() {
     roll,
     syncSharedAgent,
     mergeSharedAgent,
+    mergeSharedEncounter,
     adjustResource,
   };
 }

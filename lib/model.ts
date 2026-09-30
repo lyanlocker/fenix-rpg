@@ -37,6 +37,7 @@ export type Participant = {
   initiativeTest?: string;
   initiativeAttribute?: number;
   initiativeBonus?: number;
+  initiativeRolled?: boolean;
 };
 export type Encounter = {
   id: string;
@@ -46,6 +47,7 @@ export type Encounter = {
   turn: number;
   active: boolean;
   started?: boolean;
+  sharedRevision?: number;
   participants: Participant[];
 };
 export type Brew = Item & { version: number; source: string };
