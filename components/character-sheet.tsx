@@ -2,7 +2,7 @@
 import RuleDetails from "./rule-details";
 import dynamic from "next/dynamic";
 const PlayerCombat = dynamic(() => import("./player-combat"));
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -68,11 +68,12 @@ import InfectionBar from "./infection-bar";
 import {
   getShareCredentials,
   inactiveInfection,
-  loadSharedAgent,
+  createSharedAgentSync,
   publishSharedAgent,
   updateSharedInfection,
   type InfectionStatus,
 } from "@/lib/share";
+import { startVisiblePolling } from "@/lib/polling";
 const sections = [
   "Resumo",
   "Armas",
@@ -83,6 +84,7 @@ const sections = [
   "Descrição",
 ];
 export default function CharacterSheet({ id }: { id: string }) {
+  const mutations = useRef({ version: 0, active: 0 });
   const game = useGame(),
     stored = game.state.agents.find((x) => x.id === id);
   const [otherFace, setOtherFace] = useState(false),
@@ -100,9 +102,17 @@ export default function CharacterSheet({ id }: { id: string }) {
     [useItem, setUseItem] = useState<Item | null>(null),
     [curseTarget, setCurseTarget] = useState<Item | null>(null),
     [modificationTarget, setModificationTarget] = useState<Item | null>(null),
-    [sharedToken, setSharedToken] = useState<string | null>(null),
+    [publishedAccess, setPublishedAccess] = useState<{
+      id: string;
+      token: string;
+    } | null>(null),
     [infection, setInfection] = useState<InfectionStatus>(inactiveInfection),
     [sharedError, setSharedError] = useState("");
+  const sharedToken =
+    game.access.shareToken ||
+    (publishedAccess?.id === id ? publishedAccess.token : null) ||
+    getShareCredentials(id)?.masterToken ||
+    null;
   const campaign = game.state.campaigns.find(
       (entry) => entry.id === stored?.campaign_id,
     ),
@@ -111,12 +121,7 @@ export default function CharacterSheet({ id }: { id: string }) {
     infectionFace = a?.nex === 35;
   useEffect(() => {
     if (!game.access.ready) return;
-    const token =
-      game.access.shareToken ||
-      sharedToken ||
-      getShareCredentials(id)?.masterToken ||
-      null;
-    setSharedToken(token);
+    const token = sharedToken;
     setSharedError("");
     if (!token) {
       setInfection(inactiveInfection);
@@ -124,22 +129,30 @@ export default function CharacterSheet({ id }: { id: string }) {
     }
 
     let active = true;
+    let sync = createSharedAgentSync(id, token);
     async function refresh() {
+      if (mutations.current.active) return;
+      const version = mutations.current.version;
       try {
-        const shared = await loadSharedAgent(id, token as string);
+        const shared = await sync();
         if (!active) return;
-        game.mergeSharedAgent(shared.agent, shared.rolls);
-        setInfection(shared.infection);
+        if (mutations.current.active || mutations.current.version !== version) {
+          sync = createSharedAgentSync(id, token as string);
+          return;
+        }
+        if (shared?.agent || shared?.rolls?.length)
+          game.mergeSharedAgent(shared.agent || null, shared.rolls || []);
+        if (shared?.infection) setInfection(shared.infection);
         setSharedError("");
       } catch (reason) {
         if (active) setSharedError((reason as Error).message);
+        throw reason;
       }
     }
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), 2500);
+    const stop = startVisiblePolling(refresh, 2500);
     return () => {
       active = false;
-      window.clearInterval(interval);
+      stop();
     };
   }, [
     game.access.ready,
@@ -193,12 +206,16 @@ export default function CharacterSheet({ id }: { id: string }) {
             ? "Ritual"
             : "Item";
   async function run(fn: () => Promise<unknown>) {
+    mutations.current.version++;
+    mutations.current.active++;
     setBusy(true);
     try {
       await fn();
     } catch (e) {
       game.setNotice((e as Error).message);
     } finally {
+      mutations.current.active--;
+      mutations.current.version++;
       setBusy(false);
     }
   }
@@ -226,20 +243,27 @@ export default function CharacterSheet({ id }: { id: string }) {
     );
   }
   async function save(p: Partial<Agent>) {
-    const updated =
-      otherFace && faceAvailable && stored?.alternate
-        ? {
-            ...stored,
-            alternate: {
-              ...stored.alternate,
-              face: faceFromAgent({ ...agent, ...p, nex: 35 }),
-            },
-          }
-        : { ...agent, ...p };
-    if (otherFace && faceAvailable && updated.alternate)
-      validateAlternateFace(updated.alternate.face);
-    await game.syncSharedAgent(updated, game.access.shareToken || undefined);
-    await game.save("agents", updated);
+    mutations.current.version++;
+    mutations.current.active++;
+    try {
+      const updated =
+        otherFace && faceAvailable && stored?.alternate
+          ? {
+              ...stored,
+              alternate: {
+                ...stored.alternate,
+                face: faceFromAgent({ ...agent, ...p, nex: 35 }),
+              },
+            }
+          : { ...agent, ...p };
+      if (otherFace && faceAvailable && updated.alternate)
+        validateAlternateFace(updated.alternate.face);
+      await game.syncSharedAgent(updated, game.access.shareToken || undefined);
+      await game.save("agents", updated);
+    } finally {
+      mutations.current.active--;
+      mutations.current.version++;
+    }
   }
   async function changeResource(key: Resource, change: number) {
     if (!Number.isInteger(change) || Math.abs(change) > 10000)
@@ -285,7 +309,7 @@ export default function CharacterSheet({ id }: { id: string }) {
   async function copyPlayerLink() {
     await run(async () => {
       const credentials = await publishSharedAgent(stored || agent);
-      setSharedToken(credentials.masterToken);
+      setPublishedAccess({ id: agent.id, token: credentials.masterToken });
       const url = new URL(window.location.origin + `/agentes/${agent.id}`);
       url.searchParams.set("mode", "player");
       url.searchParams.set("agent", agent.id);

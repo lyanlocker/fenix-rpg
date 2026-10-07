@@ -89,6 +89,40 @@ export async function loadPlayerCombat(agentId: string, token: string) {
     share_token: token,
   });
 }
+
+function createCombatSync<T>(
+  name: string,
+  credentials: Record<string, unknown>,
+) {
+  let version: string | null = null;
+  return async () => {
+    const value = await rpc<{
+      version: string;
+      unchanged: boolean;
+      payload: T;
+    }>(name, {
+      ...credentials,
+      known_version: version,
+    });
+    version = value.version;
+    // undefined means unchanged; null means the combat was ended or removed.
+    return value.unchanged ? undefined : value.payload;
+  };
+}
+
+export function createMasterCombatSync(campaignId: string, key: string) {
+  return createCombatSync<MasterCombat>("fenix_sync_master_combat", {
+    requested_campaign_id: campaignId,
+    master_token: key,
+  });
+}
+
+export function createPlayerCombatSync(agentId: string, token: string) {
+  return createCombatSync<PlayerCombat | null>("fenix_sync_player_combat", {
+    requested_agent_id: agentId,
+    share_token: token,
+  });
+}
 export async function setPlayerInitiative(
   agentId: string,
   token: string,

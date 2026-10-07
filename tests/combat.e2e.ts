@@ -31,7 +31,43 @@ async function verifyUI() {
   await context.route("**/rest/v1/rpc/**", async (route) => {
     const body = route.request().postDataJSON();
     const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/fenix_load_shared_agent"))
+    if (path.endsWith("/fenix_sync_shared_agent")) {
+      const versions = {
+        agent: String(writes),
+        rolls: "0",
+        edits: "0",
+        infection: { enabled: false, value: 0 },
+      };
+      const unchanged =
+        JSON.stringify(body.known_versions) === JSON.stringify(versions);
+      await route.fulfill({
+        json: {
+          versions,
+          unchanged,
+          role: "master",
+          ...(unchanged
+            ? {}
+            : {
+                ...(body.status_only
+                  ? {}
+                  : { agent: shared, rolls: [], portraits: {} }),
+                alternate_edits: [],
+                infection: versions.infection,
+              }),
+        },
+      });
+    } else if (path.endsWith("/fenix_sync_master_combat")) {
+      const version = `${revision}:${writes}`;
+      await route.fulfill({
+        json: {
+          version,
+          unchanged: body.known_version === version,
+          ...(body.known_version === version
+            ? {}
+            : { payload: { encounter: combat, revision } }),
+        },
+      });
+    } else if (path.endsWith("/fenix_load_shared_agent"))
       await route.fulfill({
         json: {
           agent: shared,

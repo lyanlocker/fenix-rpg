@@ -50,6 +50,7 @@ export async function rpc<T>(name: string, body: Record<string, unknown>) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(20000),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
@@ -122,6 +123,63 @@ export async function loadSharedAgent(agentId: string, token: string) {
       value.infection.value <= 100
         ? value.infection
         : inactiveInfection,
+  };
+}
+
+type SyncPayload = {
+  versions: Record<string, unknown>;
+  unchanged: boolean;
+  role: "master" | "player";
+  agent?: unknown;
+  rolls?: Roll[];
+  alternate_edits?: AlternateEdit[];
+  infection?: InfectionStatus;
+  portraits?: { main?: string; alternate?: string };
+};
+
+// The cursor belongs to one mounted subscription and one credential only.
+// Returning patches avoids overwriting newer local edits with a cached sheet
+// when only a roll or infection value changed on the server.
+export function createSharedAgentSync(
+  agentId: string,
+  token: string,
+  statusOnly = false,
+) {
+  let versions: Record<string, unknown> | null = null;
+  let portraits = { main: "", alternate: "" };
+  return async () => {
+    const value = await rpc<SyncPayload>("fenix_sync_shared_agent", {
+      requested_agent_id: agentId,
+      share_token: token,
+      known_versions: versions,
+      status_only: statusOnly,
+    });
+    const nextPortraits = { ...portraits, ...value.portraits };
+    const raw = value.agent as Agent | undefined;
+    const agent =
+      raw === undefined
+        ? undefined
+        : validateAgentImport({
+            version: 1,
+            agent: {
+              ...raw,
+              portrait: nextPortraits.main,
+              ...(raw.alternate
+                ? {
+                    alternate: {
+                      ...raw.alternate,
+                      face: {
+                        ...raw.alternate.face,
+                        portrait: nextPortraits.alternate,
+                      },
+                    },
+                  }
+                : {}),
+            },
+          });
+    portraits = nextPortraits;
+    versions = value.versions;
+    return value.unchanged ? null : { ...value, agent };
   };
 }
 

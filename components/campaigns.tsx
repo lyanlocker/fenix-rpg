@@ -14,6 +14,7 @@ import {
 } from "@/lib/alternate";
 import {
   getShareCredentials,
+  createSharedAgentSync,
   inactiveInfection,
   loadSharedAgent,
   publishSharedAgent,
@@ -22,6 +23,7 @@ import {
   type AlternateEdit,
   type InfectionStatus,
 } from "@/lib/share";
+import { startVisiblePolling } from "@/lib/polling";
 export default function Campaigns() {
   const game = useGame(),
     [edit, setEdit] = useState<Campaign | null>(null),
@@ -32,54 +34,73 @@ export default function Campaigns() {
     [busyId, setBusyId] = useState<string | null>(null),
     [feedError, setFeedError] = useState(""),
     c = game.state.campaigns.find((x) => x.id === selected);
+  const participantIds = game.state.agents
+    .filter((a) => a.campaign_id === selected)
+    .map((a) => a.id)
+    .sort()
+    .join(",");
   useEffect(() => {
     if (!selected || !game.ready || game.access.isPlayer) return;
     let active = true;
     setSeenAt(localStorage.getItem(`fenix.alternate.seen.${selected}`) || "");
+    const subscriptions = participantIds
+      .split(",")
+      .filter(Boolean)
+      .map((id) => {
+        const token = getShareCredentials(id)?.masterToken;
+        return {
+          id,
+          token,
+          sync: token ? createSharedAgentSync(id, token, true) : null,
+          events: [] as AlternateEdit[],
+          infection: inactiveInfection,
+        };
+      });
     async function refresh() {
-      const participants = game.state.agents.filter(
-        (a) => a.campaign_id === selected,
-      );
       const results = await Promise.allSettled(
-        participants.map(async (a) => {
-          const token = getShareCredentials(a.id)?.masterToken;
-          if (!token)
-            return { agentId: a.id, events: [], infection: inactiveInfection };
-          const payload = await loadSharedAgent(a.id, token);
-          return {
-            agentId: a.id,
-            events: payload.role === "master" ? payload.alternate_edits : [],
-            infection: payload.infection,
-          };
+        subscriptions.map(async (entry) => {
+          const token = getShareCredentials(entry.id)?.masterToken;
+          if (token !== entry.token) {
+            entry.token = token;
+            entry.sync = token
+              ? createSharedAgentSync(entry.id, token, true)
+              : null;
+          }
+          const payload = await entry.sync?.();
+          if (payload?.alternate_edits) entry.events = payload.alternate_edits;
+          if (payload?.infection) entry.infection = payload.infection;
+          return payload != null;
         }),
       );
       if (!active) return;
-      const loaded = results.flatMap((result) =>
-        result.status === "fulfilled" ? [result.value] : [],
-      );
-      setEvents(
-        loaded
-          .flatMap((item) => item.events)
-          .sort((a, b) => b.created_at.localeCompare(a.created_at)),
-      );
-      setInfections(
-        Object.fromEntries(
-          loaded.map((item) => [item.agentId, item.infection]),
-        ),
-      );
+      if (results.some((r) => r.status === "fulfilled" && r.value)) {
+        setEvents(
+          subscriptions
+            .flatMap((entry) => entry.events)
+            .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+        );
+        setInfections(
+          Object.fromEntries(
+            subscriptions.map((entry) => [entry.id, entry.infection]),
+          ),
+        );
+      }
+      const failed = results.some((r) => r.status === "rejected");
       setFeedError(
-        results.some((result) => result.status === "rejected")
+        failed
           ? "Não foi possível atualizar todos os avisos. Verifique os links publicados neste navegador."
           : "",
       );
+      if (failed) throw Error("Falha ao sincronizar avisos");
     }
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), 10000);
+    setEvents([]);
+    setInfections({});
+    const stop = startVisiblePolling(refresh, 10000);
     return () => {
       active = false;
-      window.clearInterval(interval);
+      stop();
     };
-  }, [selected, game.ready, game.access.isPlayer, game.state.agents]);
+  }, [selected, game.ready, game.access.isPlayer, participantIds]);
 
   async function enableAlternate(agentId: string, campaign: Campaign) {
     if (!isApocalypsisCampaign(campaign)) return;

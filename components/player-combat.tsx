@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { Dices, Swords } from "lucide-react";
 import { useGame } from "./game-shell";
 import {
-  loadPlayerCombat,
+  createPlayerCombatSync,
   setPlayerInitiative,
   type PlayerCombat as Combat,
 } from "@/lib/shared-combat";
 import { effectiveAttributes, skillBonus, type Agent } from "@/lib/rules";
 import { alternateAgent } from "@/lib/alternate";
+import { startVisiblePolling } from "@/lib/polling";
 
 export default function PlayerCombat({
   agent,
@@ -27,27 +28,30 @@ export default function PlayerCombat({
   useEffect(() => {
     let active = true,
       fetching = false;
+    let sync = createPlayerCombatSync(agent.id, token);
     async function refresh() {
       if (lock.current || fetching) return;
       fetching = true;
       const version = request.current;
       try {
-        const next = await loadPlayerCombat(agent.id, token);
+        const next = await sync();
         if (active && version === request.current && !lock.current) {
-          setCombat(next);
+          if (next !== undefined) setCombat(next);
           setError("");
+        } else {
+          sync = createPlayerCombatSync(agent.id, token);
         }
       } catch (reason) {
         if (active) setError((reason as Error).message);
+        throw reason;
       } finally {
         fetching = false;
       }
     }
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 2500);
+    const stop = startVisiblePolling(refresh, 2500);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      stop();
     };
   }, [agent.id, token]);
   const mine = combat?.participants.find((p) => p.mine);

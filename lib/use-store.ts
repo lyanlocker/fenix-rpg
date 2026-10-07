@@ -95,14 +95,16 @@ export function useStore() {
     const token = explicitShareToken || getShareCredentials(a.id)?.masterToken;
     if (token) await saveSharedAgent(a, token);
   }
-  const mergeSharedAgent = useCallback((a: Agent, rolls: Roll[]) => {
+  const mergeSharedAgent = useCallback((a: Agent | null, rolls: Roll[]) => {
     setState((current) => {
       const rollMap = new Map(
         [...rolls, ...current.rolls].map((roll) => [roll.id, roll]),
       );
       return {
         ...current,
-        agents: [a, ...current.agents.filter((value) => value.id !== a.id)],
+        agents: a
+          ? [a, ...current.agents.filter((value) => value.id !== a.id)]
+          : current.agents,
         rolls: [...rollMap.values()]
           .sort((left, right) =>
             right.created_at.localeCompare(left.created_at),

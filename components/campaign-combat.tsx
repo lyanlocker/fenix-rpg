@@ -32,6 +32,7 @@ import {
   adjustSharedCombatHp,
   combatMasterKey,
   loadMasterCombat,
+  createMasterCombatSync,
   saveMasterCombat,
   clearSharedCombat,
   withCombatRevision,
@@ -39,6 +40,7 @@ import {
 import { conditionDefinitions } from "@/lib/conditions";
 import type { Agent } from "@/lib/rules";
 import type { Encounter, Participant } from "@/lib/model";
+import { startVisiblePolling } from "@/lib/polling";
 
 export default function CampaignCombat({ campaignId }: { campaignId: string }) {
   const game = useGame();
@@ -50,6 +52,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     [hpAmount, setHpAmount] = useState("1"),
     [target, setTarget] = useState("");
   const lock = useRef(false);
+  const actionVersion = useRef(0);
   const remoteRevision = useRef(0);
   const remoteEncounterId = useRef<string | null>(null);
   const encounters = game.state.encounters.filter(
@@ -63,33 +66,45 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     if (!game.ready || game.access.isPlayer) return;
     let active = true,
       fetching = false;
+    let sync: ReturnType<typeof createMasterCombatSync> | undefined;
+    let syncKey: string | undefined;
     async function refresh() {
       const key = combatMasterKey(campaignId);
       if (!key || lock.current || fetching) return;
+      if (syncKey !== key) {
+        sync = createMasterCombatSync(campaignId, key);
+        syncKey = key;
+      }
       fetching = true;
+      const version = actionVersion.current;
       try {
-        const payload = await loadMasterCombat(campaignId, key);
-        if (!active || lock.current) return;
+        const payload = await sync!();
+        if (!active || lock.current || version !== actionVersion.current) {
+          syncKey = undefined;
+          return;
+        }
+        if (!payload) return;
         remoteRevision.current = payload.revision;
         remoteEncounterId.current = payload.encounter?.id || null;
         const next = withCombatRevision(payload);
         if (next) game.mergeSharedEncounter(next);
       } catch (error) {
         if (active) game.setNotice((error as Error).message);
+        throw error;
       } finally {
         fetching = false;
       }
     }
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 2500);
+    const stop = startVisiblePolling(refresh, 2500);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      stop();
     };
   }, [campaignId, game.ready, game.access.isPlayer, game.mergeSharedEncounter]);
   async function run(action: () => Promise<void>) {
     if (lock.current || game.access.isPlayer || !game.ready) return;
     lock.current = true;
+    actionVersion.current++;
     setBusy(true);
     try {
       await action();
