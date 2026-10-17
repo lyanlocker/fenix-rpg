@@ -29,6 +29,7 @@ export default function PlayerCombat({
     let active = true,
       fetching = false;
     let sync = createPlayerCombatSync(agent.id, token);
+    let pollingInterval = 20_000; // Outside combat, check for a newly started encounter.
     async function refresh() {
       if (lock.current || fetching) return;
       fetching = true;
@@ -36,7 +37,10 @@ export default function PlayerCombat({
       try {
         const next = await sync();
         if (active && version === request.current && !lock.current) {
-          if (next !== undefined) setCombat(next);
+          if (next !== undefined) {
+            setCombat(next);
+            pollingInterval = next?.active ? 5_000 : 20_000;
+          }
           setError("");
         } else {
           sync = createPlayerCombatSync(agent.id, token);
@@ -48,7 +52,7 @@ export default function PlayerCombat({
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 2500);
+    const stop = startVisiblePolling(refresh, () => pollingInterval);
     return () => {
       active = false;
       stop();
