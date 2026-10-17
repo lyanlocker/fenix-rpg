@@ -131,25 +131,26 @@ export default function CharacterSheet({ id }: { id: string }) {
     let active = true;
     let sync = createSharedAgentSync(id, token);
     async function refresh() {
-      if (mutations.current.active) return;
+      if (mutations.current.active) return true;
       const version = mutations.current.version;
       try {
         const shared = await sync();
-        if (!active) return;
+        if (!active) return false;
         if (mutations.current.active || mutations.current.version !== version) {
           sync = createSharedAgentSync(id, token as string);
-          return;
+          return true;
         }
         if (shared?.agent || shared?.rolls?.length)
           game.mergeSharedAgent(shared.agent || null, shared.rolls || []);
         if (shared?.infection) setInfection(shared.infection);
         setSharedError("");
+        return shared !== null;
       } catch (reason) {
         if (active) setSharedError((reason as Error).message);
         throw reason;
       }
     }
-    const stop = startVisiblePolling(refresh, 2500);
+    const stop = startVisiblePolling(refresh, 5000, 15000);
     return () => {
       active = false;
       stop();

@@ -92,6 +92,7 @@ export default function Campaigns() {
           : "",
       );
       if (failed) throw Error("Falha ao sincronizar avisos");
+      return results.some((r) => r.status === "fulfilled" && r.value);
     }
     setEvents([]);
     setInfections({});
