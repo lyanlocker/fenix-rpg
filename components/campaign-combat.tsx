@@ -70,7 +70,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     let syncKey: string | undefined;
     async function refresh() {
       const key = combatMasterKey(campaignId);
-      if (!key || lock.current || fetching) return;
+      if (!key) return false;
+      if (lock.current || fetching) return true;
       if (syncKey !== key) {
         sync = createMasterCombatSync(campaignId, key);
         syncKey = key;
@@ -81,13 +82,14 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         const payload = await sync!();
         if (!active || lock.current || version !== actionVersion.current) {
           syncKey = undefined;
-          return;
+          return true;
         }
-        if (!payload) return;
+        if (!payload) return false;
         remoteRevision.current = payload.revision;
         remoteEncounterId.current = payload.encounter?.id || null;
         const next = withCombatRevision(payload);
         if (next) game.mergeSharedEncounter(next);
+        return true;
       } catch (error) {
         if (active) game.setNotice((error as Error).message);
         throw error;
@@ -95,7 +97,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 2500);
+    const stop = startVisiblePolling(refresh, 5000);
     return () => {
       active = false;
       stop();
