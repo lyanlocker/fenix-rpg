@@ -54,9 +54,11 @@ export async function rpc<T>(name: string, body: Record<string, unknown>) {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(
-      payload?.message || "Não foi possível acessar a ficha compartilhada.",
-    );
+    const error = new Error(
+      payload?.message || `Não foi possível acessar a ficha compartilhada (HTTP ${response.status}).`,
+    ) as Error & { status: number };
+    error.status = response.status;
+    throw error;
   }
   return payload as T;
 }
