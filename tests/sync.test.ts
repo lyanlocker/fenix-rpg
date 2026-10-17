@@ -40,6 +40,7 @@ test("polling waits for completion, suspends hidden pages and resumes once", asy
       });
     },
     2500,
+    60000,
     env,
   );
   assert.equal(calls, 1);
@@ -68,6 +69,7 @@ test("polling backs off on failure and resets after successful synchronization",
       if (failed) throw Error("offline");
     },
     2500,
+    60000,
     env,
   );
   await flush();
@@ -156,5 +158,45 @@ test("shared patches preserve both portraits and never replay cached sheets on a
     assert.equal(requests.at(-1)?.known_versions, null);
   } finally {
     globalThis.fetch = original;
+  }
+});
+
+
+test("quiet responses increase the pause but stop at the idle ceiling", async () => {
+  const { timers, env } = environment();
+  const stop = startVisiblePolling(async () => false, 2500, 15000, env);
+  await flush();
+  let first = [...timers.values()][0];
+  assert.equal(first.delay, 5000);
+  timers.clear();
+  first.callback();
+  await flush();
+  first = [...timers.values()][0];
+  assert.equal(first.delay, 10000);
+  timers.clear();
+  first.callback();
+  await flush();
+  assert.equal([...timers.values()][0].delay, 15000);
+  stop();
+});
+
+test("HTTP 402 quota and 429 throttling errors enforce longer cooldowns", async () => {
+  for (const [status, delay] of [[402, 15 * 60_000], [429, 5 * 60_000]]) {
+    const { page, timers, env } = environment();
+    let requests = 0;
+    const stop = startVisiblePolling(async () => {
+      requests++;
+      throw Object.assign(new Error("quota"), { status });
+    }, 2500, 15000, env);
+    await flush();
+    assert.equal(requests, 1);
+    assert.ok([...timers.values()][0].delay >= delay - 1000);
+    page.hidden = true;
+    page.dispatchEvent(new Event("visibilitychange"));
+    page.hidden = false;
+    page.dispatchEvent(new Event("visibilitychange"));
+    assert.equal(requests, 1);
+    assert.ok([...timers.values()][0].delay >= delay - 1000);
+    stop();
   }
 });
