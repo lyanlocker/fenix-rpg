@@ -35,7 +35,10 @@ export function startVisiblePolling(
           () => void tick(),
           pending
             ? 0
-            : Math.min(60000, intervalMs * 2 ** (failures || unchangedChecks)),
+            : Math.min(
+                60000,
+                intervalMs * 2 ** (failures > 0 ? failures : unchangedChecks),
+              ),
         );
       }
       pending = false;
