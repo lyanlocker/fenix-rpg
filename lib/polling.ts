@@ -1,5 +1,7 @@
 // Schedule the next request after completion, and stop while the page is hidden.
-// A visibility change triggers an immediate check without overlapping requests.
+// If refresh explicitly returns false (no data changed), progressively slow down
+// to one check per minute. A real update, tab re-entry or user mutation resumes
+// frequent checks. This avoids thousands of unnecessary Supabase requests.
 export function startVisiblePolling(
   refresh: () => Promise<unknown>,
   intervalMs: number,
@@ -10,6 +12,7 @@ export function startVisiblePolling(
   let pending = false;
   let timer: number | undefined;
   let failures = 0;
+  let unchangedChecks = 0;
   const { document: page, window: clock } = environment;
   async function tick() {
     if (stopped || page.hidden) return;
@@ -20,8 +23,9 @@ export function startVisiblePolling(
     if (timer !== undefined) clock.clearTimeout(timer);
     running = true;
     try {
-      await refresh();
+      const changed = await refresh();
       failures = 0;
+      unchangedChecks = changed === false ? Math.min(unchangedChecks + 1, 5) : 0;
     } catch {
       failures = Math.min(failures + 1, 4);
     } finally {
@@ -29,7 +33,9 @@ export function startVisiblePolling(
       if (!stopped && !page.hidden) {
         timer = clock.setTimeout(
           () => void tick(),
-          pending ? 0 : Math.min(30000, intervalMs * 2 ** failures),
+          pending
+            ? 0
+            : Math.min(60000, intervalMs * 2 ** (failures || unchangedChecks)),
         );
       }
       pending = false;
@@ -37,7 +43,10 @@ export function startVisiblePolling(
   }
   function visibility() {
     if (timer !== undefined) clock.clearTimeout(timer);
-    if (!page.hidden) void tick();
+    if (!page.hidden) {
+      unchangedChecks = 0;
+      void tick();
+    }
   }
   page.addEventListener("visibilitychange", visibility);
   void tick();
