@@ -14,6 +14,7 @@ export function startVisiblePolling(
   let timer: number | undefined;
   let failures = 0;
   let unchangedChecks = 0;
+  let cooldownUntil = 0;
   const { document: page, window: clock } = environment;
   async function tick() {
     if (stopped || page.hidden) return;
@@ -22,23 +23,32 @@ export function startVisiblePolling(
       return;
     }
     if (timer !== undefined) clock.clearTimeout(timer);
+    if (Date.now() < cooldownUntil) {
+      timer = clock.setTimeout(() => void tick(), cooldownUntil - Date.now());
+      return;
+    }
     running = true;
     try {
       const changed = await refresh();
       failures = 0;
+      cooldownUntil = 0;
       unchangedChecks = changed === false ? Math.min(unchangedChecks + 1, 5) : 0;
-    } catch {
+    } catch (error) {
       failures = Math.min(failures + 1, 4);
+      const status = (error as { status?: number } | null)?.status;
+      if (status === 402) cooldownUntil = Date.now() + 15 * 60_000;
+      if (status === 429) cooldownUntil = Date.now() + 5 * 60_000;
     } finally {
       running = false;
       if (!stopped && !page.hidden) {
+        const normalDelay = pending
+          ? 0
+          : failures > 0
+            ? Math.min(60000, intervalMs * 2 ** failures)
+            : Math.min(maxIdleMs, intervalMs * 2 ** unchangedChecks);
         timer = clock.setTimeout(
           () => void tick(),
-          pending
-            ? 0
-            : failures > 0
-              ? Math.min(60000, intervalMs * 2 ** failures)
-              : Math.min(maxIdleMs, intervalMs * 2 ** unchangedChecks),
+          Math.max(normalDelay, cooldownUntil - Date.now()),
         );
       }
       pending = false;
