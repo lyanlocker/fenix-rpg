@@ -68,6 +68,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       fetching = false;
     let sync: ReturnType<typeof createMasterCombatSync> | undefined;
     let syncKey: string | undefined;
+    let pollingInterval = 20_000;
     async function refresh() {
       const key = combatMasterKey(campaignId);
       if (!key || lock.current || fetching) return;
@@ -84,6 +85,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
           return;
         }
         if (!payload) return;
+        pollingInterval = payload.encounter?.started ? 5_000 : 20_000;
         remoteRevision.current = payload.revision;
         remoteEncounterId.current = payload.encounter?.id || null;
         const next = withCombatRevision(payload);
@@ -95,7 +97,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 2500);
+    const stop = startVisiblePolling(refresh, () => pollingInterval);
     return () => {
       active = false;
       stop();
