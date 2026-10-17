@@ -158,3 +158,43 @@ test("shared patches preserve both portraits and never replay cached sheets on a
     globalThis.fetch = original;
   }
 });
+
+
+test("dynamic polling slows down idle views without overlapping requests", async () => {
+  const { timers, env } = environment();
+  let interval = 20_000;
+  const stop = startVisiblePolling(async () => {}, () => interval, env);
+  await flush();
+  assert.equal([...timers.values()][0].delay, 20_000);
+  const previous = [...timers.values()][0];
+  timers.clear();
+  interval = 5_000;
+  previous.callback();
+  await flush();
+  assert.equal([...timers.values()][0].delay, 5_000);
+  stop();
+});
+
+test("quota errors pause automatic polling even when the tab is revisited", async () => {
+  const { page, timers, env } = environment();
+  let calls = 0;
+  const stop = startVisiblePolling(
+    async () => {
+      calls++;
+      throw Object.assign(new Error("quota"), { status: 402 });
+    },
+    2500,
+    env,
+  );
+  await flush();
+  assert.equal(calls, 1);
+  const delay = [...timers.values()][0].delay;
+  assert.ok(delay > 14 * 60_000);
+  page.hidden = true;
+  page.dispatchEvent(new Event("visibilitychange"));
+  page.hidden = false;
+  page.dispatchEvent(new Event("visibilitychange"));
+  assert.equal(calls, 1);
+  assert.ok([...timers.values()][0].delay > 14 * 60_000);
+  stop();
+});
