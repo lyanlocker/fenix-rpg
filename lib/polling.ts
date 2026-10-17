@@ -1,10 +1,11 @@
 // Schedule the next request after completion, and stop while the page is hidden.
 // If refresh explicitly returns false (no data changed), progressively slow down
-// to one check per minute. A real update, tab re-entry or user mutation resumes
+// to the configured idle ceiling. A real update or tab re-entry resumes
 // frequent checks. This avoids thousands of unnecessary Supabase requests.
 export function startVisiblePolling(
   refresh: () => Promise<unknown>,
   intervalMs: number,
+  maxIdleMs = 60000,
   environment = { document, window },
 ) {
   let stopped = false;
@@ -35,10 +36,9 @@ export function startVisiblePolling(
           () => void tick(),
           pending
             ? 0
-            : Math.min(
-                60000,
-                intervalMs * 2 ** (failures > 0 ? failures : unchangedChecks),
-              ),
+            : failures > 0
+              ? Math.min(60000, intervalMs * 2 ** failures)
+              : Math.min(maxIdleMs, intervalMs * 2 ** unchangedChecks),
         );
       }
       pending = false;
