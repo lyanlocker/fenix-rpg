@@ -95,7 +95,7 @@ export default function Campaigns() {
     }
     setEvents([]);
     setInfections({});
-    const stop = startVisiblePolling(refresh, 10000);
+    const stop = startVisiblePolling(refresh, 60000);
     return () => {
       active = false;
       stop();
