@@ -24,7 +24,7 @@ function environment() {
     timers,
     env: { document: page, window: clock } as unknown as Parameters<
       typeof startVisiblePolling
-    >[2],
+    >[3],
   };
 }
 
