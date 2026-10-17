@@ -91,7 +91,10 @@ export default function Campaigns() {
           ? "Não foi possível atualizar todos os avisos. Verifique os links publicados neste navegador."
           : "",
       );
-      if (failed) throw Error("Falha ao sincronizar avisos");
+      if (failed) {
+        const rejection = results.find((r) => r.status === "rejected");
+        if (rejection?.status === "rejected") throw rejection.reason;
+      }
       return results.some((r) => r.status === "fulfilled" && r.value);
     }
     setEvents([]);
