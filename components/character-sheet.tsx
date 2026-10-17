@@ -150,7 +150,7 @@ export default function CharacterSheet({ id }: { id: string }) {
         throw reason;
       }
     }
-    const stop = startVisiblePolling(refresh, 5000);
+    const stop = startVisiblePolling(refresh, 5000, 15000);
     return () => {
       active = false;
       stop();
