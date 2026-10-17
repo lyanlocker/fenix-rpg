@@ -30,7 +30,7 @@ export default function PlayerCombat({
       fetching = false;
     let sync = createPlayerCombatSync(agent.id, token);
     async function refresh() {
-      if (lock.current || fetching) return;
+      if (lock.current || fetching) return true;
       fetching = true;
       const version = request.current;
       try {
@@ -40,7 +40,9 @@ export default function PlayerCombat({
           setError("");
         } else {
           sync = createPlayerCombatSync(agent.id, token);
+          return true;
         }
+        return next !== undefined;
       } catch (reason) {
         if (active) setError((reason as Error).message);
         throw reason;
@@ -48,7 +50,7 @@ export default function PlayerCombat({
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 2500);
+    const stop = startVisiblePolling(refresh, 5000);
     return () => {
       active = false;
       stop();
