@@ -133,7 +133,7 @@ export default function Campaigns() {
       await saveSharedAgent(updated, credentials.masterToken);
       await game.save("agents", updated);
       game.setNotice(
-        "Face NEX 35 liberada. O jogador pode alternar tocando duas vezes na aparência do resumo.",
+        "Face NEX 35 liberada. O jogador pode usar o botão “Assumir face NEX 35” ou tocar duas vezes no retrato.",
       );
       setEvents((prev) => [
         {

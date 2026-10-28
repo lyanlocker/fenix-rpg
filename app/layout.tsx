@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./experience.css";
 import GameShell from "@/components/game-shell";
 export const metadata: Metadata = {
   title: "Fênix — Sua próxima história",

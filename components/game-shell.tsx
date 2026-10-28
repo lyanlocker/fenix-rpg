@@ -8,7 +8,16 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, X } from "lucide-react";
+import {
+  Flame,
+  X,
+  UsersRound,
+  BookOpen,
+  Skull,
+  Layers,
+  ShieldCheck,
+} from "lucide-react";
+import { ExperienceProvider } from "./experience";
 import { useStore } from "@/lib/use-store";
 import {
   accessHref as buildAccessHref,
@@ -26,6 +35,16 @@ export function useGame() {
   return game;
 }
 export default function GameShell({ children }: { children: ReactNode }) {
+  const path = usePathname();
+  if (path === "/apresentacao") return children;
+  return (
+    <ExperienceProvider>
+      <WorkspaceShell>{children}</WorkspaceShell>
+    </ExperienceProvider>
+  );
+}
+
+function WorkspaceShell({ children }: { children: ReactNode }) {
   const game = useStore(),
     path = usePathname(),
     [access, setAccess] = useState<AccessMode>({
@@ -56,7 +75,10 @@ export default function GameShell({ children }: { children: ReactNode }) {
           )}
         >
           <Flame size={24} />
-          FÊNIX
+          <span>
+            FÊNIX<small>ARQUIVOS DO IMPOSSÍVEL</small>
+          </span>
+          <b className="version-tag">2.0</b>
         </Link>
         <nav aria-label="Principal">
           {(access.isPlayer && access.agentId
@@ -83,12 +105,22 @@ export default function GameShell({ children }: { children: ReactNode }) {
                   : ""
               }
             >
+              {url === "/campanhas" ? (
+                <Layers size={16} />
+              ) : url === "/biblioteca" ? (
+                <BookOpen size={16} />
+              ) : url === "/ameacas" ? (
+                <Skull size={16} />
+              ) : (
+                <UsersRound size={16} />
+              )}
               {label}
             </Link>
           ))}
         </nav>
       </header>
       <div className="mode">
+        <ShieldCheck size={12} />
         {access.isPlayer
           ? "Modo jogador · ficha compartilhada e sincronizada"
           : "Sem cadastro · salvo neste navegador · exporte suas fichas para backup"}
@@ -106,7 +138,8 @@ export default function GameShell({ children }: { children: ReactNode }) {
       )}
       <main id="content">{children}</main>
       <footer className="site-footer">
-        Fênix · Fichas de Ordem Paranormal · Projeto independente
+        FÊNIX 2.0 · Toda história deixa uma marca.
+        <span>Fichas de Ordem Paranormal · Projeto independente</span>
       </footer>
     </Context.Provider>
   );

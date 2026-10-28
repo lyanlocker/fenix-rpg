@@ -1,5 +1,9 @@
 "use client";
 import RuleDetails from "./rule-details";
+import { motion } from "motion/react";
+import { useExperience } from "./experience";
+import ResourceStrip from "./resource-strip";
+import RollReveal from "./roll-reveal";
 import dynamic from "next/dynamic";
 const PlayerCombat = dynamic(() => import("./player-combat"));
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +18,8 @@ import {
   History,
   Copy,
   X,
+  Sparkles,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useGame } from "./game-shell";
 import {
@@ -84,6 +90,8 @@ const sections = [
   "Descrição",
 ];
 export default function CharacterSheet({ id }: { id: string }) {
+  const { reduced, duration, level } = useExperience();
+  const [faceTransition, setFaceTransition] = useState(0);
   const mutations = useRef({ version: 0, active: 0 });
   const game = useGame(),
     stored = game.state.agents.find((x) => x.id === id);
@@ -207,6 +215,7 @@ export default function CharacterSheet({ id }: { id: string }) {
             ? "Ritual"
             : "Item";
   async function run(fn: () => Promise<unknown>) {
+    if (mutations.current.active) return;
     mutations.current.version++;
     mutations.current.active++;
     setBusy(true);
@@ -235,6 +244,13 @@ export default function CharacterSheet({ id }: { id: string }) {
         ),
       ),
     );
+  }
+  function toggleFace() {
+    if (!faceAvailable || busy || mutations.current.active) return;
+    setOtherFace((current) => !current);
+    setFaceTransition((current) => current + 1);
+    setSection("Resumo");
+    setResult(null);
   }
   function test(s: string, bonus = 0, label = s) {
     void roll(
@@ -411,6 +427,48 @@ export default function CharacterSheet({ id }: { id: string }) {
           </button>
         </div>
       </div>
+      <div className="session-dock">
+        <ResourceStrip
+          key={otherFace && faceAvailable ? "alternate" : "main"}
+          agent={a}
+          maximums={max}
+          busy={busy}
+          onChange={(key, change) =>
+            void run(() => changeResource(key, change))
+          }
+          onAdjust={(key) => {
+            setAdjust(key);
+            setDelta(-1);
+          }}
+        />
+        <div className="session-shortcuts">
+          <span>
+            <Sparkles size={14} />
+            {otherFace && faceAvailable
+              ? "FACE NEX 35 ATIVA"
+              : "DOSSIÊ ORIGINAL"}
+          </span>
+          <div className="actions">
+            <button disabled={busy} onClick={() => test("Iniciativa")}>
+              <Dices size={14} />
+              Iniciativa
+            </button>
+            <button onClick={() => setSection("Armas")}>Armas</button>
+            <button onClick={() => setSection("Rituais")}>Rituais</button>
+            {faceAvailable && (
+              <button
+                disabled={busy}
+                className="face-switch"
+                aria-pressed={otherFace}
+                onClick={toggleFace}
+              >
+                <ArrowLeftRight size={14} />
+                {otherFace ? "Voltar à face original" : "Assumir face NEX 35"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
       <div
         className={`sheet-layout ${section === "Resumo" ? "overview-mode" : ""}`}
       >
@@ -435,31 +493,7 @@ export default function CharacterSheet({ id }: { id: string }) {
               </div>
             </section>
             <section className="panel">
-              <h2>Recursos</h2>
-              {resourceKeys(a).map((k) => (
-                <div className={"sheet-resource " + k} key={k}>
-                  <div>
-                    <label>{resourceLabels[k]}</label>
-                    <strong>
-                      {a.resources[k]} <small>/ {max[k]}</small>
-                    </strong>
-                  </div>
-                  <progress
-                    aria-label={resourceLabels[k]}
-                    value={a.resources[k]}
-                    max={max[k] || 1}
-                  />
-                  <button
-                    className="resource-action"
-                    onClick={() => {
-                      setAdjust(k);
-                      setDelta(-1);
-                    }}
-                  >
-                    Ajustar {resourceLabels[k].toLocaleLowerCase()}
-                  </button>
-                </div>
-              ))}
+              <h2>Defesas e condições</h2>
               {infectionFace && infection.enabled && (
                 <InfectionBar
                   infection={infection}
@@ -524,445 +558,455 @@ export default function CharacterSheet({ id }: { id: string }) {
               </button>
             ))}
           </nav>
-          {section === "Resumo" ? (
-            <CharacterOverview
-              agent={a}
-              maximums={max}
-              busy={busy}
-              onAttribute={(key) =>
-                void roll(attributeNames[key], a.attributes[key])
-              }
-              onSkill={(name) => test(name)}
-              onPortrait={(portrait) => save({ portrait })}
-              infection={infectionFace ? infection : undefined}
-              infectionBusy={busy || !sharedToken}
-              onInfectionAdjust={changeInfection}
-              onDoubleClickFace={
-                faceAvailable
-                  ? () => {
-                      setOtherFace((current) => !current);
-                      setSection("Resumo");
-                      setResult(null);
-                    }
-                  : undefined
-              }
-            />
-          ) : section === "Perícias" ? (
-            <section className="panel">
-              <div className="section-title">
-                <h2>Perícias</h2>
-                <input
-                  aria-label="Buscar perícia"
-                  placeholder="Buscar perícia…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-              </div>
-              <p className="hint">
-                O teste soma treinamento, ajuste de poder e bônus de acessórios
-                ativos.
-              </p>
-              <div className="skill-table">
-                {Object.entries(skillAttributes)
-                  .filter(([s]) =>
-                    s.toLocaleLowerCase().includes(q.toLocaleLowerCase()),
-                  )
-                  .map(([s, k]) => (
-                    <button
-                      key={s}
-                      disabled={busy}
-                      aria-label={`Rolar ${s}, bônus total ${skillBonus(a, s).total}`}
-                      title={`Treinamento +${skillBonus(a, s).training}; poder ${skillBonus(a, s).adjustment >= 0 ? "+" : ""}${skillBonus(a, s).adjustment}${skillBonus(
-                        a,
-                        s,
-                      )
-                        .sources.map(
-                          (source) => `; ${source.name} +${source.bonus}`,
-                        )
-                        .join("")}`}
-                      onClick={() => test(s)}
-                    >
-                      <span>{s}</span>
-                      <small>
-                        {k} {a.attributes[k]}
-                      </small>
-                      <b>+{skillBonus(a, s).total}</b>
-                      <Dices size={17} />
-                    </button>
-                  ))}
-              </div>
-            </section>
-          ) : section === "Descrição" ? (
-            <section className="panel">
-              <h2>História e anotações</h2>
-              <textarea
-                aria-label="História e anotações"
-                rows={14}
-                value={note ?? a.notes}
-                onChange={(e) => setNote(e.target.value)}
-              />
-              <button
-                disabled={busy || note === null}
-                className="primary"
-                onClick={() =>
-                  void run(async () => {
-                    await save({ notes: note ?? a.notes });
-                    setNote(null);
-                  })
+          <motion.div
+            key={`${section}-${otherFace && faceAvailable}`}
+            initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration }}
+          >
+            {section === "Resumo" ? (
+              <CharacterOverview
+                agent={a}
+                maximums={max}
+                busy={busy}
+                onAttribute={(key) =>
+                  void roll(attributeNames[key], effective[key])
                 }
-              >
-                Salvar anotações
-              </button>
-            </section>
-          ) : (
-            <section className="panel">
-              <div className="section-title">
-                <h2>{section}</h2>
-                <div className="actions">
-                  <button onClick={() => setCatalog(kind)}>Biblioteca</button>
-                  <button onClick={add}>
-                    <Plus size={16} />
-                    Adicionar
-                  </button>
+                onSkill={(name) => test(name)}
+                onPortrait={(portrait) => save({ portrait })}
+                infection={infectionFace ? infection : undefined}
+                infectionBusy={busy || !sharedToken}
+                onInfectionAdjust={changeInfection}
+                onDoubleClickFace={faceAvailable ? toggleFace : undefined}
+              />
+            ) : section === "Perícias" ? (
+              <section className="panel">
+                <div className="section-title">
+                  <h2>Perícias</h2>
+                  <input
+                    aria-label="Buscar perícia"
+                    placeholder="Buscar perícia…"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
                 </div>
-              </div>
-              {section === "Armas" && (
-                <div className="combat-tests">
-                  {[
-                    "Iniciativa",
-                    "Luta",
-                    "Pontaria",
-                    "Fortitude",
-                    "Reflexos",
-                    "Vontade",
-                  ].map((s) => (
-                    <button disabled={busy} key={s} onClick={() => test(s)}>
-                      <Dices size={15} />
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {section === "Inventário" && (
-                <p className="help">
-                  Espaços ocupados: <b>{inventorySpaces(a)}</b>. Capacidade:{" "}
-                  <b>{carryingCapacity(a)}</b>
-                  {effective.FOR !== a.attributes.FOR
-                    ? " (inclui +1 de Força por Pujança ativa)"
-                    : ""}
-                  .
-                  {inventorySpaces(a) > carryingCapacity(a)
-                    ? " Sobrecarregado: penalidade de carga; confira com o mestre."
-                    : ""}
+                <p className="hint">
+                  O teste soma treinamento, ajuste de poder e bônus de
+                  acessórios ativos.
                 </p>
-              )}
-              {section === "Armas" && (
-                <div className="accessory-toolbar">
-                  <strong>Acessórios</strong>
-                  <span>
-                    Vestimentas e utensílios também aparecem aqui para
-                    configurar perícias e maldições.
-                  </span>
+                <div className="skill-table">
+                  {Object.entries(skillAttributes)
+                    .filter(([s]) =>
+                      s.toLocaleLowerCase().includes(q.toLocaleLowerCase()),
+                    )
+                    .map(([s, k]) => (
+                      <button
+                        key={s}
+                        disabled={busy}
+                        aria-label={`Rolar ${s}, bônus total ${skillBonus(a, s).total}`}
+                        title={`Treinamento +${skillBonus(a, s).training}; poder ${skillBonus(a, s).adjustment >= 0 ? "+" : ""}${skillBonus(a, s).adjustment}${skillBonus(
+                          a,
+                          s,
+                        )
+                          .sources.map(
+                            (source) => `; ${source.name} +${source.bonus}`,
+                          )
+                          .join("")}`}
+                        onClick={() => test(s)}
+                      >
+                        <span>{s}</span>
+                        <small>
+                          {k} {a.attributes[k]}
+                        </small>
+                        <b>+{skillBonus(a, s).total}</b>
+                        <Dices size={17} />
+                      </button>
+                    ))}
+                </div>
+              </section>
+            ) : section === "Descrição" ? (
+              <section className="panel">
+                <h2>História e anotações</h2>
+                <textarea
+                  aria-label="História e anotações"
+                  rows={14}
+                  value={note ?? a.notes}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+                <button
+                  disabled={busy || note === null}
+                  className="primary"
+                  onClick={() =>
+                    void run(async () => {
+                      await save({ notes: note ?? a.notes });
+                      setNote(null);
+                    })
+                  }
+                >
+                  Salvar anotações
+                </button>
+              </section>
+            ) : (
+              <section className="panel">
+                <div className="section-title">
+                  <h2>{section}</h2>
                   <div className="actions">
-                    <button onClick={() => addAccessory("Vestimenta")}>
-                      + Vestimenta
-                    </button>
-                    <button onClick={() => addAccessory("Utensílio")}>
-                      + Utensílio
-                    </button>
-                    <button onClick={() => setCatalog("Item")}>
-                      Buscar na biblioteca
+                    <button onClick={() => setCatalog(kind)}>Biblioteca</button>
+                    <button onClick={add}>
+                      <Plus size={16} />
+                      Adicionar
                     </button>
                   </div>
                 </div>
-              )}
-              {items.length === 0 ? (
-                <div className="empty">
-                  <h3>
-                    {section === "Armas"
-                      ? "Nenhuma arma cadastrada"
-                      : "Nenhum registro nesta seção"}
-                  </h3>
-                  <p>
-                    Escolha conteúdo na Biblioteca ou adicione suas próprias
-                    opções.
+                {section === "Armas" && (
+                  <div className="combat-tests">
+                    {[
+                      "Iniciativa",
+                      "Luta",
+                      "Pontaria",
+                      "Fortitude",
+                      "Reflexos",
+                      "Vontade",
+                    ].map((s) => (
+                      <button disabled={busy} key={s} onClick={() => test(s)}>
+                        <Dices size={15} />
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {section === "Inventário" && (
+                  <p className="help">
+                    Espaços ocupados: <b>{inventorySpaces(a)}</b>. Capacidade:{" "}
+                    <b>{carryingCapacity(a)}</b>
+                    {effective.FOR !== a.attributes.FOR
+                      ? " (inclui +1 de Força por Pujança ativa)"
+                      : ""}
+                    .
+                    {inventorySpaces(a) > carryingCapacity(a)
+                      ? " Sobrecarregado: penalidade de carga; confira com o mestre."
+                      : ""}
                   </p>
-                  <button className="primary" onClick={() => setCatalog(kind)}>
-                    Abrir biblioteca
-                  </button>
-                </div>
-              ) : (
-                items.map((i) => (
-                  <article key={i.id} className="sheet-item">
-                    <div className="section-title">
-                      <div>
-                        <h3>{i.name}</h3>
-                        <p>
-                          {accessoryType(i)
-                            ? `${accessoryType(i)} · ${i.equipped === false ? "sem uso" : "em uso"} · ${i.accessorySkill || "perícia a definir"} +${i.accessoryBonus || 2} · Categoria ${effectiveCategory(i)}`
-                            : i.kind === "Arma"
-                              ? `${weaponDamage(i) || "Dano não definido"} · Crítico ${weaponCritical(i) || "—"} · ${weaponRange(i) || "Alcance não definido"} · ${weaponSpaces(i)} espaços · Categoria ${effectiveCategory(i)}`
-                              : i.kind === "Ritual"
-                                ? `${i.circle || 1}º círculo · ${i.element || "Elemento não definido"} · ${i.cost || 0} ${a.determination ? "PD" : "PE"}`
-                                : `${i.kind} · ${i.quantity} un.`}
-                        </p>
-                      </div>
-                      <div className="item-controls">
-                        <button
-                          disabled={busy}
-                          aria-label={"Editar " + i.name}
-                          onClick={() => setItem(i)}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          disabled={busy}
-                          aria-label={"Remover " + i.name + " da ficha"}
-                          title="Remover da ficha"
-                          onClick={() => removeItem(i.id)}
-                        >
-                          <Trash2 size={16} /> Remover
-                        </button>
-                      </div>
+                )}
+                {section === "Armas" && (
+                  <div className="accessory-toolbar">
+                    <strong>Acessórios</strong>
+                    <span>
+                      Vestimentas e utensílios também aparecem aqui para
+                      configurar perícias e maldições.
+                    </span>
+                    <div className="actions">
+                      <button onClick={() => addAccessory("Vestimenta")}>
+                        + Vestimenta
+                      </button>
+                      <button onClick={() => addAccessory("Utensílio")}>
+                        + Utensílio
+                      </button>
+                      <button onClick={() => setCatalog("Item")}>
+                        Buscar na biblioteca
+                      </button>
                     </div>
-                    {i.kind === "Arma" && (
-                      <>
-                        <div className="actions">
-                          <button
-                            className="primary"
-                            disabled={busy}
-                            onClick={() =>
-                              test(
-                                i.attackSkill || "Luta",
-                                weaponAttackBonus(i),
-                                "Ataque · " + i.name,
-                              )
-                            }
-                          >
-                            <Dices size={16} />
-                            Atacar · +
-                            {skillBonus(a, i.attackSkill || "Luta").total +
-                              weaponAttackBonus(i)}
-                          </button>
-                          <button
-                            disabled={busy || !weaponDamage(i)}
-                            onClick={() =>
-                              void roll(
-                                "Dano · " + i.name,
-                                1,
-                                0,
-                                weaponDamage(i),
-                              )
-                            }
-                          >
-                            <Dices size={16} />
-                            Rolar dano
-                          </button>
-                          <button onClick={() => setCurseTarget(i)}>
-                            Adicionar maldição
-                          </button>
-                          <button onClick={() => setModificationTarget(i)}>
-                            Adicionar modificação
-                          </button>
+                  </div>
+                )}
+                {items.length === 0 ? (
+                  <div className="empty">
+                    <h3>
+                      {section === "Armas"
+                        ? "Nenhuma arma cadastrada"
+                        : "Nenhum registro nesta seção"}
+                    </h3>
+                    <p>
+                      Escolha conteúdo na Biblioteca ou adicione suas próprias
+                      opções.
+                    </p>
+                    <button
+                      className="primary"
+                      onClick={() => setCatalog(kind)}
+                    >
+                      Abrir biblioteca
+                    </button>
+                  </div>
+                ) : (
+                  items.map((i) => (
+                    <article key={i.id} className="sheet-item">
+                      <div className="section-title">
+                        <div>
+                          <h3>{i.name}</h3>
+                          <p>
+                            {accessoryType(i)
+                              ? `${accessoryType(i)} · ${i.equipped === false ? "sem uso" : "em uso"} · ${i.accessorySkill || "perícia a definir"} +${i.accessoryBonus || 2} · Categoria ${effectiveCategory(i)}`
+                              : i.kind === "Arma"
+                                ? `${weaponDamage(i) || "Dano não definido"} · Crítico ${weaponCritical(i) || "—"} · ${weaponRange(i) || "Alcance não definido"} · ${weaponSpaces(i)} espaços · Categoria ${effectiveCategory(i)}`
+                                : i.kind === "Ritual"
+                                  ? `${i.circle || 1}º círculo · ${i.element || "Elemento não definido"} · ${i.cost || 0} ${a.determination ? "PD" : "PE"}`
+                                  : `${i.kind} · ${i.quantity} un.`}
+                          </p>
                         </div>
-                        {!!i.enhancements?.length && (
-                          <div className="weapon-curses">
-                            <div className="curse-summary">
-                              <strong>
-                                Maldições e modificações aplicadas
-                              </strong>
-                              <small>
-                                Categoria final {effectiveCategory(i)}
-                              </small>
-                            </div>
-                            {i.enhancements.map((enhancement) => (
-                              <article key={enhancement.id}>
-                                <div>
-                                  <strong>{enhancement.name}</strong>
-                                  <span>
-                                    {[
-                                      enhancement.subtype,
-                                      enhancement.element,
-                                      enhancement.source,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </span>
-                                  <button
-                                    disabled={busy}
-                                    aria-label={`Remover ${enhancement.name} de ${i.name}`}
-                                    onClick={() =>
-                                      void run(() =>
-                                        save({
-                                          inventory: a.inventory.map((entry) =>
-                                            entry.id === i.id
-                                              ? {
-                                                  ...entry,
-                                                  enhancements: (
-                                                    entry.enhancements || []
-                                                  ).filter(
-                                                    (value) =>
-                                                      value.id !==
-                                                      enhancement.id,
-                                                  ),
-                                                }
-                                              : entry,
-                                          ),
-                                        }),
-                                      )
-                                    }
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                                <p>{enhancement.notes}</p>
-                              </article>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {!!accessoryType(i) && (
-                      <>
-                        <div className="actions">
+                        <div className="item-controls">
                           <button
                             disabled={busy}
-                            onClick={() =>
-                              void run(async () => {
-                                if (
-                                  i.equipped === false &&
-                                  accessoryType(i) === "Vestimenta" &&
-                                  activeAccessories(a).filter(
-                                    (entry) =>
-                                      accessoryType(entry) === "Vestimenta",
-                                  ).length >= 2
-                                )
-                                  throw Error(
-                                    "Você já tem duas vestimentas ativas. Desative uma antes.",
-                                  );
-                                await save({
-                                  inventory: a.inventory.map((entry) =>
-                                    entry.id === i.id
-                                      ? {
-                                          ...entry,
-                                          equipped: i.equipped === false,
-                                        }
-                                      : entry,
-                                  ),
-                                });
-                              })
-                            }
+                            aria-label={"Editar " + i.name}
+                            onClick={() => setItem(i)}
                           >
-                            {i.equipped === false
-                              ? accessoryType(i) === "Vestimenta"
-                                ? "Vestir"
-                                : "Empunhar"
-                              : "Desativar bônus"}
+                            <Pencil size={16} />
                           </button>
-                          <button onClick={() => setCurseTarget(i)}>
-                            Adicionar maldição
+                          <button
+                            disabled={busy}
+                            aria-label={"Remover " + i.name + " da ficha"}
+                            title="Remover da ficha"
+                            onClick={() => removeItem(i.id)}
+                          >
+                            <Trash2 size={16} /> Remover
                           </button>
                         </div>
-                        <p className="item-meta">
-                          {i.accessorySkill
-                            ? `${i.accessorySkill} +${i.accessoryBonus || 2}`
-                            : "Configure a perícia no editor."}
-                          {i.extraSkill
-                            ? ` · ${i.extraSkill} +${i.extraBonus || 2} (função adicional)`
-                            : ""}
-                        </p>
-                        {!!i.enhancements?.length && (
-                          <div className="weapon-curses">
-                            <strong>
-                              Maldições no acessório · categoria{" "}
-                              {effectiveCategory(i)}
-                            </strong>
-                            {i.enhancements.map((enhancement) => (
-                              <article key={enhancement.id}>
-                                <div>
-                                  <strong>{enhancement.name}</strong>
-                                  <button
-                                    aria-label={`Remover ${enhancement.name} de ${i.name}`}
-                                    onClick={() =>
-                                      void run(async () =>
-                                        save({
-                                          inventory: a.inventory.map((entry) =>
-                                            entry.id === i.id
-                                              ? {
-                                                  ...entry,
-                                                  enhancements: (
-                                                    entry.enhancements || []
-                                                  ).filter(
-                                                    (value) =>
-                                                      value.id !==
-                                                      enhancement.id,
-                                                  ),
-                                                }
-                                              : entry,
-                                          ),
-                                        }),
-                                      )
-                                    }
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                                <p>{enhancement.notes}</p>
-                              </article>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {(i.kind === "Ritual" || i.kind === "Poder") && (
-                      <>
-                        <p className="item-meta">
-                          {[i.execution, i.range, i.target, i.duration]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                        <div className="actions">
-                          <button
-                            disabled={busy || !i.cost}
-                            onClick={() => setUseItem(i)}
-                          >
-                            Usar · {i.cost || 0} {a.determination ? "PD" : "PE"}
-                          </button>
-                          {i.damage && (
+                      </div>
+                      {i.kind === "Arma" && (
+                        <>
+                          <div className="actions">
                             <button
+                              className="primary"
                               disabled={busy}
-                              onClick={() => void roll(i.name, 1, 0, i.damage)}
+                              onClick={() =>
+                                test(
+                                  i.attackSkill || "Luta",
+                                  weaponAttackBonus(i),
+                                  "Ataque · " + i.name,
+                                )
+                              }
                             >
                               <Dices size={16} />
-                              Rolar {i.damage}
+                              Atacar · +
+                              {skillBonus(a, i.attackSkill || "Luta").total +
+                                weaponAttackBonus(i)}
                             </button>
+                            <button
+                              disabled={busy || !weaponDamage(i)}
+                              onClick={() =>
+                                void roll(
+                                  "Dano · " + i.name,
+                                  1,
+                                  0,
+                                  weaponDamage(i),
+                                )
+                              }
+                            >
+                              <Dices size={16} />
+                              Rolar dano
+                            </button>
+                            <button onClick={() => setCurseTarget(i)}>
+                              Adicionar maldição
+                            </button>
+                            <button onClick={() => setModificationTarget(i)}>
+                              Adicionar modificação
+                            </button>
+                          </div>
+                          {!!i.enhancements?.length && (
+                            <div className="weapon-curses">
+                              <div className="curse-summary">
+                                <strong>
+                                  Maldições e modificações aplicadas
+                                </strong>
+                                <small>
+                                  Categoria final {effectiveCategory(i)}
+                                </small>
+                              </div>
+                              {i.enhancements.map((enhancement) => (
+                                <article key={enhancement.id}>
+                                  <div>
+                                    <strong>{enhancement.name}</strong>
+                                    <span>
+                                      {[
+                                        enhancement.subtype,
+                                        enhancement.element,
+                                        enhancement.source,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </span>
+                                    <button
+                                      disabled={busy}
+                                      aria-label={`Remover ${enhancement.name} de ${i.name}`}
+                                      onClick={() =>
+                                        void run(() =>
+                                          save({
+                                            inventory: a.inventory.map(
+                                              (entry) =>
+                                                entry.id === i.id
+                                                  ? {
+                                                      ...entry,
+                                                      enhancements: (
+                                                        entry.enhancements || []
+                                                      ).filter(
+                                                        (value) =>
+                                                          value.id !==
+                                                          enhancement.id,
+                                                      ),
+                                                    }
+                                                  : entry,
+                                            ),
+                                          }),
+                                        )
+                                      }
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                  <p>{enhancement.notes}</p>
+                                </article>
+                              ))}
+                            </div>
                           )}
-                        </div>
-                      </>
-                    )}
-                    <RuleDetails item={i} />
-                  </article>
-                ))
-              )}
-            </section>
-          )}
+                        </>
+                      )}
+                      {!!accessoryType(i) && (
+                        <>
+                          <div className="actions">
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                void run(async () => {
+                                  if (
+                                    i.equipped === false &&
+                                    accessoryType(i) === "Vestimenta" &&
+                                    activeAccessories(a).filter(
+                                      (entry) =>
+                                        accessoryType(entry) === "Vestimenta",
+                                    ).length >= 2
+                                  )
+                                    throw Error(
+                                      "Você já tem duas vestimentas ativas. Desative uma antes.",
+                                    );
+                                  await save({
+                                    inventory: a.inventory.map((entry) =>
+                                      entry.id === i.id
+                                        ? {
+                                            ...entry,
+                                            equipped: i.equipped === false,
+                                          }
+                                        : entry,
+                                    ),
+                                  });
+                                })
+                              }
+                            >
+                              {i.equipped === false
+                                ? accessoryType(i) === "Vestimenta"
+                                  ? "Vestir"
+                                  : "Empunhar"
+                                : "Desativar bônus"}
+                            </button>
+                            <button onClick={() => setCurseTarget(i)}>
+                              Adicionar maldição
+                            </button>
+                          </div>
+                          <p className="item-meta">
+                            {i.accessorySkill
+                              ? `${i.accessorySkill} +${i.accessoryBonus || 2}`
+                              : "Configure a perícia no editor."}
+                            {i.extraSkill
+                              ? ` · ${i.extraSkill} +${i.extraBonus || 2} (função adicional)`
+                              : ""}
+                          </p>
+                          {!!i.enhancements?.length && (
+                            <div className="weapon-curses">
+                              <strong>
+                                Maldições no acessório · categoria{" "}
+                                {effectiveCategory(i)}
+                              </strong>
+                              {i.enhancements.map((enhancement) => (
+                                <article key={enhancement.id}>
+                                  <div>
+                                    <strong>{enhancement.name}</strong>
+                                    <button
+                                      aria-label={`Remover ${enhancement.name} de ${i.name}`}
+                                      onClick={() =>
+                                        void run(async () =>
+                                          save({
+                                            inventory: a.inventory.map(
+                                              (entry) =>
+                                                entry.id === i.id
+                                                  ? {
+                                                      ...entry,
+                                                      enhancements: (
+                                                        entry.enhancements || []
+                                                      ).filter(
+                                                        (value) =>
+                                                          value.id !==
+                                                          enhancement.id,
+                                                      ),
+                                                    }
+                                                  : entry,
+                                            ),
+                                          }),
+                                        )
+                                      }
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                  <p>{enhancement.notes}</p>
+                                </article>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {(i.kind === "Ritual" || i.kind === "Poder") && (
+                        <>
+                          <p className="item-meta">
+                            {[i.execution, i.range, i.target, i.duration]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                          <div className="actions">
+                            <button
+                              disabled={busy || !i.cost}
+                              onClick={() => setUseItem(i)}
+                            >
+                              Usar · {i.cost || 0}{" "}
+                              {a.determination ? "PD" : "PE"}
+                            </button>
+                            {i.damage && (
+                              <button
+                                disabled={busy}
+                                onClick={() =>
+                                  void roll(i.name, 1, 0, i.damage)
+                                }
+                              >
+                                <Dices size={16} />
+                                Rolar {i.damage}
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <RuleDetails item={i} />
+                    </article>
+                  ))
+                )}
+              </section>
+            )}
+          </motion.div>
         </div>
       </div>
-      {result && (
-        <div className="roll-result" role="status">
-          <Dices size={24} />
-          <div>
-            <strong>{result.label}</strong>
-            <small>
-              {result.expression} · [{result.dice.join(", ")}]
-            </small>
-          </div>
-          <b>{result.total}</b>
-          <button aria-label="Fechar resultado" onClick={() => setResult(null)}>
-            <X size={17} />
-          </button>
-        </div>
+      {!!faceTransition && !reduced && level === "full" && (
+        <motion.div
+          key={faceTransition}
+          className="face-transition"
+          aria-hidden
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.9, 0] }}
+          transition={{ duration: 0.65 }}
+        >
+          <Sparkles size={35} />
+          <span>
+            {otherFace
+              ? "OUTRA REALIDADE. A MESMA MARCA."
+              : "DE VOLTA À SUA IDENTIDADE."}
+          </span>
+        </motion.div>
       )}
+      <RollReveal result={result} onClose={() => setResult(null)} />
       {editing && (
         <AgentEditor
           agent={a}

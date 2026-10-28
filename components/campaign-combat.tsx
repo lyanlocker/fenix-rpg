@@ -9,6 +9,8 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import PresentationLauncher from "./presentation-launcher";
+import InitiativeStrip from "./initiative-strip";
 import { useGame } from "./game-shell";
 import { Modal } from "./ui";
 import { ThreatContent, ThreatDetails } from "./threats";
@@ -425,6 +427,14 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                 <Trash2 size={16} />
               </button>
             </div>
+            <PresentationLauncher
+              encounter={encounter}
+              campaign={
+                game.state.campaigns.find((c) => c.id === campaignId)?.name ||
+                "Fênix"
+              }
+            />
+            <InitiativeStrip encounter={encounter} agents={agents} />
             <div className="combat-turn" aria-live="polite">
               <div>
                 <small>RODADA {encounter.round}</small>
