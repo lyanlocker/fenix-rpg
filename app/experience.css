@@ -578,6 +578,8 @@ button:hover {
 }
 .overview-left h3,
 .overview-right h3 {
+  clip-path: none;
+  max-width: 100%;
   font-size: 10px;
   letter-spacing: 1.4px;
   text-transform: uppercase;

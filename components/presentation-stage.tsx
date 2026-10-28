@@ -16,13 +16,22 @@ export default function PresentationStage() {
     }
     const bus = new BroadcastChannel(`fenix-stage-${id}`);
     let lastUpdate = Date.now();
+    let hasFrame = false;
+    let ended = false;
     bus.onmessage = (event) => {
-      if (event.data?.type === "heartbeat") lastUpdate = Date.now();
+      if (ended) return;
+      if (event.data?.type === "heartbeat") {
+        lastUpdate = Date.now();
+        if (!hasFrame) bus.postMessage({ type: "ready" });
+      }
       if (event.data?.type === "stop") {
+        ended = true;
+        hasFrame = false;
         setFrame(null);
         setStatus("Transmissão encerrada");
       }
       if (event.data?.type === "frame" && event.data.frame) {
+        hasFrame = true;
         lastUpdate = Date.now();
         setFrame(event.data.frame);
         setStatus("");
@@ -30,7 +39,8 @@ export default function PresentationStage() {
     };
     bus.postMessage({ type: "ready" });
     const watchdog = setInterval(() => {
-      if (Date.now() - lastUpdate > 12000) {
+      if (!ended && Date.now() - lastUpdate > 12000) {
+        hasFrame = false;
         setFrame(null);
         setStatus("Conexão com a mesa pausada");
       }
