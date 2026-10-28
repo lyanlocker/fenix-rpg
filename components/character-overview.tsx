@@ -1,11 +1,11 @@
 "use client";
-import { Dices } from "lucide-react";
+import { useState } from "react";
+import { Dices, ChevronDown, Shield, Move, Hand } from "lucide-react";
 import { attributeNames } from "@/lib/creation";
 import { conditionByName } from "@/lib/conditions";
 import {
   attributes,
-  resourceKeys,
-  resourceLabels,
+  accessoryDefenseBonus,
   skillAttributes,
   skillBonus,
   effectiveAttributes,
@@ -39,6 +39,7 @@ export default function CharacterOverview({
   infectionBusy?: boolean;
   onInfectionAdjust?: (delta: -1 | 1) => void;
 }) {
+  const [portraitExpanded, setPortraitExpanded] = useState(false);
   const effective = effectiveAttributes(agent);
   const skills = Object.entries(skillAttributes).sort(([left], [right]) => {
       const trained =
@@ -50,7 +51,10 @@ export default function CharacterOverview({
       .slice(0, 4);
 
   return (
-    <section className="overview-card" aria-label="Resumo do personagem">
+    <section
+      className={`overview-card ${portraitExpanded ? "portrait-expanded" : ""} ${agent.portrait ? "has-portrait" : "no-portrait"}`}
+      aria-label="Resumo do personagem"
+    >
       <div className="overview-name">
         <p className="eyebrow">DOSSIÊ DO AGENTE</p>
         <h2>{agent.name}</h2>
@@ -104,6 +108,14 @@ export default function CharacterOverview({
         </div>
       </div>
 
+      <button
+        className="portrait-toggle"
+        aria-expanded={portraitExpanded}
+        onClick={() => setPortraitExpanded(!portraitExpanded)}
+      >
+        <ChevronDown size={16} />
+        {portraitExpanded ? "Recolher retrato" : "Expandir retrato"}
+      </button>
       <div className="overview-portrait">
         <PortraitPicker
           value={agent.portrait}
@@ -122,16 +134,35 @@ export default function CharacterOverview({
             {agent.className === "Sobrevivente" ? agent.stage : `${agent.nex}%`}
           </strong>
         </div>
+        <div className="overview-defense-grid">
+          <div>
+            <Shield size={16} />
+            <span>Defesa</span>
+            <strong>
+              {10 +
+                effective.AGI +
+                agent.defenseBonus +
+                accessoryDefenseBonus(agent)}
+            </strong>
+          </div>
+          <div>
+            <Move size={16} />
+            <span>Esquiva</span>
+            <strong>
+              {10 +
+                effective.AGI +
+                agent.defenseBonus +
+                accessoryDefenseBonus(agent) +
+                skillBonus(agent, "Reflexos").total}
+            </strong>
+          </div>
+          <div>
+            <Hand size={16} />
+            <span>Bloqueio</span>
+            <strong>{skillBonus(agent, "Fortitude").total}</strong>
+          </div>
+        </div>
         <div className="overview-resources">
-          {resourceKeys(agent).map((key) => (
-            <div key={key} className={key}>
-              <span>{resourceLabels[key]}</span>
-              <strong>
-                {agent.resources[key]} <small>/ {maximums[key]}</small>
-              </strong>
-              <progress value={agent.resources[key]} max={maximums[key] || 1} />
-            </div>
-          ))}
           {infection?.enabled && onInfectionAdjust && (
             <InfectionBar
               infection={infection}
