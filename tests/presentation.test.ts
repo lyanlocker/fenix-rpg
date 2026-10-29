@@ -73,6 +73,7 @@ test("the audience receives only explicit public fields, never hidden participan
     "participants",
     "roll",
     "round",
+    "spotlightId",
   ]);
   const serialized = JSON.stringify(frame);
   for (const privateField of [

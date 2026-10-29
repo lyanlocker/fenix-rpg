@@ -4,6 +4,31 @@ import { Flame, Maximize, UserRound, Dices } from "lucide-react";
 import Image from "next/image";
 import type { PresentationFrame } from "@/lib/presentation";
 
+function PublicPortrait({
+  src,
+  name,
+  large = false,
+}: {
+  src: string;
+  name: string;
+  large?: boolean;
+}) {
+  const [failed, setFailed] = useState("");
+  return src && failed !== src ? (
+    <Image
+      unoptimized
+      fill
+      sizes={large ? "(max-width: 650px) 90vw, 65vw" : "250px"}
+      src={src}
+      alt={name}
+      loading={large ? "eager" : "lazy"}
+      onError={() => setFailed(src)}
+    />
+  ) : (
+    <UserRound size={large ? 120 : 70} strokeWidth={1} />
+  );
+}
+
 /** Deliberately isolated from useGame/useStore and all Supabase clients. */
 export default function PresentationStage() {
   const [frame, setFrame] = useState<PresentationFrame | null>(null);
@@ -51,11 +76,12 @@ export default function PresentationStage() {
     };
   }, []);
   const current = frame?.participants.find((p) => p.id === frame.currentId);
+  const spotlight = frame?.participants.find((p) => p.id === frame.spotlightId);
   return (
     <main className="presentation-stage">
       <header>
         <span>
-          <Flame size={27} /> FÊNIX <small>2.0 / MESA AO VIVO</small>
+          <Flame size={27} /> FÊNIX <small>2.1 / MESA AO VIVO</small>
         </span>
         <button
           aria-label="Tela cheia"
@@ -103,24 +129,39 @@ export default function PresentationStage() {
                 : "Combate pausado"}
             </h2>
           </section>
-          <div className="stage-participants">
+          {spotlight && (
+            <section
+              className="stage-spotlight"
+              key={spotlight.id}
+              aria-label={`Em destaque: ${spotlight.name}`}
+              aria-live="polite"
+            >
+              <div className="stage-spotlight-art">
+                <PublicPortrait
+                  src={spotlight.portrait}
+                  name={spotlight.name}
+                  large
+                />
+              </div>
+              <div className="stage-spotlight-caption">
+                <span>EM DESTAQUE</span>
+                <h2>{spotlight.name}</h2>
+              </div>
+            </section>
+          )}
+          <div
+            className={`stage-participants ${spotlight ? "with-spotlight" : ""}`}
+          >
             {frame.participants.map((p) => (
               <article
                 key={p.id}
                 className={p.id === frame.currentId ? "is-current" : ""}
               >
                 <div className="stage-portrait">
-                  {p.portrait ? (
-                    <Image
-                      unoptimized
-                      fill
-                      sizes="250px"
-                      src={p.portrait}
-                      alt={p.name}
-                    />
-                  ) : (
-                    <UserRound size={70} strokeWidth={1} />
-                  )}
+                  <PublicPortrait
+                    src={p.thumbnail || p.portrait}
+                    name={p.name}
+                  />
                 </div>
                 <h3>{p.name}</h3>
                 <small>

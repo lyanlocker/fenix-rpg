@@ -1,5 +1,7 @@
 import type { Agent } from "./rules";
 import type { Encounter, Roll } from "./model";
+import type { Threat } from "./threats";
+import { participantPortrait } from "./participant-portrait";
 
 /** Explicit projection: never pass a workspace, sheet, encounter or credential to the audience. */
 export type PresentationFrame = {
@@ -7,7 +9,13 @@ export type PresentationFrame = {
   active: boolean;
   round: number;
   currentId: string | null;
-  participants: { id: string; name: string; portrait: string }[];
+  participants: {
+    id: string;
+    name: string;
+    portrait: string;
+    thumbnail?: string;
+  }[];
+  spotlightId: string | null;
   roll: {
     id: string;
     name: string;
@@ -24,6 +32,7 @@ export function presentationFrame(
   agents: Agent[],
   rolls: Roll[],
   since: string,
+  options: { threats?: Threat[]; spotlightId?: string | null } = {},
 ): PresentationFrame {
   const hiddenNames = new Set(
     encounter.participants.filter((p) => p.hidden).map((p) => p.name),
@@ -43,12 +52,19 @@ export function presentationFrame(
     active: encounter.active,
     round: encounter.round,
     currentId: current && !current.hidden ? current.id : null,
+    spotlightId: encounter.participants.some(
+      (p) => p.id === options.spotlightId && !p.hidden,
+    )
+      ? options.spotlightId || null
+      : null,
     participants: encounter.participants
       .filter((p) => !p.hidden)
       .map((p) => {
-        const agent = agents.find((a) => a.id === p.agentId);
-        const face = p.face === "alternate" ? agent?.alternate?.face : agent;
-        return { id: p.id, name: p.name, portrait: face?.portrait || "" };
+        return {
+          id: p.id,
+          name: p.name,
+          ...participantPortrait(p, agents, options.threats),
+        };
       }),
     roll: roll
       ? {

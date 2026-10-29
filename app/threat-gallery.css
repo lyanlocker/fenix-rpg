@@ -1,0 +1,235 @@
+/* Fênix 2.1 — original book illustrations, loaded only where they are used. */
+.threat-artwork {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 220px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 50% 75%,
+      color-mix(in srgb, var(--element, #d8ad7e) 12%, transparent),
+      transparent 70%
+    ),
+    #0c121d;
+}
+.threat-artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.threat-art-fallback {
+  display: grid;
+  justify-items: center;
+  gap: 15px;
+  padding: 18px;
+  color: #728097;
+}
+.threat-art-fallback span {
+  font-size: 11px;
+  text-align: center;
+}
+.threat-card {
+  overflow: hidden;
+  gap: 14px;
+}
+.threat-art-button {
+  display: block;
+  position: relative;
+  width: 100%;
+  padding: 0;
+  border: 1px solid #ffffff13;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.threat-art-button > span {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 5px;
+  background: #0b1019e8;
+  color: #e8d4ba;
+  font-size: 10px;
+}
+.threat-art-button:hover {
+  border-color: var(--element, var(--accent));
+}
+.threat-art-button:focus-visible,
+.combat-art-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.threat-symbol {
+  padding: 0 0 10px;
+}
+.threat-symbol > span {
+  font-size: 17px;
+}
+.threat-gallery-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.threat-gallery-options label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: #e9e0d2;
+  font-size: 13px;
+}
+.threat-gallery-options input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.threat-gallery-options > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.threat-detail-art {
+  margin: 0 0 20px;
+}
+.threat-detail-art .threat-artwork {
+  height: min(48vh, 420px);
+  border-radius: 8px;
+}
+.threat-detail-art figcaption,
+.threat-art-credit {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  margin: 10px 0;
+}
+.threat-art-viewer .threat-artwork {
+  height: min(68vh, 760px);
+  border-radius: 8px;
+}
+.combat-art-button {
+  flex: 0 0 58px;
+  width: 58px;
+  padding: 0;
+  border: 1px solid #4a3c31;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.combat-art-button .threat-artwork {
+  height: 64px;
+}
+.combat-art-button:hover {
+  border-color: var(--accent);
+}
+.presentation-focus-control {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  min-width: min(260px, 100%);
+  color: #d3c5b2;
+  font-size: 11px;
+}
+.presentation-focus-control select {
+  max-width: 100%;
+}
+.stage-spotlight {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
+  gap: 28px;
+  align-items: center;
+  margin: 0 0 24px;
+  padding: 24px;
+  border: 1px solid #8a6c4d;
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 35% 65%, #72533a40, transparent 70%), #101925;
+  animation: stage-art-enter 350ms ease-out;
+}
+.stage-spotlight-art {
+  position: relative;
+  height: clamp(260px, 52vh, 680px);
+  display: grid;
+  place-items: center;
+  color: #8793a6;
+}
+.stage-spotlight-art img {
+  object-fit: contain;
+}
+.stage-spotlight-caption {
+  min-width: 0;
+}
+.stage-spotlight-caption span {
+  color: #cfac7e;
+  font: 10px monospace;
+  letter-spacing: 3px;
+}
+.stage-spotlight-caption h2 {
+  font:
+    clamp(26px, 4vw, 54px) / 1.12 Georgia,
+    serif;
+  margin: 15px 0 0;
+  overflow-wrap: anywhere;
+}
+.stage-participants article {
+  animation: stage-art-enter 300ms ease-out;
+}
+.stage-participants.with-spotlight .stage-portrait {
+  height: 100px;
+}
+.stage-participants.with-spotlight h3 {
+  font-size: 14px;
+}
+@keyframes stage-art-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 650px) {
+  .threat-artwork {
+    height: 195px;
+  }
+  .stage-spotlight {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 15px;
+  }
+  .stage-spotlight-art {
+    height: 42vh;
+    min-height: 220px;
+  }
+  .stage-spotlight-caption {
+    text-align: center;
+    padding: 0 10px 12px;
+  }
+  .combat-art-button {
+    flex-basis: 44px;
+    width: 44px;
+  }
+  .combat-art-button .threat-artwork {
+    height: 52px;
+  }
+  .presentation-focus-control {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-spotlight,
+  .stage-participants article {
+    animation: none;
+  }
+}

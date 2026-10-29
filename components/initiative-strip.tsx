@@ -3,22 +3,24 @@ import { UserRound, EyeOff } from "lucide-react";
 import Image from "next/image";
 import type { Agent } from "@/lib/rules";
 import type { Encounter } from "@/lib/model";
+import type { Threat } from "@/lib/threats";
+import { participantPortrait } from "@/lib/participant-portrait";
 
 export default function InitiativeStrip({
   encounter,
   agents,
+  threats = [],
 }: {
   encounter: Encounter;
   agents: Agent[];
+  threats?: Threat[];
 }) {
   if (!encounter.participants.length) return null;
   return (
     <ol className="initiative-strip" aria-label="Ordem de iniciativa">
       {encounter.participants.map((p, index) => {
-        const agent = agents.find((a) => a.id === p.agentId);
-        const portrait = (
-          p.face === "alternate" ? agent?.alternate?.face : agent
-        )?.portrait;
+        const picture = participantPortrait(p, agents, threats);
+        const portrait = picture.thumbnail || picture.portrait;
         return (
           <li
             key={p.id}
