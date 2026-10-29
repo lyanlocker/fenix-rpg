@@ -4,19 +4,22 @@ import { Skull, Expand } from "lucide-react";
 import { threatArtwork } from "@/lib/threat-art";
 import { bookNames } from "@/lib/books";
 import { Modal } from "./ui";
+import type { ThreatArtwork as Artwork } from "@/lib/threat-art";
 
 export function ThreatArtwork({
   artId,
   name,
   full = false,
   decorative = false,
+  artwork,
 }: {
   artId?: string;
   name: string;
   full?: boolean;
   decorative?: boolean;
+  artwork?: Artwork;
 }) {
-  const art = threatArtwork(artId);
+  const art = artwork || threatArtwork(artId);
   const src = art ? (full ? art.src : art.thumbnail) : "";
   const [failed, setFailed] = useState("");
   return (
@@ -50,20 +53,24 @@ export function ThreatArtViewer({
   artId,
   name,
   onClose,
+  artwork,
 }: {
   artId: string;
   name: string;
   onClose: () => void;
+  artwork?: Artwork;
 }) {
-  const art = threatArtwork(artId);
+  const art = artwork || threatArtwork(artId);
   return (
     <Modal title={name} onClose={onClose} wide>
       <div className="threat-art-viewer">
-        <ThreatArtwork artId={artId} name={name} full />
+        <ThreatArtwork artId={artId} artwork={art} name={name} full />
       </div>
       {art && (
         <p className="threat-art-credit">
-          Ilustração original · {bookNames[art.bookId]} · página {art.page}
+          {art.bookId === "custom"
+            ? "Imagem personalizada do catálogo"
+            : `Ilustração original · ${bookNames[art.bookId]} · página ${art.page}`}
         </p>
       )}
     </Modal>
@@ -74,10 +81,12 @@ export function ThreatArtButton({
   artId,
   name,
   onOpen,
+  artwork,
 }: {
   artId: string;
   name: string;
   onOpen: () => void;
+  artwork?: Artwork;
 }) {
   return (
     <button
@@ -85,7 +94,7 @@ export function ThreatArtButton({
       aria-label={`Ampliar ilustração de ${name}`}
       onClick={onOpen}
     >
-      <ThreatArtwork artId={artId} name={name} decorative />
+      <ThreatArtwork artId={artId} artwork={artwork} name={name} decorative />
       <span>
         <Expand size={14} /> Ampliar arte
       </span>

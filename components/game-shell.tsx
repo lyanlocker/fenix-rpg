@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useMemo,
   type ReactNode,
 } from "react";
 import Link from "next/link";
@@ -19,12 +20,17 @@ import {
 } from "lucide-react";
 import { ExperienceProvider } from "./experience";
 import { useStore } from "@/lib/use-store";
+import { useThreatLibrary } from "@/lib/use-threat-library";
+import { mergeThreatCatalog } from "@/lib/threat-library";
+import type { Threat } from "@/lib/threats";
 import {
   accessHref as buildAccessHref,
   parseAccessMode,
   type AccessMode,
 } from "@/lib/access";
 type GameContext = ReturnType<typeof useStore> & {
+  threatLibrary: ReturnType<typeof useThreatLibrary>;
+  allThreats: Threat[];
   access: AccessMode;
   accessHref: (path: string) => string;
 };
@@ -59,7 +65,18 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
   function accessHref(target: string) {
     return buildAccessHref(target, access);
   }
-  const value: GameContext = { ...game, access, accessHref };
+  const threatLibrary = useThreatLibrary(access.ready && !access.isPlayer);
+  const allThreats = useMemo(
+    () => mergeThreatCatalog(game.state.threats, threatLibrary.library.threats),
+    [game.state.threats, threatLibrary.library.threats],
+  );
+  const value: GameContext = {
+    ...game,
+    access,
+    accessHref,
+    threatLibrary,
+    allThreats,
+  };
   return (
     <Context.Provider value={value}>
       <a className="skip" href="#content">
@@ -78,7 +95,7 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
           <span>
             FÊNIX<small>ARQUIVOS DO IMPOSSÍVEL</small>
           </span>
-          <b className="version-tag">2.1</b>
+          <b className="version-tag">2.3</b>
         </Link>
         <nav aria-label="Principal">
           {(access.isPlayer && access.agentId
@@ -138,7 +155,7 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
       )}
       <main id="content">{children}</main>
       <footer className="site-footer">
-        FÊNIX 2.1 · Toda história deixa uma marca.
+        FÊNIX 2.3 · Toda história deixa uma marca.
         <span>Fichas de Ordem Paranormal · Projeto independente</span>
       </footer>
     </Context.Provider>

@@ -3,6 +3,8 @@ import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { Plus, Search, Skull, Upload, Download } from "lucide-react";
 import { useGame } from "./game-shell";
 import { Modal, download } from "./ui";
+import { GithubThreatPanel } from "./github-threat-panel";
+import { ThreatImageEditor, ThreatImagePicker } from "./threat-image-editor";
 import { bookNames } from "@/lib/books";
 import { normalize } from "@/lib/catalog";
 import { threatArtwork, threatArtId, threatArtCount } from "@/lib/threat-art";
@@ -14,7 +16,6 @@ import {
 import {
   elementColors,
   parseThreatImport,
-  threatCatalog,
   threatElements,
   type Threat,
 } from "@/lib/threats";
@@ -28,13 +29,18 @@ export function ThreatDetails({
   onClose: () => void;
   onChoose?: (t: Threat) => void;
 }) {
+  const game = useGame();
+  const artId = threatArtId(t, game.threatLibrary.library.art);
+  const artwork = threatArtwork(artId, game.threatLibrary.library.art);
   return (
     <Modal title={t.name} onClose={onClose} wide>
-      {threatArtId(t) && (
+      {artId && (
         <figure className="threat-detail-art">
-          <ThreatArtwork artId={threatArtId(t)} name={t.name} full />
+          <ThreatArtwork artId={artId} artwork={artwork} name={t.name} full />
           <figcaption>
-            Ilustração original · página {threatArtwork(threatArtId(t))?.page}
+            {artwork?.bookId === "custom"
+              ? "Imagem personalizada do catálogo"
+              : `Ilustração original · página ${artwork?.page}`}
           </figcaption>
         </figure>
       )}
@@ -141,17 +147,29 @@ function ThreatEditor({
     },
   );
   const [error, setError] = useState("");
+  const [image, setImage] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const sync = game.threatLibrary;
   return (
     <Modal
       title={threat ? "Editar ameaça própria" : "Nova ameaça"}
-      onClose={onClose}
+      onClose={() => {
+        if (!sync.busy) onClose();
+      }}
       wide
     >
+      {!sync.connected && <GithubThreatPanel />}
       <form
         onSubmit={async (e) => {
           e.preventDefault();
+          if (processing || sync.busy || !sync.connected) return;
           try {
             const [checked] = parseThreatImport({ version: 1, threats: [t] });
+            await sync.publish({
+              action: "save",
+              threats: [checked],
+              ...(image ? { image } : {}),
+            });
             await game.save("threats", checked);
             onClose();
           } catch (e) {
@@ -159,6 +177,15 @@ function ThreatEditor({
           }
         }}
       >
+        <ThreatImagePicker
+          value={image}
+          original={
+            threatArtwork(threatArtId(t, sync.library.art), sync.library.art)
+              ?.thumbnail
+          }
+          onChange={setImage}
+          onBusy={setProcessing}
+        />
         <label>
           Nome
           <input
@@ -306,7 +333,12 @@ function ThreatEditor({
           </p>
         )}
         <footer className="modal-footer">
-          <button className="primary">Salvar ameaça</button>
+          <button
+            className="primary"
+            disabled={!sync.connected || sync.busy || processing}
+          >
+            {sync.busy ? "Enviando…" : "Salvar ameaça no GitHub"}
+          </button>
         </footer>
       </form>
     </Modal>
@@ -331,10 +363,11 @@ export function ThreatContent({
     [details, setDetails] = useState<Threat | null>(null),
     [editing, setEditing] = useState<Threat | "new" | null>(null);
   const upload = useRef<HTMLInputElement>(null);
-  const entries = useMemo(
-    () => [...game.state.threats, ...threatCatalog],
-    [game.state.threats],
-  );
+  const [imageEditing, setImageEditing] = useState<Threat | null>(null);
+  const [importing, setImporting] = useState(false);
+  const sync = game.threatLibrary;
+  const artFor = (t: Threat) => threatArtId(t, sync.library.art);
+  const entries = game.allThreats;
   const filtered = useMemo(
     () =>
       entries.filter(
@@ -344,10 +377,10 @@ export function ThreatContent({
             t.secondaryElements.includes(element)) &&
           (!book || t.bookId === book) &&
           (!vd || (t.vd !== null && t.vd <= Number(vd))) &&
-          (!onlyIllustrated || !!threatArtId(t)) &&
+          (!onlyIllustrated || !!threatArtId(t, sync.library.art)) &&
           normalize(t.name).includes(normalize(q)),
       ),
-    [entries, q, element, book, vd, onlyIllustrated],
+    [entries, q, element, book, vd, onlyIllustrated, sync.library.art],
   );
   const pages = Math.max(1, Math.ceil(filtered.length / 24)),
     current = Math.min(page, pages - 1);
@@ -357,20 +390,33 @@ export function ThreatContent({
   }
   async function importFile(file?: File) {
     if (!file) return;
+    let saved = 0;
+    setImporting(true);
     try {
+      if (!sync.connected)
+        throw Error("Conecte seu GitHub antes de importar criaturas.");
       if (file.size > 20000000) throw Error("O catálogo deve ter até 20 MB.");
-      const items = parseThreatImport(JSON.parse(await file.text()));
-      for (const t of items)
-        await game.save("threats", {
+      const items = parseThreatImport(JSON.parse(await file.text())).map(
+        (t) => ({
           ...t,
-          artId: threatArtId(t),
+          artId: artFor(t),
           id: crypto.randomUUID(),
           bookId: "custom",
-        });
-      game.setNotice(`${items.length} ameaças importadas.`);
+        }),
+      );
+      for (let index = 0; index < items.length; index += 20) {
+        const batch = items.slice(index, index + 20);
+        await sync.publish({ action: "save", threats: batch });
+        for (const t of batch) await game.save("threats", t);
+        saved += batch.length;
+      }
+      game.setNotice(`${saved} ameaças enviadas ao GitHub.`);
     } catch (e) {
-      game.setNotice((e as Error).message);
+      game.setNotice(
+        `${saved ? `${saved} ameaças já foram salvas. ` : ""}${(e as Error).message}`,
+      );
     } finally {
+      setImporting(false);
       if (upload.current) upload.current.value = "";
     }
   }
@@ -379,13 +425,17 @@ export function ThreatContent({
     return <p>O catálogo de ameaças está disponível para o mestre.</p>;
   return (
     <>
+      {!onChoose && <GithubThreatPanel />}
       {!onChoose && (
         <div className="threat-actions">
           <button className="primary" onClick={() => setEditing("new")}>
             <Plus size={16} />
             Nova ameaça
           </button>
-          <button onClick={() => upload.current?.click()}>
+          <button
+            disabled={importing || sync.busy || !sync.connected}
+            onClick={() => upload.current?.click()}
+          >
             <Upload size={16} />
             Importar
           </button>
@@ -393,7 +443,7 @@ export function ThreatContent({
             onClick={() =>
               download("fenix-ameacas.json", {
                 version: 1,
-                threats: entries.map((t) => ({ ...t, artId: threatArtId(t) })),
+                threats: entries.map((t) => ({ ...t, artId: artFor(t) })),
               })
             }
           >
@@ -506,13 +556,12 @@ export function ThreatContent({
             key={t.id}
             style={{ "--element": elementColors[t.element] } as CSSProperties}
           >
-            {threatArtId(t) ? (
+            {artFor(t) ? (
               <ThreatArtButton
-                artId={threatArtId(t)!}
+                artId={artFor(t)!}
+                artwork={threatArtwork(artFor(t), sync.library.art)}
                 name={t.name}
-                onOpen={() =>
-                  setArtPreview({ id: threatArtId(t)!, name: t.name })
-                }
+                onOpen={() => setArtPreview({ id: artFor(t)!, name: t.name })}
               />
             ) : (
               <ThreatArtwork name={t.name} />
@@ -548,12 +597,19 @@ export function ThreatContent({
                   Adicionar
                 </button>
               )}
-              {!onChoose && game.state.threats.some((x) => x.id === t.id) && (
+              {!onChoose && (
+                <button onClick={() => setImageEditing(t)}>
+                  {artFor(t) ? "Trocar imagem" : "Adicionar imagem"}
+                </button>
+              )}
+              {!onChoose && t.bookId === "custom" && (
                 <>
                   <button onClick={() => setEditing(t)}>Editar</button>
-                  <button onClick={() => void game.remove("threats", t.id)}>
-                    Remover
-                  </button>
+                  {!sync.library.threats.some((x) => x.id === t.id) && (
+                    <button onClick={() => void game.remove("threats", t.id)}>
+                      Remover local
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -582,8 +638,15 @@ export function ThreatContent({
       {artPreview && (
         <ThreatArtViewer
           artId={artPreview.id}
+          artwork={threatArtwork(artPreview.id, sync.library.art)}
           name={artPreview.name}
           onClose={() => setArtPreview(null)}
+        />
+      )}
+      {imageEditing && (
+        <ThreatImageEditor
+          threat={imageEditing}
+          onClose={() => setImageEditing(null)}
         />
       )}
       {details && (

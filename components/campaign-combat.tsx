@@ -16,7 +16,7 @@ import { threatArtId, threatArtwork } from "@/lib/threat-art";
 import { useGame } from "./game-shell";
 import { Modal } from "./ui";
 import { ThreatContent, ThreatDetails } from "./threats";
-import { parseThreatTest, threatCatalog, type Threat } from "@/lib/threats";
+import { parseThreatTest, type Threat } from "@/lib/threats";
 import {
   advanceTurn,
   changeHitPoints,
@@ -66,7 +66,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     (e) => e.campaign_id === campaignId,
   );
   const encounter = encounters.find((e) => e.id === selected) || encounters[0];
-  const threats = [...game.state.threats, ...threatCatalog];
+  const threats = game.allThreats;
+  const artOverrides = game.threatLibrary.library.art;
   const current = encounter?.participants[encounter.turn];
   const agents = game.state.agents.filter((a) => a.campaign_id === campaignId);
   useEffect(() => {
@@ -443,7 +444,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
             <InitiativeStrip
               encounter={encounter}
               agents={agents}
-              threats={game.state.threats}
+              threats={threats}
+              artOverrides={artOverrides}
             />
             <div className="combat-turn" aria-live="polite">
               <div>
@@ -609,7 +611,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
             <ol className="combat-participants">
               {encounter.participants.map((p, index) => {
                 const t = threats.find((t) => t.id === p.threatId);
-                const artId = t ? threatArtId(t) : p.threatId;
+                const artId = t ? threatArtId(t, artOverrides) : p.threatId;
                 const conditions = p.conditions
                   .split(",")
                   .map((s) => s.trim())
@@ -625,7 +627,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                   >
                     <div className="combat-participant-heading">
                       <span className="combat-position">{index + 1}</span>
-                      {artId && threatArtwork(artId) && (
+                      {artId && threatArtwork(artId, artOverrides) && (
                         <button
                           className="combat-art-button"
                           aria-label={`Ampliar ilustração de ${p.name}`}
@@ -635,6 +637,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                         >
                           <ThreatArtwork
                             artId={artId}
+                            artwork={threatArtwork(artId, artOverrides)}
                             name={p.name}
                             decorative
                           />
@@ -895,6 +898,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       {artPreview && (
         <ThreatArtViewer
           artId={artPreview.id}
+          artwork={threatArtwork(artPreview.id, artOverrides)}
           name={artPreview.name}
           onClose={() => setArtPreview(null)}
         />
