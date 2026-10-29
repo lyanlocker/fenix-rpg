@@ -5,6 +5,12 @@ import { useGame } from "./game-shell";
 import { Modal, download } from "./ui";
 import { bookNames } from "@/lib/books";
 import { normalize } from "@/lib/catalog";
+import { threatArtwork, threatArtId, threatArtCount } from "@/lib/threat-art";
+import {
+  ThreatArtwork,
+  ThreatArtButton,
+  ThreatArtViewer,
+} from "./threat-artwork";
 import {
   elementColors,
   parseThreatImport,
@@ -24,6 +30,14 @@ export function ThreatDetails({
 }) {
   return (
     <Modal title={t.name} onClose={onClose} wide>
+      {threatArtId(t) && (
+        <figure className="threat-detail-art">
+          <ThreatArtwork artId={threatArtId(t)} name={t.name} full />
+          <figcaption>
+            Ilustração original · página {threatArtwork(threatArtId(t))?.page}
+          </figcaption>
+        </figure>
+      )}
       <p className="threat-source">
         {bookNames[t.bookId] || "Ameaça própria"}
         {t.page > 0 ? ` · página ${t.page}` : ""}
@@ -306,6 +320,10 @@ export function ThreatContent({
 }) {
   const game = useGame();
   const [q, setQ] = useState(""),
+    [onlyIllustrated, setOnlyIllustrated] = useState(false),
+    [artPreview, setArtPreview] = useState<{ id: string; name: string } | null>(
+      null,
+    ),
     [element, setElement] = useState("Todos"),
     [book, setBook] = useState(""),
     [vd, setVd] = useState(""),
@@ -326,9 +344,10 @@ export function ThreatContent({
             t.secondaryElements.includes(element)) &&
           (!book || t.bookId === book) &&
           (!vd || (t.vd !== null && t.vd <= Number(vd))) &&
+          (!onlyIllustrated || !!threatArtId(t)) &&
           normalize(t.name).includes(normalize(q)),
       ),
-    [entries, q, element, book, vd],
+    [entries, q, element, book, vd, onlyIllustrated],
   );
   const pages = Math.max(1, Math.ceil(filtered.length / 24)),
     current = Math.min(page, pages - 1);
@@ -344,6 +363,7 @@ export function ThreatContent({
       for (const t of items)
         await game.save("threats", {
           ...t,
+          artId: threatArtId(t),
           id: crypto.randomUUID(),
           bookId: "custom",
         });
@@ -371,7 +391,10 @@ export function ThreatContent({
           </button>
           <button
             onClick={() =>
-              download("fenix-ameacas.json", { version: 1, threats: entries })
+              download("fenix-ameacas.json", {
+                version: 1,
+                threats: entries.map((t) => ({ ...t, artId: threatArtId(t) })),
+              })
             }
           >
             <Download size={16} />
@@ -462,6 +485,20 @@ export function ThreatContent({
       <p className="muted small">
         {filtered.length} ameaças encontradas · página {current + 1} de {pages}
       </p>
+      <div className="threat-gallery-options">
+        <label>
+          <input
+            type="checkbox"
+            checked={onlyIllustrated}
+            onChange={(event) => {
+              setOnlyIllustrated(event.target.checked);
+              setPage(0);
+            }}
+          />{" "}
+          Somente com ilustração
+        </label>
+        <span>{threatArtCount} artes dos livros no acervo</span>
+      </div>
       <div className="threat-grid">
         {filtered.slice(current * 24, current * 24 + 24).map((t) => (
           <article
@@ -469,8 +506,19 @@ export function ThreatContent({
             key={t.id}
             style={{ "--element": elementColors[t.element] } as CSSProperties}
           >
+            {threatArtId(t) ? (
+              <ThreatArtButton
+                artId={threatArtId(t)!}
+                name={t.name}
+                onOpen={() =>
+                  setArtPreview({ id: threatArtId(t)!, name: t.name })
+                }
+              />
+            ) : (
+              <ThreatArtwork name={t.name} />
+            )}
             <div className="threat-symbol">
-              <Skull size={30} />
+              <Skull size={18} />
               <span>{t.vd === null ? "Especial" : `VD ${t.vd}`}</span>
             </div>
             <div>
@@ -530,6 +578,13 @@ export function ThreatContent({
             Próxima
           </button>
         </div>
+      )}
+      {artPreview && (
+        <ThreatArtViewer
+          artId={artPreview.id}
+          name={artPreview.name}
+          onClose={() => setArtPreview(null)}
+        />
       )}
       {details && (
         <ThreatDetails

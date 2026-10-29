@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import PresentationLauncher from "./presentation-launcher";
 import InitiativeStrip from "./initiative-strip";
+import { ThreatArtwork, ThreatArtViewer } from "./threat-artwork";
+import { threatArtId, threatArtwork } from "@/lib/threat-art";
 import { useGame } from "./game-shell";
 import { Modal } from "./ui";
 import { ThreatContent, ThreatDetails } from "./threats";
@@ -50,6 +52,9 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     [name, setName] = useState(""),
     [picker, setPicker] = useState<"threat" | "agent" | "manual" | null>(null),
     [details, setDetails] = useState<Threat | null>(null),
+    [artPreview, setArtPreview] = useState<{ id: string; name: string } | null>(
+      null,
+    ),
     [busy, setBusy] = useState(false),
     [hpAmount, setHpAmount] = useState("1"),
     [target, setTarget] = useState("");
@@ -428,13 +433,18 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
               </button>
             </div>
             <PresentationLauncher
+              key={encounter.id}
               encounter={encounter}
               campaign={
                 game.state.campaigns.find((c) => c.id === campaignId)?.name ||
                 "Fênix"
               }
             />
-            <InitiativeStrip encounter={encounter} agents={agents} />
+            <InitiativeStrip
+              encounter={encounter}
+              agents={agents}
+              threats={game.state.threats}
+            />
             <div className="combat-turn" aria-live="polite">
               <div>
                 <small>RODADA {encounter.round}</small>
@@ -599,6 +609,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
             <ol className="combat-participants">
               {encounter.participants.map((p, index) => {
                 const t = threats.find((t) => t.id === p.threatId);
+                const artId = t ? threatArtId(t) : p.threatId;
                 const conditions = p.conditions
                   .split(",")
                   .map((s) => s.trim())
@@ -614,6 +625,21 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                   >
                     <div className="combat-participant-heading">
                       <span className="combat-position">{index + 1}</span>
+                      {artId && threatArtwork(artId) && (
+                        <button
+                          className="combat-art-button"
+                          aria-label={`Ampliar ilustração de ${p.name}`}
+                          onClick={() =>
+                            setArtPreview({ id: artId, name: p.name })
+                          }
+                        >
+                          <ThreatArtwork
+                            artId={artId}
+                            name={p.name}
+                            decorative
+                          />
+                        </button>
+                      )}
                       <div>
                         <strong>{p.name}</strong>
                         <small>
@@ -864,6 +890,13 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
           busy={busy}
           onClose={() => setPicker(null)}
           onAdd={(p) => void run(() => add(p))}
+        />
+      )}
+      {artPreview && (
+        <ThreatArtViewer
+          artId={artPreview.id}
+          name={artPreview.name}
+          onClose={() => setArtPreview(null)}
         />
       )}
       {details && (

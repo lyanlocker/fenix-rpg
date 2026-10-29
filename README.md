@@ -2,6 +2,8 @@
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. Não exige conta, não inicia sessão e não consulta dados privados do Supabase.
 
+Atualização **2.1 — Ameaças ilustradas**: 74 ilustrações originais, galeria com ampliação, miniaturas no combate do mestre e destaque na apresentação. Consulte [as notas da atualização](docs/FENIX-2.1.md) e [a cobertura das ilustrações](docs/AMEACAS-ILUSTRADAS.md).
+
 ## Rodar
 
 Node 22+; `npm ci`, `npm run dev`. Produção: `npm run build`, `npm start`.

@@ -19,6 +19,12 @@ export default function PresentationLauncher({
     null,
   );
   const channel = useRef<BroadcastChannel | null>(null);
+  const [spotlightId, setSpotlightId] = useState("");
+  const visibleParticipants = encounter.participants.filter((p) => !p.hidden);
+  useEffect(() => {
+    if (!encounter.participants.some((p) => p.id === spotlightId && !p.hidden))
+      setSpotlightId("");
+  }, [encounter.participants, spotlightId]);
   const payload = useMemo(
     () =>
       session
@@ -28,9 +34,18 @@ export default function PresentationLauncher({
             game.state.agents,
             game.state.rolls,
             session.since,
+            { threats: game.state.threats, spotlightId },
           )
         : null,
-    [campaign, encounter, game.state.agents, game.state.rolls, session],
+    [
+      campaign,
+      encounter,
+      game.state.agents,
+      game.state.rolls,
+      game.state.threats,
+      session,
+      spotlightId,
+    ],
   );
   const latest = useRef(payload);
   latest.current = payload;
@@ -132,10 +147,29 @@ export default function PresentationLauncher({
         {session ? "Reabrir apresentação" : "Abrir apresentação"}
       </button>
       {session && (
+        <label className="presentation-focus-control">
+          Destaque na apresentação
+          <select
+            value={spotlightId}
+            onChange={(event) => setSpotlightId(event.target.value)}
+          >
+            <option value="">Visão geral da mesa</option>
+            {visibleParticipants.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {session && (
         <button onClick={() => setSession(null)}>
           <Square size={13} />
           Encerrar transmissão
         </button>
+      )}
+      {session && spotlightId && (
+        <button onClick={() => setSpotlightId("")}>Voltar à visão geral</button>
       )}
       <small>
         Transmita a nova aba. Mantenha este combate aberto neste navegador.

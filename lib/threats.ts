@@ -1,6 +1,7 @@
 import raw from "./data/threat-catalog.json";
 import { z } from "zod";
 import type { Attribute } from "./rules";
+import { threatArtwork } from "./threat-art";
 export const threatElements = [
   "Sangue",
   "Morte",
@@ -12,6 +13,7 @@ export const threatElements = [
 export type ThreatElement = (typeof threatElements)[number];
 export type Threat = {
   id: string;
+  artId?: string;
   name: string;
   element: ThreatElement;
   secondaryElements: string[];
@@ -40,6 +42,11 @@ export const elementColors: Record<ThreatElement, string> = {
 const integer = z.number().int().min(0).max(1000000);
 const schema = z.object({
   id: z.string().max(200),
+  artId: z
+    .string()
+    .max(200)
+    .refine((id) => !!threatArtwork(id), "Ilustração não reconhecida.")
+    .optional(),
   name: z.string().trim().min(1).max(150),
   element: z.enum(threatElements),
   secondaryElements: z.array(z.string().max(50)).max(6),
