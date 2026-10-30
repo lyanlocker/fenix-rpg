@@ -1,5 +1,17 @@
 {
   "version": 1,
   "threats": [],
-  "art": {}
+  "art": {
+    "01-degolificada": {
+      "src": "/art/custom/7c645a3b6ecb41ec2993c40d45b3f0d9f6288a9599ca51eedb16c2748bc5314b.webp",
+      "thumbnail": "/art/custom/a4586a297159d22570af8368399e44c0407f773c0abd7552d9a09e5a6a9cc44f.webp",
+      "width": 616,
+      "height": 1024,
+      "thumbnailWidth": 192,
+      "thumbnailHeight": 320,
+      "bookId": "custom",
+      "page": 0,
+      "pdfPage": 0
+    }
+  }
 }
