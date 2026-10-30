@@ -2,6 +2,7 @@ import type { Agent } from "./rules";
 import type { Encounter, Roll } from "./model";
 import type { Threat } from "./threats";
 import { participantPortrait } from "./participant-portrait";
+import type { ThreatArtwork } from "./threat-art";
 
 /** Explicit projection: never pass a workspace, sheet, encounter or credential to the audience. */
 export type PresentationFrame = {
@@ -32,7 +33,11 @@ export function presentationFrame(
   agents: Agent[],
   rolls: Roll[],
   since: string,
-  options: { threats?: Threat[]; spotlightId?: string | null } = {},
+  options: {
+    threats?: Threat[];
+    spotlightId?: string | null;
+    artOverrides?: Record<string, ThreatArtwork>;
+  } = {},
 ): PresentationFrame {
   const hiddenNames = new Set(
     encounter.participants.filter((p) => p.hidden).map((p) => p.name),
@@ -63,7 +68,12 @@ export function presentationFrame(
         return {
           id: p.id,
           name: p.name,
-          ...participantPortrait(p, agents, options.threats),
+          ...participantPortrait(
+            p,
+            agents,
+            options.threats,
+            options.artOverrides,
+          ),
         };
       }),
     roll: roll

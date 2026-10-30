@@ -45,7 +45,14 @@ const schema = z.object({
   artId: z
     .string()
     .max(200)
-    .refine((id) => !!threatArtwork(id), "Ilustração não reconhecida.")
+    .refine(
+      (id) =>
+        !!threatArtwork(id) ||
+        /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+          id,
+        ),
+      "Ilustração não reconhecida.",
+    )
     .optional(),
   name: z.string().trim().min(1).max(150),
   element: z.enum(threatElements),

@@ -5,21 +5,24 @@ import type { Agent } from "@/lib/rules";
 import type { Encounter } from "@/lib/model";
 import type { Threat } from "@/lib/threats";
 import { participantPortrait } from "@/lib/participant-portrait";
+import type { ThreatArtwork } from "@/lib/threat-art";
 
 export default function InitiativeStrip({
   encounter,
   agents,
   threats = [],
+  artOverrides,
 }: {
   encounter: Encounter;
   agents: Agent[];
   threats?: Threat[];
+  artOverrides?: Record<string, ThreatArtwork>;
 }) {
   if (!encounter.participants.length) return null;
   return (
     <ol className="initiative-strip" aria-label="Ordem de iniciativa">
       {encounter.participants.map((p, index) => {
-        const picture = participantPortrait(p, agents, threats);
+        const picture = participantPortrait(p, agents, threats, artOverrides);
         const portrait = picture.thumbnail || picture.portrait;
         return (
           <li

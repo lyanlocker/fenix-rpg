@@ -34,7 +34,11 @@ export default function PresentationLauncher({
             game.state.agents,
             game.state.rolls,
             session.since,
-            { threats: game.state.threats, spotlightId },
+            {
+              threats: game.allThreats,
+              spotlightId,
+              artOverrides: game.threatLibrary.library.art,
+            },
           )
         : null,
     [
@@ -42,7 +46,8 @@ export default function PresentationLauncher({
       encounter,
       game.state.agents,
       game.state.rolls,
-      game.state.threats,
+      game.allThreats,
+      game.threatLibrary.library.art,
       session,
       spotlightId,
     ],

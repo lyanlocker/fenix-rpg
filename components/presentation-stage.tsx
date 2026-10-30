@@ -81,7 +81,7 @@ export default function PresentationStage() {
     <main className="presentation-stage">
       <header>
         <span>
-          <Flame size={27} /> FÊNIX <small>2.1 / MESA AO VIVO</small>
+          <Flame size={27} /> FÊNIX <small>2.3 / MESA AO VIVO</small>
         </span>
         <button
           aria-label="Tela cheia"
