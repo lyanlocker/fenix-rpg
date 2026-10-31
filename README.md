@@ -2,6 +2,8 @@
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. A publicação do catálogo de ameaças no GitHub tem conexão administrativa exclusiva do proprietário.
 
+Atualização **2.4 — Sala de combate dos jogadores**: acesso individual por link, tokens e ações por turno, curas e ações extras vinculadas à ficha, confirmação de dano pelo mestre e gravação atômica. Veja o [guia de uso, regras cobertas e limites](docs/FENIX-2.4.md).
+
 Atualização **2.3 — Catálogo no GitHub**: criação de criaturas e imagens personalizadas para ameaças dos livros, com envio direto ao repositório. Consulte [uso, conexão e limites](docs/FENIX-2.3.md).
 
 Base **2.1 — Ameaças ilustradas**: 74 ilustrações originais, galeria com ampliação, miniaturas no combate do mestre e destaque na apresentação. Consulte [as notas da atualização](docs/FENIX-2.1.md) e [a cobertura das ilustrações](docs/AMEACAS-ILUSTRADAS.md).

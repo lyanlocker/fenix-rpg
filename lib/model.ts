@@ -1,5 +1,6 @@
 import type { Threat } from "./threats";
 import type { Agent, Item } from "./rules";
+import type { CombatLedger, CombatRule } from "./combat-actions";
 export type Campaign = {
   id: string;
   owner_id?: string;
@@ -38,6 +39,7 @@ export type Participant = {
   initiativeAttribute?: number;
   initiativeBonus?: number;
   initiativeRolled?: boolean;
+  playerAccess?: boolean;
 };
 export type Encounter = {
   id: string;
@@ -48,6 +50,9 @@ export type Encounter = {
   active: boolean;
   started?: boolean;
   sharedRevision?: number;
+  turnSerial?: number;
+  combat?: CombatLedger;
+  combatRules?: Record<string, CombatRule>;
   participants: Participant[];
 };
 export type Brew = Item & { version: number; source: string };

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import type { Threat } from "./threats";
+import type { CombatAgentPatch } from "./shared-combat";
 import { demoState } from "./demo";
 import {
   emptyState,
@@ -42,6 +43,25 @@ export function useStore() {
       );
     }
   }, [state, ready, storageBlocked]);
+  const mergeCombatAgents = useCallback((patches: CombatAgentPatch[]) => {
+    setState((state) => ({
+      ...state,
+      agents: state.agents.map((agent) => {
+        const patch = patches.find((p) => p.id === agent.id);
+        if (!patch || (patch.face === "alternate" && !agent.alternate))
+          return agent;
+        return patch.face === "alternate" && agent.alternate
+          ? {
+              ...agent,
+              alternate: {
+                ...agent.alternate,
+                face: { ...agent.alternate.face, ...patch.data },
+              },
+            }
+          : { ...agent, ...patch.data };
+      }),
+    }));
+  }, []);
   async function save(
     kind: "agents" | "campaigns" | "encounters" | "brews" | "threats",
     value: Agent | Campaign | Encounter | Brew | Threat,
@@ -149,6 +169,7 @@ export function useStore() {
     }));
   }
   return {
+    mergeCombatAgents,
     state,
     ready,
     notice,

@@ -1,9 +1,22 @@
 import type { Encounter, Roll } from "./model";
 import type { Agent } from "./rules";
 import { rpc } from "./share";
+import type {
+  Budget,
+  CombatCommand,
+  CombatEffect,
+  CombatEvent,
+  CombatRule,
+} from "./combat-actions";
 
 const KEY = "fenix.combat-keys.v1";
+export type CombatAgentPatch = {
+  id: string;
+  face: "main" | "alternate";
+  data: Pick<Agent, "resources" | "adjustments" | "inventory" | "conditions">;
+};
 export type MasterCombat = {
+  agentPatches?: CombatAgentPatch[];
   encounter: Encounter | null;
   revision: number;
   agent?: Agent;
@@ -15,12 +28,21 @@ export type PlayerCombat = {
   round: number;
   currentParticipantId: string | null;
   currentName: string;
+  revision: number;
+  turnSerial: number;
+  budget: Budget | null;
+  effects: CombatEffect[];
+  events: CombatEvent[];
+  rules: Record<string, CombatRule>;
   participants: {
     id: string;
     name: string;
     initiative: number;
     initiativeRolled: boolean;
     mine: boolean;
+    isAgent: boolean;
+    threatId?: string;
+    portraitVersion?: string;
     face: "main" | "alternate" | null;
     pv: number | null;
     maxPv: number | null;
@@ -143,4 +165,28 @@ export function withCombatRevision(payload: MasterCombat): Encounter | null {
   return payload.encounter
     ? { ...payload.encounter, sharedRevision: payload.revision }
     : null;
+}
+
+export async function submitCombatAction(input: {
+  agentId?: string;
+  campaignId?: string;
+  token: string;
+  encounterId: string;
+  revision: number;
+  actorId?: string;
+  command: CombatCommand;
+}) {
+  const response = await fetch("/api/combat/action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(55000),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok)
+    throw Error(payload?.error || "Não foi possível executar a ação.");
+  return payload as MasterCombat & {
+    combat?: PlayerCombat;
+    agentPatch?: Omit<CombatAgentPatch, "id">;
+  };
 }

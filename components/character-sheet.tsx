@@ -5,7 +5,6 @@ import { useExperience } from "./experience";
 import ResourceStrip from "./resource-strip";
 import RollReveal from "./roll-reveal";
 import dynamic from "next/dynamic";
-const PlayerCombat = dynamic(() => import("./player-combat"));
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -158,9 +157,22 @@ export default function CharacterSheet({ id }: { id: string }) {
         throw reason;
       }
     }
+    function combatMutation(event: Event) {
+      mutations.current.version++;
+      mutations.current.active += (event as CustomEvent<boolean>).detail
+        ? 1
+        : -1;
+      mutations.current.active = Math.max(0, mutations.current.active);
+      if (!(event as CustomEvent<boolean>).detail) {
+        sync = createSharedAgentSync(id, token as string);
+        void refresh().catch(() => {});
+      }
+    }
+    window.addEventListener("fenix:combat-mutation", combatMutation);
     const stop = startVisiblePolling(refresh, 5000, 15000);
     return () => {
       active = false;
+      window.removeEventListener("fenix:combat-mutation", combatMutation);
       stop();
     };
   }, [
@@ -383,9 +395,6 @@ export default function CharacterSheet({ id }: { id: string }) {
         busy={busy}
         onRoll={(expression) => roll("Dados livres", 1, 0, expression)}
       />
-      {game.access.isPlayer && stored && game.access.shareToken && (
-        <PlayerCombat agent={stored} token={game.access.shareToken} />
-      )}
       <Link className="back" href={game.accessHref("/")}>
         <ArrowLeft size={16} />
         Agentes
