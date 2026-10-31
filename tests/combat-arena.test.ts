@@ -4,10 +4,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import CombatArena, {
   CombatEvents,
+  arenaEncounter,
   type ArenaView,
 } from "../components/combat-arena";
 import { newAgent } from "../lib/rules";
-import type { CombatEvent } from "../lib/combat-actions";
+import { budgetFor, type CombatEvent } from "../lib/combat-actions";
 const view = (mine = true, active = true): ArenaView => ({
   id: "e",
   name: "Corredor escuro",
@@ -216,4 +217,50 @@ test("delay button is enabled only before acting and when a later ally exists", 
     render(),
     /<button class="arena-delay-button" aria-expanded="false" disabled/,
   );
+});
+
+test("the player projection retains two standards after upkeep and does not apply the same effect twice", () => {
+  const combat = view();
+  combat.budget = {
+    key: "2:a:4",
+    standard: 1,
+    restricted: 1,
+    move: 1,
+    attack: 0,
+    spentPe: 1,
+    attacked: false,
+    ended: false,
+  };
+  combat.effects = [
+    {
+      id: "speed:a",
+      sourceId: "a",
+      targetId: "a",
+      name: "Velocidade Mortal",
+      grant: "standard",
+      noRitual: true,
+      timing: "sustained",
+      createdKey: "1:a:0",
+      upkeepKey: "2:a:4",
+      appliedKey: "2:a:4",
+    },
+  ];
+  const serialized = JSON.parse(JSON.stringify(combat));
+  const encounter = arenaEncounter(serialized);
+  assert.equal(budgetFor(encounter, encounter.participants[0]).standard, 1);
+  assert.equal(budgetFor(encounter, encounter.participants[0]).restricted, 1);
+  const html = renderToStaticMarkup(
+    createElement(CombatArena, {
+      combat: serialized,
+      agent: newAgent(),
+      busy: false,
+      error: "",
+      onCommand: () => {},
+    }),
+  );
+  assert.match(html, /<b>2<\/b> padrão/);
+  assert.match(html, /1 sem ritual/);
+  assert.match(html, /Ações extras ativas/);
+  assert.doesNotMatch(html, /Sustentar · 1/);
+  assert.doesNotMatch(html, /<fieldset disabled/);
 });

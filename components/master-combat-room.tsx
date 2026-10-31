@@ -6,6 +6,7 @@ import { Modal } from "./ui";
 import CombatArena, { CombatEvents, type ArenaView } from "./combat-arena";
 import {
   combatFace,
+  combatOptions,
   type CombatCommand,
   type CombatRule,
 } from "@/lib/combat-actions";
@@ -180,11 +181,12 @@ function CombatRuleEditor({
 }) {
   const items = encounter.participants.flatMap((p) => {
     const stored = agents.find((a) => a.id === p.agentId);
-    return stored
-      ? combatFace(stored, p)
-          .inventory.filter((i) => i.kind !== "Arma")
-          .map((item) => ({ item, owner: p.name }))
-      : [];
+    if (!stored) return [];
+    const face = combatFace(stored, p);
+    const options = new Map(combatOptions(face).map((o) => [o.id, o]));
+    return face.inventory
+      .filter((i) => i.kind !== "Arma")
+      .map((item) => ({ item, owner: p.name, option: options.get(item.id) }));
   });
   const [id, setId] = useState(""),
     [rule, setRule] = useState<CombatRule | null>(null),
@@ -199,18 +201,24 @@ function CombatRuleEditor({
         ? encounter.combatRules?.[id] || {
             itemId: id,
             name: source.item.name,
-            action: "standard",
-            pe: source.item.cost || 0,
-            effect: "heal",
-            formula: "1d6",
-            grant: "standard",
-            target: "ally",
-            timing: "now",
-            limit: "turn",
-            consume: source.item.kind === "Item",
+            action: source.option?.action || "standard",
+            pe: source.option?.pe ?? source.item.cost ?? 0,
+            effect: source.option?.effect === "grant" ? "grant" : "heal",
+            formula: source.option?.formula || "1d6",
+            grant: source.option?.grant || "standard",
+            target:
+              source.option?.target && source.option.target !== "none"
+                ? source.option.target
+                : "ally",
+            timing: source.option?.timing || "now",
+            limit: source.option?.limit || "turn",
+            consume:
+              source.option?.consume ??
+              (source.item.kind === "Item" &&
+                source.option?.effect !== "grant"),
             medicine: false,
             difficulty: 20,
-            noRitual: false,
+            noRitual: !!source.option?.noRitual,
             note: source.item.notes.slice(0, 600),
           }
         : null,
@@ -361,6 +369,12 @@ function CombatRuleEditor({
                   >
                     <option value="now">Agora / no turno do alvo</option>
                     <option value="next">Próximo turno do alvo</option>
+                    <option value="scene">
+                      Cada turno até encerrar o efeito
+                    </option>
+                    <option value="sustained">
+                      Cada turno, sustentação de 1 PE/PD
+                    </option>
                   </select>
                 </label>
                 <label className="check">

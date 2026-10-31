@@ -208,22 +208,27 @@ export function executeCombatCommand(
       event.targetIds = [command.afterId];
       event.text = `${p.name} passa a agir depois de ${e.participants.find((t) => t.id === command.afterId)!.name}, na iniciativa ${e.participants.find((t) => t.id === p.id)!.initiative}, pelo restante do combate. Seu turno foi adiado, sem gastar ações.`;
     } else {
-      const budget = budgetFor(e, p, face);
-      ledger.budgets[p.id] = budget;
       const key = turnKey(e);
-      for (const x of ledger.effects)
-        if (
-          x.targetId === p.id &&
-          x.appliedKey !== key &&
-          !(x.timing === "next" && x.createdKey === key)
-        )
-          x.appliedKey = key;
-      ledger.effects = ledger.effects.filter(
-        (x) =>
-          x.timing === "sustained" ||
-          x.appliedKey !== key ||
-          x.targetId !== p.id,
-      );
+      function settleBudget() {
+        const next = budgetFor(e, p!, face);
+        ledger.budgets[p!.id] = next;
+        for (const x of ledger.effects)
+          if (
+            x.targetId === p!.id &&
+            x.appliedKey !== key &&
+            !(x.timing === "next" && x.createdKey === key)
+          )
+            x.appliedKey = key;
+        ledger.effects = ledger.effects.filter(
+          (x) =>
+            x.timing === "sustained" ||
+            x.timing === "scene" ||
+            x.appliedKey !== key ||
+            x.targetId !== p!.id,
+        );
+        return next;
+      }
+      let budget = settleBudget();
       const upkeep = ledger.effects.filter(
         (x) =>
           x.sourceId === p.id &&
@@ -259,13 +264,16 @@ export function executeCombatCommand(
           if (attack && budget.attack > 0) budget.attack--;
           else standard();
         }
-        if (cost === "move") {
-          if (budget.move > 0) budget.move--;
+        const movement = () => {
+          if (!ritual && (budget.restrictedMove || 0) > 0)
+            budget.restrictedMove!--;
+          else if (budget.move > 0) budget.move--;
           else standard();
-        }
+        };
+        if (cost === "move") movement();
         if (cost === "full") {
           standard();
-          budget.move--;
+          movement();
         }
       }
       function once(id: string, limit?: "turn" | "round" | "scene") {
@@ -319,7 +327,8 @@ export function executeCombatCommand(
           (x) =>
             x.id === command.eventId &&
             x.sourceId === p.id &&
-            x.timing === "sustained",
+            (x.timing === "sustained" ||
+              (command.kind === "stopEffect" && x.timing === "scene")),
         );
         if (!effect) fail("Efeito sustentado não encontrado.");
         event.label = effect.name;
@@ -328,13 +337,21 @@ export function executeCombatCommand(
             fail("Este ritual já está sustentado neste turno.");
           pay(1);
           effect.upkeepKey = key;
-          event.text = "Ritual sustentado: 1 ponto gasto.";
+          event.text =
+            "Ritual sustentado: 1 ponto gasto como ação livre. Nenhuma ação padrão ou de movimento foi consumida.";
         } else {
           ledger.effects = ledger.effects.filter((x) => x.id !== effect.id);
-          event.text = "Sustentação encerrada.";
+          event.text =
+            effect.timing === "sustained"
+              ? "Sustentação encerrada."
+              : "Efeito encerrado.";
           const b = ledger.budgets[effect.targetId];
           if (b?.key === key && effect.appliedKey === key) {
-            if (effect.grant === "move") b.move = Math.max(0, b.move - 1);
+            if (effect.grant === "move") {
+              const k = effect.noRitual ? "restrictedMove" : "move";
+              b[k] = Math.max(0, (b[k] || 0) - 1);
+            }
+            if (effect.grant === "attack") b.attack = Math.max(0, b.attack - 1);
             if (effect.grant === "standard") {
               const k = effect.noRitual ? "restricted" : "standard";
               b[k] = Math.max(0, b[k] - 1);
@@ -669,14 +686,31 @@ export function executeCombatCommand(
           } else if (option.effect === "grant" && grant) {
             for (const t of targets) {
               if (
-                option.timing === "sustained" &&
+                (option.timing === "sustained" || option.timing === "scene") &&
                 ledger.effects.some(
-                  (x) => x.targetId === t.id && x.name === option.name,
+                  (x) =>
+                    x.targetId === t.id && normalizeCombatName(x.name) === name,
                 )
               )
                 fail(
                   "Este alvo já recebe este ritual; efeitos iguais não se acumulam.",
                 );
+              if (option.timing === "sustained") {
+                const active = new Set(
+                  ledger.effects
+                    .filter(
+                      (x) => x.sourceId === p.id && x.timing === "sustained",
+                    )
+                    .map((x) => x.id.split(":")[0]),
+                );
+                if (
+                  !active.has(eventId) &&
+                  active.size >= (hasPower(face, "Fluxo de Poder") ? 2 : 1)
+                )
+                  fail(
+                    "Encerre um ritual sustentado antes de manter outro. Fluxo de Poder permite dois.",
+                  );
+              }
               ledger.effects.push({
                 id: `${eventId}:${t.id}`,
                 sourceId: p.id,
@@ -689,7 +723,13 @@ export function executeCombatCommand(
                 upkeepKey: key,
               });
             }
-            event.text += ` Ação ${grant === "standard" ? "padrão" : grant === "move" ? "de movimento" : grant === "attack" ? "somente para atacar" : "livre"}${option.timing === "next" ? " no próximo turno" : option.timing === "sustained" ? " a cada turno enquanto sustentado" : " adicional"}${option.noRitual ? "; não permite rituais" : ""}.`;
+            budget = settleBudget();
+            if (name === "cranio espiral") {
+              event.pending = "interpretation";
+              event.text +=
+                " Crânio empunhado: o mestre confere Vontade (DT 15 + 5 por uso adicional no dia). A ação vale mesmo em falha; envelhecimento e proibição de novo uso no dia dependem do teste.";
+            }
+            event.text += ` Ação ${grant === "standard" ? "padrão" : grant === "move" ? "de movimento" : grant === "attack" ? "somente para atacar" : "livre"}${option.timing === "next" ? " no próximo turno" : option.timing === "sustained" ? " a cada turno enquanto sustentado" : option.timing === "scene" ? " a cada turno até encerrar o efeito" : " adicional"}${option.noRitual ? "; não permite rituais" : ""}.`;
           } else if (option.effect === "ritual" && option.formula) {
             safeDice(() => rollDamageDice(option.formula!, () => 1));
             event.damageRoll = {

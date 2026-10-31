@@ -2,6 +2,8 @@
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. A publicação do catálogo de ameaças no GitHub tem conexão administrativa exclusiva do proprietário.
 
+Correção **2.5.1 — Ações extras e vozes entre as faces**: créditos efetivos no turno, sustentação como ação livre, bônus recorrentes e novas mensagens em latim ao trocar a face de NEX. Consulte as [notas da correção](docs/FENIX-2.5.1.md).
+
 Atualização **2.5 — Ações e rolagens do jogador**: execução dos rituais e habilidades integrada à ficha, Investigar, ações avulsas, atraso permanente de iniciativa e ataque/dano em etapas com dados editáveis. Consulte o [guia da atualização](docs/FENIX-2.5.md).
 
 Atualização **2.4 — Sala de combate dos jogadores**: acesso individual por link, tokens e ações por turno, curas e ações extras vinculadas à ficha, confirmação de dano pelo mestre e gravação atômica. Veja o [guia de uso, regras cobertas e limites](docs/FENIX-2.4.md).

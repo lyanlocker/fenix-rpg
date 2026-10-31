@@ -71,13 +71,21 @@ export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
       ? {
           combat: {
             ...encounter.combat,
-            effects: encounter.combat.effects.filter(
-              (x) =>
-                x.timing !== "sustained" ||
-                x.sourceId !== encounter.participants[encounter.turn]?.id ||
-                x.createdKey === turnKey(encounter) ||
-                x.upkeepKey === turnKey(encounter),
-            ),
+            effects: encounter.combat.effects.filter((x) => {
+              const actor = encounter.participants[encounter.turn]?.id;
+              if (x.timing === "sustained")
+                return (
+                  x.sourceId !== actor ||
+                  x.createdKey === turnKey(encounter) ||
+                  x.upkeepKey === turnKey(encounter)
+                );
+              if (x.timing === "scene") return true;
+              // A one-off credit expires with the eligible target turn, including GM skips.
+              return (
+                x.targetId !== actor ||
+                (x.timing === "next" && x.createdKey === turnKey(encounter))
+              );
+            }),
           },
         }
       : {}),
