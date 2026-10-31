@@ -22,7 +22,20 @@ const schema = z
     actorId: z.string().uuid().optional(),
     command: z
       .object({
-        kind: z.enum(["use", "end", "sustain", "stopEffect", "resolve"]),
+        kind: z.enum([
+          "use",
+          "end",
+          "sustain",
+          "stopEffect",
+          "resolve",
+          "delay",
+          "damage",
+        ]),
+        afterId: z.string().uuid().optional(),
+        attackDice: z.string().trim().min(1).max(40).optional(),
+        attackMode: z.enum(["highest", "lowest"]).optional(),
+        damageDice: z.string().trim().min(1).max(80).optional(),
+        skipDamage: z.boolean().optional(),
         optionId: z.string().max(200).optional(),
         targetIds: z.array(z.string().uuid()).max(100).optional(),
         variant: z.enum(["base", "discente"]).optional(),

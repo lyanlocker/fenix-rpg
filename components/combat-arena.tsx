@@ -8,6 +8,8 @@ import {
   Swords,
   UserRound,
 } from "lucide-react";
+import { effectiveAttributes, skillBonus } from "@/lib/rules";
+import { weaponRollSuggestion, type AttackMode } from "@/lib/combat-dice";
 import type { Agent } from "@/lib/rules";
 import type { Encounter } from "@/lib/model";
 import type { PlayerCombat } from "@/lib/shared-combat";
@@ -87,7 +89,11 @@ export function CombatEvents({
                 </span>
               ))}
               {event.pending && !event.resolved && (
-                <span className="arena-pending">Aguardando mestre</span>
+                <span className="arena-pending">
+                  {event.damageRoll && !event.damageRoll.done
+                    ? "Aguardando rolagem de dano"
+                    : "Aguardando mestre"}
+                </span>
               )}
               {event.resolved && <span className="muted small">Resolvido</span>}
               {event.pending && !event.resolved && resolve && (
@@ -114,7 +120,11 @@ export function CombatEvents({
                         name="amount"
                         type="number"
                         min={0}
-                        max={100000}
+                        max={
+                          event.damageRoll && !event.damageRoll.done
+                            ? 0
+                            : 100000
+                        }
                         required
                         defaultValue={event.proposedDamage || 0}
                       />
@@ -164,7 +174,11 @@ export default function CombatArena({
     [extraAttack, setExtraAttack] = useState(false),
     [accelerate, setAccelerate] = useState(false),
     [grant, setGrant] = useState<"standard" | "move">("standard"),
-    [note, setNote] = useState("");
+    [note, setNote] = useState(""),
+    [attackDice, setAttackDice] = useState(""),
+    [attackMode, setAttackMode] = useState<AttackMode>("highest"),
+    [afterId, setAfterId] = useState(""),
+    [delayOpen, setDelayOpen] = useState(false);
   const mine = combat.participants.find((p) => p.mine),
     e = arenaEncounter(combat),
     p = e.participants.find((p) => p.id === mine?.id),
@@ -191,6 +205,25 @@ export default function CombatArena({
       x.createdKey !== turnKey(e) &&
       x.upkeepKey !== turnKey(e),
   );
+  const pendingDamage = (combat.events || []).filter(
+    (x) =>
+      x.actorId === mine?.id &&
+      !x.resolved &&
+      x.damageRoll &&
+      !x.damageRoll.done &&
+      x.damageRoll.turn === turnKey(e),
+  );
+  const laterAllies = combat.participants.filter(
+    (t, index) =>
+      t.isAgent &&
+      index > combat.participants.findIndex((x) => x.id === mine?.id) &&
+      mine &&
+      t.initiative < mine.initiative,
+  );
+  const delayAllowed = canAct && combat.budget?.key !== turnKey(e);
+  const latestRoll = (combat.events || [])
+    .filter((x) => x.actorId === mine?.id && x.rolls.length)
+    .at(-1);
   function choose(id: string) {
     setOptionId(id);
     setTargets([]);
@@ -199,6 +232,20 @@ export default function CombatArena({
     setExtraAttack(false);
     setAccelerate(false);
     setNote("");
+    const next = options.find((o) => o.id === id);
+    if (agent && next?.effect === "attack" && next.item) {
+      const suggestion = weaponRollSuggestion(agent, next.item);
+      setAttackDice(suggestion.attack);
+      setAttackMode(suggestion.mode);
+    } else if (agent && next?.effect === "investigate") {
+      const int = effectiveAttributes(agent).INT,
+        bonus = skillBonus(agent, "Investigação").total;
+      setAttackDice(`${int || 2}d20${bonus >= 0 ? "+" : ""}${bonus}`);
+      setAttackMode(int === 0 ? "lowest" : "highest");
+    } else {
+      setAttackDice("");
+      setAttackMode("highest");
+    }
   }
   function target(id: string) {
     if (
@@ -346,6 +393,28 @@ export default function CombatArena({
               ))}
             </div>
           )}
+          {latestRoll && (
+            <div
+              key={`${latestRoll.id}:${latestRoll.rolls.length}`}
+              className="arena-roll-result"
+              role="status"
+            >
+              <small>{latestRoll.label}</small>
+              <strong>{latestRoll.rolls.at(-1)!.total}</strong>
+              <span>
+                {latestRoll.rolls.at(-1)!.expression} · [
+                {latestRoll.rolls.at(-1)!.dice.join(", ")}]
+              </span>
+            </div>
+          )}
+          {pendingDamage.map((event) => (
+            <DamageRollForm
+              key={event.id}
+              event={event}
+              disabled={!canAct}
+              onCommand={onCommand}
+            />
+          ))}
           <div className="arena-tabs" role="tablist" aria-label="Tipo de ação">
             {(Object.keys(actionLabels) as ActionCost[]).map((c) => (
               <button
@@ -502,8 +571,43 @@ export default function CombatArena({
                       Acelerar Ritual · ação livre, +4 pontos
                     </label>
                   )}
+                {(selected.effect === "attack" ||
+                  selected.effect === "investigate") && (
+                  <div className="arena-dice-inputs">
+                    <label>
+                      Dados do{" "}
+                      {selected.effect === "attack" ? "ataque" : "teste"}
+                      <input
+                        aria-label="Dados do ataque ou teste"
+                        value={attackDice}
+                        maxLength={40}
+                        placeholder="Ex.: 3d20+5"
+                        onChange={(ev) => setAttackDice(ev.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Resultado dos d20
+                      <select
+                        value={attackMode}
+                        onChange={(ev) =>
+                          setAttackMode(ev.target.value as AttackMode)
+                        }
+                      >
+                        <option value="highest">Usar o maior dado</option>
+                        <option value="lowest">Usar o menor dado</option>
+                      </select>
+                    </label>
+                    <p className="hint">
+                      Confira os dados e bônus antes de rolar. O dano é uma
+                      etapa separada; crítico e bônus podem ser ajustados na
+                      expressão de dano.
+                    </p>
+                  </div>
+                )}
                 <label>
-                  Descrição da ação (opcional)
+                  {selected.effect === "custom"
+                    ? "Descreva a ação avulsa (obrigatório)"
+                    : "Descrição da ação (opcional)"}
                   <input
                     value={note}
                     maxLength={300}
@@ -529,7 +633,10 @@ export default function CombatArena({
                       selected.item?.kind === "Ritual",
                       selected.effect === "attack",
                     ) ||
-                    (selected.target !== "none" && !targetList.length)
+                    (selected.target !== "none" && !targetList.length) ||
+                    (selected.effect === "custom" && !note.trim()) ||
+                    (["attack", "investigate"].includes(selected.effect) &&
+                      !attackDice.trim())
                   }
                   onClick={() =>
                     onCommand({
@@ -542,10 +649,21 @@ export default function CombatArena({
                       accelerate,
                       ...(name === "surto de adrenalina" ? { grant } : {}),
                       note,
+                      ...(["attack", "investigate"].includes(selected.effect)
+                        ? { attackDice, attackMode }
+                        : {}),
                     })
                   }
                 >
-                  {busy ? "Registrando…" : "Confirmar ação"}
+                  {busy
+                    ? "Rolando / registrando…"
+                    : selected.effect === "attack"
+                      ? "Rolar ataque"
+                      : selected.effect === "investigate"
+                        ? "Rolar Investigação"
+                        : selected.item?.kind === "Ritual"
+                          ? "Executar ritual"
+                          : "Confirmar ação"}
                   <ArrowRight size={17} />
                 </button>
               </div>
@@ -557,9 +675,60 @@ export default function CombatArena({
             </p>
           )}
           {mine && (
+            <div className="arena-delay">
+              <button
+                className="arena-delay-button"
+                disabled={!delayAllowed || !laterAllies.length}
+                onClick={() => setDelayOpen((v) => !v)}
+              >
+                Atrasar ação
+              </button>
+              <small>
+                Antes de agir: passe para depois de um aliado. A nova posição
+                vale até o fim do combate.
+              </small>
+              {delayOpen && (
+                <form
+                  onSubmit={(ev) => {
+                    ev.preventDefault();
+                    if (afterId) onCommand({ kind: "delay", afterId });
+                  }}
+                >
+                  <label>
+                    Agir depois de
+                    <select
+                      value={afterId}
+                      onChange={(ev) => setAfterId(ev.target.value)}
+                      required
+                    >
+                      <option value="">Selecione um aliado</option>
+                      {laterAllies.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} · iniciativa {t.initiative}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="arena-delay-button"
+                    disabled={
+                      !delayAllowed ||
+                      !laterAllies.some((t) => t.id === afterId)
+                    }
+                    type="submit"
+                  >
+                    Confirmar atraso permanente neste combate
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+          {mine && (
             <button
               className="arena-end"
-              disabled={!canAct || upkeep.length > 0}
+              disabled={
+                !canAct || upkeep.length > 0 || pendingDamage.length > 0
+              }
               onClick={() => onCommand({ kind: "end" })}
             >
               Concluir meu turno
@@ -576,5 +745,62 @@ export default function CombatArena({
         <CombatEvents events={combat.events || []} />
       </div>
     </div>
+  );
+}
+
+function DamageRollForm({
+  event,
+  disabled,
+  onCommand,
+}: {
+  event: CombatEvent;
+  disabled: boolean;
+  onCommand: (c: CombatCommand) => void;
+}) {
+  const [dice, setDice] = useState(event.damageRoll?.formula || "1d6");
+  return (
+    <form
+      className="arena-damage-step"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onCommand({ kind: "damage", eventId: event.id, damageDice: dice });
+      }}
+    >
+      <h3>Agora, o dano · {event.label}</h3>
+      <p>
+        Ataque/execução já registrado. Ajuste a expressão e role quando estiver
+        pronto.
+      </p>
+      <label>
+        Dados de dano
+        <input
+          aria-label={`Dados de dano de ${event.label}`}
+          value={dice}
+          maxLength={80}
+          required
+          disabled={disabled}
+          onChange={(e) => setDice(e.target.value)}
+          placeholder="Ex.: 2d6+1d4+3"
+        />
+      </label>
+      <div className="actions">
+        <button
+          className="primary"
+          type="submit"
+          disabled={disabled || !dice.trim()}
+        >
+          Rolar dano
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() =>
+            onCommand({ kind: "damage", eventId: event.id, skipDamage: true })
+          }
+        >
+          Sem dano / não acertou
+        </button>
+      </div>
+    </form>
   );
 }
