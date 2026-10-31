@@ -318,7 +318,15 @@ test("attack rolls leave damage pending; only GM can apply a final value once", 
     targetIds: [pb.id],
   });
   assert.equal(attack.event.pending, "damage");
-  assert.equal(attack.event.proposedDamage, 13);
+  assert.equal(attack.event.proposedDamage, undefined);
+  assert.equal(attack.event.rolls.length, 1);
+  assert.equal(attack.event.damageRoll?.formula, "3d4+1");
+  apply(c, { kind: "damage", eventId: attack.event.id, damageDice: "3d4+1" });
+  assert.equal(
+    c.encounter.combat!.events.find((x) => x.id === attack.event.id)!
+      .proposedDamage,
+    13,
+  );
   assert.equal(b.resources.pv, 30);
   assert.throws(
     () => apply(c, { kind: "resolve", eventId: attack.event.id, amount: 7 }),
@@ -459,4 +467,263 @@ test("GM conditions block actions and first aid preserves unrelated GM condition
   apply(c, { kind: "use", optionId: "firstAid", targetIds: [pb.id] });
   assert.equal(c.encounter.participants[1].conditions, "Fatigado");
   assert.equal(b.resources.pv, 1);
+});
+
+test("legacy Eletrocussão recovers execution and cost, consumes standard once and asks for a separate damage roll", () => {
+  const { c, a, b, pa, pb } = setup();
+  a.skills.Ocultismo = 20;
+  const ritual = item("Eletrocussão", "Ritual");
+  a.inventory.push(ritual);
+  const option = combatOptions(a).find((o) => o.id === ritual.id)!;
+  assert.equal(option.action, "standard");
+  assert.equal(option.pe, 1);
+  assert.equal(option.formula, "3d6");
+  const r = apply(c, { kind: "use", optionId: ritual.id, targetIds: [pb.id] });
+  assert.equal(a.resources.pe, 99);
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 0);
+  assert.equal(r.event.rolls.length, 1);
+  assert.equal(r.event.rolls[0].label, "Ocultismo");
+  assert.equal(b.resources.pv, 2);
+  assert.equal(r.event.damageRoll?.formula, "3d6");
+  apply(c, { kind: "damage", eventId: r.event.id, damageDice: "3d6+1d4+2" });
+  const pending = c.encounter.combat!.events.find((x) => x.id === r.event.id)!;
+  assert.equal(pending.proposedDamage, 24);
+  assert.equal(a.resources.pe, 99);
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 0);
+  assert.equal(b.resources.pv, 2);
+});
+test("investigation uses INT and training and spends a full action, without inventing a success DT", () => {
+  const { c, a, pa } = setup();
+  a.skills.Investigação = 5;
+  const r = apply(c, {
+    kind: "use",
+    optionId: "investigate",
+    note: "Examino a escrivaninha",
+  });
+  assert.equal(r.event.rolls[0].dice.length, 3);
+  assert.equal(r.event.rolls[0].total, 25);
+  assert.equal(r.event.pending, "interpretation");
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 0);
+  assert.equal(c.encounter.combat!.budgets[pa.id].move, 0);
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: "investigate" }),
+    /gasta/,
+  );
+});
+test("ad hoc actions require a description and spend exactly the selected action category", () => {
+  for (const action of ["standard", "move", "free", "full"] as const) {
+    const { c, pa } = setup();
+    assert.throws(
+      () => apply(c, { kind: "use", optionId: `custom:${action}` }),
+      /Descreva/,
+    );
+    const r = apply(c, {
+      kind: "use",
+      optionId: `custom:${action}`,
+      note: "Opero o mecanismo da porta",
+    });
+    const budget = c.encounter.combat!.budgets[pa.id];
+    assert.equal(
+      budget.standard,
+      action === "standard" || action === "full" ? 0 : 1,
+    );
+    assert.equal(budget.move, action === "move" || action === "full" ? 0 : 1);
+    assert.equal(r.event.pending, "interpretation");
+    assert.match(r.event.text, /mecanismo/);
+  }
+});
+test("delaying moves the current actor after a lower-initiative ally and retains order across rounds and sort/resume", () => {
+  const { c, a, b, pa, pb } = setup();
+  pa.initiative = 20;
+  pb.initiative = 10;
+  const enemy = {
+    id: crypto.randomUUID(),
+    name: "Ameaça",
+    pv: 40,
+    maxPv: 40,
+    initiative: 15,
+    hidden: false,
+    conditions: "",
+  };
+  c.encounter.participants = [pa, enemy, pb];
+  const before = structuredClone(c);
+  const r = apply(c, { kind: "delay", afterId: pb.id });
+  assert.deepEqual(
+    c.encounter.participants.map((p) => p.id),
+    [enemy.id, pb.id, pa.id],
+  );
+  assert.equal(c.encounter.turn, 0);
+  assert.equal(c.encounter.round, 1);
+  assert.equal(c.encounter.participants[2].initiative, 10);
+  assert.deepEqual(a.resources, before.sheets[a.id].resources);
+  assert.deepEqual(b.resources, before.sheets[b.id].resources);
+  assert.equal(r.patches.length, 0);
+  c.encounter = advanceTurn(c.encounter);
+  c.encounter = advanceTurn(c.encounter);
+  assert.equal(c.encounter.participants[c.encounter.turn].id, pa.id);
+  assert.equal(
+    budgetFor(c.encounter, c.encounter.participants[2], a).standard,
+    1,
+  );
+  apply(c, { kind: "end" });
+  assert.equal(c.encounter.round, 2);
+  assert.equal(c.encounter.participants[c.encounter.turn].id, enemy.id);
+});
+test("delay rejects spent/free actions, hidden targets, targets already passed, self, enemies and the initiative floor", () => {
+  for (const invalid of [
+    "spent",
+    "free",
+    "hidden",
+    "above",
+    "self",
+    "enemy",
+    "floor",
+  ]) {
+    const { c, a, pa, pb } = setup();
+    pa.initiative = 20;
+    pb.initiative = 10;
+    if (invalid === "spent") apply(c, { kind: "use", optionId: "move" });
+    if (invalid === "free") apply(c, { kind: "use", optionId: "free" });
+    if (invalid === "hidden") pb.hidden = true;
+    if (invalid === "above") pb.initiative = 25;
+    if (invalid === "enemy") delete pb.agentId;
+    if (invalid === "floor") {
+      a.skills.Iniciativa = 5;
+      pb.initiative = -6;
+    }
+    assert.throws(() =>
+      apply(c, { kind: "delay", afterId: invalid === "self" ? pa.id : pb.id }),
+    );
+  }
+});
+test("manual attack expressions use the entered pool and bonus; damage is separate, single-use and owned by its actor", () => {
+  const { c, b, pa, pb } = setup();
+  let calls = 0;
+  const attack = apply(
+    c,
+    {
+      kind: "use",
+      optionId: "unarmed",
+      targetIds: [pb.id],
+      attackDice: "4d20+7",
+      attackMode: "lowest",
+    },
+    () => {
+      calls++;
+      return calls;
+    },
+  );
+  assert.equal(calls, 4);
+  assert.equal(attack.event.rolls[0].total, 8);
+  assert.equal(attack.event.proposedDamage, undefined);
+  assert.throws(() => apply(c, { kind: "end" }), /dano pendente/);
+  assert.throws(() =>
+    apply(
+      c,
+      { kind: "damage", eventId: attack.event.id, damageDice: "2d6+3" },
+      (s) => s,
+      pb.id,
+    ),
+  );
+  const hp = b.resources.pv;
+  const dmg = apply(c, {
+    kind: "damage",
+    eventId: attack.event.id,
+    damageDice: "2d6+1d4+3",
+  });
+  assert.equal(dmg.event.rolls[0].total, 19);
+  assert.equal(b.resources.pv, hp);
+  assert.throws(
+    () =>
+      apply(c, {
+        kind: "damage",
+        eventId: attack.event.id,
+        damageDice: "2d6+3",
+      }),
+    /já foi realizada/,
+  );
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 0);
+  apply(c, { kind: "end" });
+});
+test("invalid attack/damage expressions cannot consume actions, alter HP or replace a confirmed roll", () => {
+  const { c, pb } = setup();
+  const before = structuredClone(c);
+  assert.throws(
+    () =>
+      apply(c, {
+        kind: "use",
+        optionId: "unarmed",
+        targetIds: [pb.id],
+        attackDice: "999999d20",
+      }),
+    /Ataque/,
+  );
+  assert.deepEqual(c, before);
+  const attack = apply(c, {
+    kind: "use",
+    optionId: "unarmed",
+    targetIds: [pb.id],
+  });
+  const staged = structuredClone(c);
+  assert.throws(
+    () =>
+      apply(c, {
+        kind: "damage",
+        eventId: attack.event.id,
+        damageDice: "process.exit()",
+      }),
+    /Dano/,
+  );
+  assert.deepEqual(c, staged);
+  apply(c, { kind: "damage", eventId: attack.event.id, skipDamage: true });
+  assert.equal(
+    c.encounter.combat!.events.find((x) => x.id === attack.event.id)!.resolved,
+    true,
+  );
+  apply(c, { kind: "end" });
+});
+test("damage stage is locked to the original turn even after the GM advances the turn", () => {
+  const { c, pb } = setup();
+  const attack = apply(c, {
+    kind: "use",
+    optionId: "unarmed",
+    targetIds: [pb.id],
+  });
+  c.encounter = advanceTurn(advanceTurn(c.encounter));
+  assert.throws(
+    () =>
+      apply(c, { kind: "damage", eventId: attack.event.id, damageDice: "2d6" }),
+    /neste turno/,
+  );
+});
+
+test("GM may arbitrate damage before a roll and the resolved event cannot be rolled later", () => {
+  const { c, b, pb } = setup();
+  b.resources.pv = 30;
+  const hit = apply(c, {
+    kind: "use",
+    optionId: "unarmed",
+    targetIds: [pb.id],
+  });
+  c.role = "master";
+  const result = apply(c, {
+    kind: "resolve",
+    eventId: hit.event.id,
+    amount: 4,
+    note: "Resolução da mesa",
+  });
+  assert.equal(b.resources.pv, 26);
+  assert.match(result.event.text, /definido pelo mestre antes/);
+  c.role = "player";
+  assert.throws(
+    () =>
+      apply(c, { kind: "damage", eventId: hit.event.id, damageDice: "1d6" }),
+    /já foi realizada/,
+  );
+});
+test("hiding the damage target does not trap a player behind an invisible pending roll", () => {
+  const { c, pb } = setup();
+  apply(c, { kind: "use", optionId: "unarmed", targetIds: [pb.id] });
+  c.encounter.participants[1].hidden = true;
+  assert.doesNotThrow(() => apply(c, { kind: "end" }));
 });

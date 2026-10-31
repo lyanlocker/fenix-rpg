@@ -1,3 +1,5 @@
+import { combatItem, ritualDamage } from "./combat-metadata";
+import type { AttackMode } from "./combat-dice";
 import type { Agent, Item } from "./rules";
 import type { Encounter, Participant } from "./model";
 import { effectiveAttributes } from "./rules";
@@ -61,6 +63,8 @@ export type CombatEvent = {
   rolls: { label: string; expression: string; dice: number[]; total: number }[];
   pending?: "damage" | "interpretation";
   proposedDamage?: number;
+  damageRoll?: { formula: string; turn: string; done: boolean };
+  turnKey?: string;
   resolved?: boolean;
 };
 export type CombatLedger = {
@@ -71,7 +75,19 @@ export type CombatLedger = {
   stabilized: Record<string, number>;
 };
 export type CombatCommand = {
-  kind: "use" | "end" | "sustain" | "stopEffect" | "resolve";
+  kind:
+    | "use"
+    | "end"
+    | "sustain"
+    | "stopEffect"
+    | "resolve"
+    | "delay"
+    | "damage";
+  afterId?: string;
+  attackDice?: string;
+  attackMode?: AttackMode;
+  damageDice?: string;
+  skipDamage?: boolean;
   optionId?: string;
   targetIds?: string[];
   variant?: "base" | "discente";
@@ -97,7 +113,9 @@ export type CombatOption = {
     | "ritual"
     | "generic"
     | "move"
-    | "free";
+    | "free"
+    | "investigate"
+    | "custom";
   target: "self" | "ally" | "any" | "none";
   formula?: string;
   grant?: GrantKind;
@@ -219,6 +237,7 @@ export function actionAvailable(
 }
 export function executionCost(text = ""): ActionCost | null {
   const n = normalizeCombatName(text);
+  if (/reacao|minuto|hora|rodadas|turnos|\d+\s+acoes/.test(n)) return null;
   return /completa/.test(n)
     ? "full"
     : /padrao/.test(n)
@@ -293,7 +312,29 @@ export function combatOptions(
       description: `Medicina (INT), DT 20 + 5 por estabilização nesta cena. Retira morrendo e inconsciente e deixa com 1 PV. ${hasMedicineKit(a) ? "Kit de Medicina disponível." : "Sem kit: −5 no teste."}`,
     },
   ];
-  for (const item of a.inventory) {
+  options.push({
+    id: "investigate",
+    name: "Investigar",
+    action: "full",
+    pe: 0,
+    effect: "investigate",
+    target: "none",
+    description:
+      "Procurar pistas durante o combate: ação completa e teste de Investigação com INT. O mestre determina o que pode ser descoberto neste tempo e a DT; pesquisas demoradas podem exigir mais ações.",
+  });
+  for (const action of Object.keys(actionLabels) as ActionCost[])
+    options.push({
+      id: `custom:${action}`,
+      name: "Ação avulsa",
+      action,
+      pe: 0,
+      effect: "custom",
+      target: "none",
+      description:
+        "Descreva uma ação não listada. O custo corresponde à aba escolhida; o mestre confere alcance, efeitos e eventual teste.",
+    });
+  for (const stored of a.inventory) {
+    const item = combatItem(stored);
     if (!eligible(a, item)) continue;
     const name = normalizeCombatName(item.name),
       custom = rules[item.id],
@@ -317,7 +358,7 @@ export function combatOptions(
     if (item.kind === "Arma") {
       options.push({
         ...base,
-        action: "standard",
+        action: executionCost(item.execution) || "standard",
         effect: "attack",
         target: "any",
       });
@@ -394,6 +435,7 @@ export function combatOptions(
       options.push({
         ...base,
         action,
+        formula: ritualDamage(item) || undefined,
         target:
           normalizeCombatName(item.target || "") === "voce" ? "self" : "any",
         effect:

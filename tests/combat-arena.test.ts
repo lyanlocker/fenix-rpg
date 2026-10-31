@@ -109,3 +109,111 @@ test("pending attack resolution is only rendered when the caller provides GM aut
   assert.match(master, /Aplicar dano final/);
   assert.match(master, /value="7"/);
 });
+
+test("legacy ritual and ad hoc action are offered without triggering a roll on rendering", () => {
+  const agent = newAgent("Ana");
+  agent.inventory = [
+    {
+      id: "spell",
+      kind: "Ritual",
+      name: "Eletrocussão",
+      quantity: 1,
+      spaces: 0,
+      notes: "",
+      damage: "",
+    },
+  ];
+  let commands = 0;
+  const html = renderToStaticMarkup(
+    createElement(CombatArena, {
+      combat: view(),
+      agent,
+      busy: false,
+      error: "",
+      onCommand: () => {
+        commands++;
+      },
+    }),
+  );
+  assert.match(html, /Eletrocussão/);
+  assert.match(html, /Ação avulsa/);
+  assert.match(html, /Atrasar ação/);
+  assert.equal(commands, 0);
+});
+test("the active actor gets editable pending damage and an explicit roll button; others never get that form", () => {
+  const combat = view();
+  combat.events = [
+    {
+      id: "hit",
+      actorId: "a",
+      actor: "Ana",
+      targetIds: ["b"],
+      label: "Faca",
+      text: "Ataque registrado",
+      round: 2,
+      secret: false,
+      createdAt: "2026-10-31",
+      rolls: [],
+      pending: "damage",
+      damageRoll: { formula: "2d6+3", turn: "2:a:4", done: false },
+    },
+  ];
+  const html = renderToStaticMarkup(
+    createElement(CombatArena, {
+      combat,
+      agent: newAgent(),
+      busy: false,
+      error: "",
+      onCommand: () => {},
+    }),
+  );
+  assert.match(html, /Dados de dano de Faca/);
+  assert.match(html, /value="2d6\+3"/);
+  assert.match(html, />Rolar dano<\/button>/);
+  assert.match(html, /Sem dano \/ não acertou/);
+  assert.match(html, /<button class="arena-end" disabled/);
+  combat.participants[0].mine = false;
+  combat.participants[1].mine = true;
+  const observer = renderToStaticMarkup(
+    createElement(CombatArena, {
+      combat,
+      agent: newAgent(),
+      busy: false,
+      error: "",
+      onCommand: () => {},
+    }),
+  );
+  assert.doesNotMatch(observer, /Dados de dano de Faca/);
+});
+test("delay button is enabled only before acting and when a later ally exists", () => {
+  const combat = view();
+  combat.participants[1].isAgent = true;
+  const render = () =>
+    renderToStaticMarkup(
+      createElement(CombatArena, {
+        combat,
+        agent: newAgent(),
+        busy: false,
+        error: "",
+        onCommand: () => {},
+      }),
+    );
+  assert.match(
+    render(),
+    /<button class="arena-delay-button" aria-expanded="false">Atrasar ação/,
+  );
+  combat.budget = {
+    key: "2:a:4",
+    standard: 1,
+    move: 0,
+    restricted: 0,
+    attack: 0,
+    spentPe: 0,
+    attacked: false,
+    ended: false,
+  };
+  assert.match(
+    render(),
+    /<button class="arena-delay-button" aria-expanded="false" disabled/,
+  );
+});

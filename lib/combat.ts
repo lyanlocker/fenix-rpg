@@ -23,6 +23,40 @@ export function reorderEncounter(encounter: Encounter): Encounter {
     ),
   };
 }
+/** Delay the entire unspent turn. Stable sorting keeps the actor after the chosen ally. */
+export function delayTurn(
+  encounter: Encounter,
+  actorId: string,
+  afterId: string,
+  minimum: number,
+): Encounter {
+  const actor = encounter.participants[encounter.turn];
+  const targetIndex = encounter.participants.findIndex((p) => p.id === afterId);
+  const target = encounter.participants[targetIndex];
+  if (!encounter.active || actor?.id !== actorId)
+    throw Error("Aguarde seu turno para atrasar.");
+  if (
+    !target?.agentId ||
+    target.hidden ||
+    targetIndex <= encounter.turn ||
+    target.initiative >= actor.initiative
+  )
+    throw Error(
+      "Escolha um aliado visível que ainda vai agir e tenha iniciativa menor.",
+    );
+  if (target.initiative < minimum)
+    throw Error(`Sua iniciativa não pode ser atrasada abaixo de ${minimum}.`);
+  const participants = encounter.participants.filter((p) => p.id !== actorId);
+  participants.splice(participants.findIndex((p) => p.id === afterId) + 1, 0, {
+    ...actor,
+    initiative: target.initiative,
+  });
+  return {
+    ...encounter,
+    participants,
+    turnSerial: (encounter.turnSerial || 0) + 1,
+  };
+}
 export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
   if (!encounter.active || !encounter.participants.length) return encounter;
   const size = encounter.participants.length;

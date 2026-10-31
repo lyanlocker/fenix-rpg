@@ -60,7 +60,7 @@ export default function AgentList() {
     <div className="page agents-page">
       <div className="page-heading agents-hero">
         <div>
-          <p className="eyebrow">ARQUIVO VIVO · FÊNIX 2.4</p>
+          <p className="eyebrow">ARQUIVO VIVO · FÊNIX 2.5</p>
           <h1>
             O impossível
             <br />

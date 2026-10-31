@@ -116,6 +116,12 @@ export default function ItemForm({
               por turno.
             </label>
           )}
+          {i.kind === "Item" &&
+            text(
+              "execution",
+              "Execução / ação (opcional)",
+              "padrão, movimento, livre ou completa",
+            )}
           {accessory && (
             <>
               <label className="check span-all">
@@ -290,7 +296,11 @@ export default function ItemForm({
                   }
                 />
               </label>
-              {text("execution", "Execução / ação")}
+              {text(
+                "execution",
+                "Execução / ação",
+                "padrão, movimento, livre ou completa",
+              )}
               {text("range", "Alcance")}
               {text("target", "Alvo / área")}
               {text("duration", "Duração")}

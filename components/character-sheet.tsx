@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useExperience } from "./experience";
 import ResourceStrip from "./resource-strip";
 import RollReveal from "./roll-reveal";
+import { combatItem } from "@/lib/combat-metadata";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -736,7 +737,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                     </button>
                   </div>
                 ) : (
-                  items.map((i) => (
+                  items.map(combatItem).map((i) => (
                     <article key={i.id} className="sheet-item">
                       <div className="section-title">
                         <div>
