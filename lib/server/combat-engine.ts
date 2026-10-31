@@ -167,7 +167,11 @@ export function executeCombatCommand(
       fail("Use os controles de ameaça do mestre para este participante.");
     if (
       face.resources.pv <= 0 ||
-      face.conditions.some((c) => /^(morto|inconsciente|paralisado)$/i.test(c))
+      [...face.conditions, ...p.conditions.split(",")].some((c) =>
+        /^(morto|inconsciente|paralisado|atordoado)$/.test(
+          normalizeCombatName(c),
+        ),
+      )
     )
       fail(
         "Este personagem não pode agir nesta condição. O mestre pode ajustar a ficha.",
@@ -201,6 +205,7 @@ export function executeCombatCommand(
         fail("Pontos de esforço/determinação insuficientes.");
       const limit = effortLimit(face!);
       if (
+        cost > 0 &&
         budget.spentPe + cost > limit &&
         !(budget.spentPe === 0 && cost === minimum)
       )
@@ -472,7 +477,7 @@ export function executeCombatCommand(
           if (
             !tf ||
             t.id === p.id ||
-            (!tf.conditions.some(
+            (![...tf.conditions, ...t.conditions.split(",")].some(
               (c) => normalizeCombatName(c) === "morrendo",
             ) &&
               tf.resources.pv > 0)
@@ -491,7 +496,20 @@ export function executeCombatCommand(
               (c) =>
                 !["morrendo", "inconsciente"].includes(normalizeCombatName(c)),
             );
-            t.conditions = tf.conditions.join(", ");
+            t.conditions = [
+              ...new Set([
+                ...t.conditions.split(",").map((c) => c.trim()),
+                ...tf.conditions,
+              ]),
+            ]
+              .filter(
+                (c) =>
+                  c &&
+                  !["morrendo", "inconsciente"].includes(
+                    normalizeCombatName(c),
+                  ),
+              )
+              .join(", ");
             saveFace(t, tf);
             ledger.stabilized[t.id] = (ledger.stabilized[t.id] || 0) + 1;
             event.text += ` Sucesso (${result.total}/DT ${dt}): estabilizado com 1 PV.`;

@@ -48,7 +48,8 @@ export function useStore() {
       ...state,
       agents: state.agents.map((agent) => {
         const patch = patches.find((p) => p.id === agent.id);
-        if (!patch) return agent;
+        if (!patch || (patch.face === "alternate" && !agent.alternate))
+          return agent;
         return patch.face === "alternate" && agent.alternate
           ? {
               ...agent,

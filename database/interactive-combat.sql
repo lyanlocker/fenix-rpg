@@ -489,5 +489,3 @@ $function$
 
 revoke all on function public.fenix_sync_master_combat(requested_campaign_id uuid, master_token text, known_version text) from public,anon,authenticated;
 grant execute on function public.fenix_sync_master_combat(requested_campaign_id uuid, master_token text, known_version text) to anon,authenticated;
-
-
