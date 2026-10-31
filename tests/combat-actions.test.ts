@@ -696,3 +696,34 @@ test("damage stage is locked to the original turn even after the GM advances the
     /neste turno/,
   );
 });
+
+test("GM may arbitrate damage before a roll and the resolved event cannot be rolled later", () => {
+  const { c, b, pb } = setup();
+  b.resources.pv = 30;
+  const hit = apply(c, {
+    kind: "use",
+    optionId: "unarmed",
+    targetIds: [pb.id],
+  });
+  c.role = "master";
+  const result = apply(c, {
+    kind: "resolve",
+    eventId: hit.event.id,
+    amount: 4,
+    note: "Resolução da mesa",
+  });
+  assert.equal(b.resources.pv, 26);
+  assert.match(result.event.text, /definido pelo mestre antes/);
+  c.role = "player";
+  assert.throws(
+    () =>
+      apply(c, { kind: "damage", eventId: hit.event.id, damageDice: "1d6" }),
+    /já foi realizada/,
+  );
+});
+test("hiding the damage target does not trap a player behind an invisible pending roll", () => {
+  const { c, pb } = setup();
+  apply(c, { kind: "use", optionId: "unarmed", targetIds: [pb.id] });
+  c.encounter.participants[1].hidden = true;
+  assert.doesNotThrow(() => apply(c, { kind: "end" }));
+});

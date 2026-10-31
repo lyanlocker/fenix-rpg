@@ -120,11 +120,7 @@ export function CombatEvents({
                         name="amount"
                         type="number"
                         min={0}
-                        max={
-                          event.damageRoll && !event.damageRoll.done
-                            ? 0
-                            : 100000
-                        }
+                        max={100000}
                         required
                         defaultValue={event.proposedDamage || 0}
                       />
@@ -678,6 +674,7 @@ export default function CombatArena({
             <div className="arena-delay">
               <button
                 className="arena-delay-button"
+                aria-expanded={delayOpen}
                 disabled={!delayAllowed || !laterAllies.length}
                 onClick={() => setDelayOpen((v) => !v)}
               >

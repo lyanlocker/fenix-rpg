@@ -176,3 +176,14 @@ test("zero attribute suggestions use two d20 and the lowest; stable initiative t
   );
   assert.equal(reorderEncounter(e).turn, 1);
 });
+
+test("execution written in the sheet description takes priority over a catalog fallback", () => {
+  const i = item({
+    name: "Eletrocussão",
+    notes: "Execução: movimento. Minha versão.",
+  });
+  assert.equal(combatItem(i).execution, "movimento");
+  const a = newAgent();
+  a.inventory = [i];
+  assert.equal(combatOptions(a).find((o) => o.id === i.id)?.action, "move");
+});

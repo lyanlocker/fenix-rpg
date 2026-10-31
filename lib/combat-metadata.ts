@@ -31,6 +31,18 @@ export function combatItem(item: Item): Item {
       ? matches[0]
       : undefined;
   const result = { ...item };
+  if (!result.execution?.trim()) {
+    const notes = item.notes;
+    const declared = notes.match(
+      /execu[çc][aã]o\s*:\s*([^\n.;]+?)(?=[.;\n]|\s+(?:alcance|alvo|[aá]rea|dura[çc][aã]o|resist[eê]ncia)\s*:|$)/i,
+    )?.[1];
+    const activation = notes.match(
+      /(?:gastar|gastando|gaste|usar|usando|usa|use|consome|exige|executar|executando)\s+(?:uma?\s+)?a[çc][aã]o\s+(?:de\s+)?(padr[aã]o|movimento|livre|completa)/i,
+    )?.[1];
+    if (declared || activation)
+      result.execution = (declared || activation)!.trim();
+  }
+
   for (const key of [
     "notes",
     "discente",
@@ -50,23 +62,11 @@ export function combatItem(item: Item): Item {
     )
       Object.assign(result, { [key]: source[key] });
   }
-  if (!result.execution?.trim()) {
-    const notes = item.notes || source?.notes || "";
-    const declared = notes.match(
-      /execu[çc][aã]o\s*:\s*([^\n.;]+?)(?=\s+(?:alcance|alvo|[aá]rea|dura[çc][aã]o|resist[eê]ncia)\s*:|$)/i,
-    )?.[1];
-    const activation = notes.match(
-      /(?:gastar|gastando|gaste|usar|usando|usa|use|consome|exige|executar|executando)\s+(?:uma?\s+)?a[çc][aã]o\s+(?:de\s+)?(padr[aã]o|movimento|livre|completa)/i,
-    )?.[1];
-    if (declared || activation)
-      result.execution = (declared || activation)!.trim();
-  }
   return result;
 }
 
 export function ritualDamage(item: Item): string {
-  if (/(?:recupera|restaura|cura)\s+(?:\d|pv|pontos)/i.test(item.notes))
-    return "";
+  if (/(?:recuper|restaur|cura)/i.test(item.notes)) return "";
   return (
     item.damage?.trim() ||
     item.notes

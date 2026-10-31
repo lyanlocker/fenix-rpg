@@ -168,12 +168,8 @@ export function executeCombatCommand(
       const amount = command.amount;
       if (!Number.isInteger(amount) || amount! < 0 || amount! > 100000)
         fail("Informe o dano final, de 0 a 100.000.");
-      if (pending.damageRoll && !pending.damageRoll.done && amount! > 0)
-        fail(
-          "Aguarde a rolagem de dano, ou confirme 0 se o ataque não acertou.",
-        );
       hp(target, -amount!);
-      event.text = `${amount} de dano final em ${target.name}. ${command.note || ""}`;
+      event.text = `${amount} de dano final em ${target.name}. ${pending.damageRoll && !pending.damageRoll.done ? "Valor definido pelo mestre antes da rolagem de dano. " : ""}${command.note || ""}`;
     } else event.text = command.note || "Efeito conferido pelo mestre.";
     pending.resolved = true;
   } else {
@@ -355,6 +351,13 @@ export function executeCombatCommand(
               (x) =>
                 x.actorId === p.id &&
                 x.damageRoll?.turn === key &&
+                x.targetIds.some((id) =>
+                  e.participants.some(
+                    (target) =>
+                      target.id === id &&
+                      (!target.hidden || target.id === p.id),
+                  ),
+                ) &&
                 !x.damageRoll.done &&
                 !x.resolved,
             )
