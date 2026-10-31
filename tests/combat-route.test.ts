@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { POST } from "../app/api/combat/action/route";
 import { newAgent, maximums } from "../lib/rules";
-import { participantFromAgent } from "../lib/combat";
+import { participantFromAgent, advanceTurn } from "../lib/combat";
 import { emptyLedger, type CombatCommand } from "../lib/combat-actions";
 import type { CombatContext } from "../lib/server/combat-engine";
 
@@ -56,8 +56,19 @@ test("HTTP actions carry edited dice and delay intentions through server validat
       encounter: body.next_encounter,
       revision: context.revision + 1,
     };
+    for (const patch of body.agent_changes) {
+      const { id, face, version, ...data } = patch;
+      if (face === "alternate")
+        Object.assign(context.sheets[id].alternate!.face, data);
+      else Object.assign(context.sheets[id], data);
+    }
     return Response.json({
-      combat: { id: context.encounter.id, revision: context.revision },
+      combat: {
+        id: context.encounter.id,
+        revision: context.revision,
+        budget: context.encounter.combat?.budgets[context.actorId!],
+        effects: context.encounter.combat?.effects,
+      },
     });
   };
   const send = (command: CombatCommand) =>
@@ -129,6 +140,69 @@ test("HTTP actions carry edited dice and delay intentions through server validat
     response = await send({ kind: "use", optionId: "free" });
     assert.equal(response.status, 400);
     assert.equal(commits, 3);
+    // A production-shaped JSON round-trip: casting, next round, sustaining,
+    // then two real actions rather than only checking a derived counter.
+    Object.assign(context.sheets[a.id], {
+      nex: 65,
+      className: "Ocultista",
+      resources: { ...maximums(a), pe: 100 },
+      inventory: [
+        {
+          id: "speed",
+          name: "Velocidade Mortal",
+          kind: "Ritual",
+          quantity: 1,
+          spaces: 0,
+          damage: "",
+          notes: "",
+          circle: 2,
+          element: "Morte",
+          execution: "padrão",
+          cost: 3,
+        },
+      ],
+    });
+    context.encounter = {
+      ...context.encounter,
+      participants: [pa, pb],
+      round: 3,
+      turn: 0,
+      turnSerial: 4,
+      combat: emptyLedger(),
+    };
+    response = await send({
+      kind: "use",
+      optionId: "speed",
+      targetIds: [pa.id],
+      variant: "discente",
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).combat.budget.restricted, 1);
+    context.encounter = advanceTurn(advanceTurn(context.encounter));
+    response = await send({
+      kind: "sustain",
+      eventId: context.encounter.combat!.effects[0].id,
+    });
+    assert.equal(response.status, 200);
+    const sustained = (await response.json()).combat.budget;
+    assert.equal(sustained.standard, 1);
+    assert.equal(sustained.restricted, 1);
+    assert.equal(sustained.move, 1);
+    assert.equal(context.sheets[a.id].resources.pe, 93);
+    for (let i = 0; i < 2; i++) {
+      response = await send({
+        kind: "use",
+        optionId: "custom:standard",
+        note: "Ação da rodada",
+      });
+      assert.equal(response.status, 200);
+    }
+    response = await send({
+      kind: "use",
+      optionId: "custom:standard",
+      note: "Ação excedente",
+    });
+    assert.equal(response.status, 400);
   } finally {
     globalThis.fetch = previousFetch;
     if (previousSecret === undefined)

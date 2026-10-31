@@ -20,7 +20,7 @@ export type CombatRule = {
   formula?: string;
   grant?: GrantKind;
   target: "self" | "ally" | "any";
-  timing: "now" | "next";
+  timing: "now" | "next" | "sustained" | "scene";
   limit: "turn" | "round" | "scene";
   consume: boolean;
   medicine: boolean;
@@ -33,6 +33,7 @@ export type Budget = {
   standard: number;
   move: number;
   restricted: number;
+  restrictedMove?: number;
   attack: number;
   spentPe: number;
   attacked: boolean;
@@ -45,7 +46,7 @@ export type CombatEffect = {
   name: string;
   grant: GrantKind;
   noRitual: boolean;
-  timing: "now" | "next" | "sustained";
+  timing: "now" | "next" | "sustained" | "scene";
   createdKey: string;
   appliedKey?: string;
   upkeepKey?: string;
@@ -120,7 +121,7 @@ export type CombatOption = {
   formula?: string;
   grant?: GrantKind;
   noRitual?: boolean;
-  timing?: "now" | "next" | "sustained";
+  timing?: "now" | "next" | "sustained" | "scene";
   limit?: "turn" | "round" | "scene";
   consume?: boolean;
   medicine?: boolean;
@@ -143,6 +144,7 @@ const minimumNex: Record<string, number> = {
   "acelerar ritual": 40,
   "iniciativa aprimorada": 10,
   "sempre alerta": 99,
+  "fluxo de poder": 60,
 };
 function eligible(a: Agent, i: Item) {
   return (
@@ -195,6 +197,7 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
           standard: 1,
           move: 1,
           restricted: 0,
+          restrictedMove: 0,
           attack: 0,
           spentPe: 0,
           attacked: false,
@@ -213,7 +216,10 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
       continue;
     if (effect.grant === "standard")
       b[effect.noRitual ? "restricted" : "standard"]++;
-    if (effect.grant === "move") b.move++;
+    if (effect.grant === "move") {
+      if (effect.noRitual) b.restrictedMove = (b.restrictedMove || 0) + 1;
+      else b.move++;
+    }
     if (effect.grant === "attack") b.attack++;
   }
   return b;
@@ -226,12 +232,13 @@ export function actionAvailable(
 ) {
   if (b.ended) return false;
   const s = b.standard + (ritual ? 0 : b.restricted);
+  const m = b.move + (ritual ? 0 : b.restrictedMove || 0);
   return (
     cost === "free" ||
     (cost === "move"
-      ? b.move + s > 0
+      ? m + s > 0
       : cost === "full"
-        ? s > 0 && b.move > 0
+        ? s > 0 && m + s >= 2
         : s > 0 || (attack && b.attack > 0))
   );
 }
@@ -388,6 +395,11 @@ export function combatOptions(
         });
       continue;
     }
+    if (
+      item.kind === "Poder" &&
+      ["iniciativa aprimorada", "sempre alerta"].includes(name)
+    )
+      continue;
     if (item.kind === "Poder" && name === "surto temporal") {
       options.push({
         ...base,
@@ -427,6 +439,26 @@ export function combatOptions(
         timing: "next",
         pe: name === "estrategista" ? 1 : 5,
       });
+      continue;
+    }
+    if (item.kind === "Item" && name === "cranio espiral") {
+      options.push({
+        ...base,
+        action: "free",
+        effect: "grant",
+        target: "self",
+        grant: "standard",
+        timing: "now",
+        pe: 0,
+        limit: "round",
+        description: `${base.description} Empunhe o crânio. A ação é concedida mesmo se o teste falhar; o mestre acompanha a DT cumulativa do dia, envelhecimento e impedimento de novo uso.`,
+      });
+      continue;
+    }
+    const extra =
+      name === "velocidade mortal" ? null : extraActionFromText(item);
+    if (extra) {
+      options.push({ ...base, ...extra, effect: "grant" });
       continue;
     }
     if (item.kind === "Ritual") {
@@ -486,4 +518,67 @@ export function maxTargets(o: CombatOption, a: Agent) {
     : normalizeCombatName(o.name) === "oficial comandante"
       ? 100
       : 1;
+}
+
+/** Only unconditional, explicit +1 action text. Conditional/mode-specific rules stay with the GM editor. */
+export function extraActionFromText(
+  item: Item,
+): Pick<
+  CombatOption,
+  "action" | "grant" | "target" | "timing" | "noRitual" | "limit"
+> | null {
+  const text = normalizeCombatName(item.notes).replace(/\s+/g, " ");
+  if (
+    /\b(caso|se|quando|apos|antes|enquanto|afinidade|discente|verdadeiro|teste|testes|rolar|rolagem|rodadas|primeiro|primeira|interludio)\b|apenas|somente|ao acertar|ao atacar|ao causar|ao sofrer|ou de movimento|ou uma acao|a cada \d/.test(
+      text,
+    )
+  )
+    return null;
+  const unrestrictedText = text.replace(
+    /(?:esta acao )?nao pode ser usada para conjurar rituais[.]?/,
+    "",
+  );
+  if (
+    /nao (?:pode|permite)|para (?:atacar|agredir|conjurar|deslocar)|por \d+|durante \d+/.test(
+      unrestrictedText,
+    )
+  )
+    return null;
+  const matches = [
+    ...text.matchAll(
+      /(?:voce|o alvo|o usuario|um aliado) (?:recebe|ganha|obtem|pode realizar) (?:(?:uma?|1) acao (padrao|de movimento|livre) (?:adicional|extra)|\+1 acao (padrao|de movimento|livre))/g,
+    ),
+  ];
+  const match = matches.length === 1 ? matches[0] : null;
+  const action = executionCost(item.execution);
+  if (!match || !action) return null;
+  const timing = /sustentada/.test(normalizeCombatName(item.duration || ""))
+    ? "sustained"
+    : /proximo turno/.test(text)
+      ? "next"
+      : /(?:cada|por|todos os) turno/.test(text) &&
+          /cena/.test(text + " " + normalizeCombatName(item.duration || ""))
+        ? "scene"
+        : /(?:cada|por|todos os) turno/.test(text)
+          ? null
+          : "now";
+  if (!timing) return null;
+  const kind = match[1] || match[2];
+  return {
+    action,
+    grant:
+      kind === "padrao"
+        ? "standard"
+        : kind === "de movimento"
+          ? "move"
+          : "free",
+    target: /^(voce|o usuario)/.test(match[0]) ? "self" : "any",
+    timing,
+    noRitual: /nao (?:pode|permite)[^.]*ritua/.test(text),
+    limit: /uma vez por cena/.test(text)
+      ? "scene"
+      : /uma vez por rodada/.test(text)
+        ? "round"
+        : "turn",
+  };
 }

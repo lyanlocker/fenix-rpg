@@ -6,6 +6,7 @@ import ResourceStrip from "./resource-strip";
 import RollReveal from "./roll-reveal";
 import { combatItem } from "@/lib/combat-metadata";
 import dynamic from "next/dynamic";
+import { faceWhisper } from "@/lib/face-whispers";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -999,6 +1000,19 @@ export default function CharacterSheet({ id }: { id: string }) {
           </motion.div>
         </div>
       </div>
+      {!!faceTransition && (
+        <p
+          className={
+            reduced || level !== "full"
+              ? "face-whisper-quiet"
+              : "face-whisper-announcement"
+          }
+          role="status"
+          lang="la"
+        >
+          {faceWhisper(faceTransition, otherFace)}
+        </p>
+      )}
       {!!faceTransition && !reduced && level === "full" && (
         <motion.div
           key={faceTransition}
@@ -1006,14 +1020,10 @@ export default function CharacterSheet({ id }: { id: string }) {
           aria-hidden
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 0.9, 0] }}
-          transition={{ duration: 0.65 }}
+          transition={{ duration: 3, times: [0, 0.18, 1] }}
         >
           <Sparkles size={35} />
-          <span>
-            {otherFace
-              ? "OUTRA REALIDADE. A MESMA MARCA."
-              : "DE VOLTA À SUA IDENTIDADE."}
-          </span>
+          <span lang="la">{faceWhisper(faceTransition, otherFace)}</span>
         </motion.div>
       )}
       <RollReveal result={result} onClose={() => setResult(null)} />

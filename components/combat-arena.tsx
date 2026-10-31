@@ -355,7 +355,10 @@ export default function CombatArena({
                 {budget.restricted ? ` (${budget.restricted} sem ritual)` : ""}
               </span>
               <span>
-                <b>{budget.move}</b> movimento
+                <b>{budget.move + (budget.restrictedMove || 0)}</b> movimento
+                {budget.restrictedMove
+                  ? ` (${budget.restrictedMove} sem ritual)`
+                  : ""}
               </span>
               <span>
                 <b>{budget.attack}</b> ataques extras
@@ -366,6 +369,10 @@ export default function CombatArena({
           {upkeep.length > 0 && (
             <div className="hint">
               <strong>Sustentação no início do turno</strong>
+              <p>
+                Ação livre: paga apenas 1 PE/PD por efeito. Mantém suas ações
+                padrão e de movimento.
+              </p>
               {upkeep.map((x) => (
                 <div key={x.id}>
                   <span>{x.name}</span>
@@ -387,6 +394,55 @@ export default function CombatArena({
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+          {(combat.effects || []).some(
+            (x) => x.targetId === mine?.id || x.sourceId === mine?.id,
+          ) && (
+            <div
+              className="hint arena-active-effects"
+              aria-label="Ações extras ativas"
+            >
+              <strong>Ações extras ativas</strong>
+              {(combat.effects || [])
+                .filter(
+                  (x) => x.targetId === mine?.id || x.sourceId === mine?.id,
+                )
+                .map((x) => (
+                  <div key={x.id}>
+                    <span>
+                      {x.name} · +1{" "}
+                      {x.grant === "standard"
+                        ? "padrão"
+                        : x.grant === "move"
+                          ? "movimento"
+                          : x.grant === "attack"
+                            ? "ataque"
+                            : "livre"}
+                      {x.targetId !== mine?.id
+                        ? ` para ${combat.participants.find((p) => p.id === x.targetId)?.name || "aliado"}`
+                        : ""}
+                      {x.noRitual ? " · sem ritual" : ""}
+                      {x.timing === "sustained"
+                        ? " · sustentada"
+                        : x.timing === "scene"
+                          ? " · até encerrar"
+                          : " · próximo turno do alvo"}
+                    </span>
+                    {x.sourceId === mine?.id &&
+                      ["sustained", "scene"].includes(x.timing) &&
+                      !upkeep.includes(x) && (
+                        <button
+                          disabled={!canAct}
+                          onClick={() =>
+                            onCommand({ kind: "stopEffect", eventId: x.id })
+                          }
+                        >
+                          Encerrar efeito
+                        </button>
+                      )}
+                  </div>
+                ))}
             </div>
           )}
           {latestRoll && (
@@ -505,8 +561,16 @@ export default function CombatArena({
                         setVariant(ev.target.value as typeof variant)
                       }
                     >
-                      <option value="base">Básica</option>
-                      <option value="discente">Discente</option>
+                      <option value="base">
+                        {name === "velocidade mortal"
+                          ? "Básica · +1 movimento por turno"
+                          : "Básica"}
+                      </option>
+                      <option value="discente">
+                        {name === "velocidade mortal"
+                          ? "Discente · +1 padrão por turno"
+                          : "Discente"}
+                      </option>
                     </select>
                   </label>
                 )}

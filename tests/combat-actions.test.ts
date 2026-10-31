@@ -727,3 +727,310 @@ test("hiding the damage target does not trap a player behind an invisible pendin
   c.encounter.participants[1].hidden = true;
   assert.doesNotThrow(() => apply(c, { kind: "end" }));
 });
+
+test("extra actions are committed immediately and both standards can actually be spent after JSON reload", () => {
+  const { c, a, pa } = setup();
+  const surge = item("Surto Temporal");
+  a.inventory.push(surge);
+  apply(c, { kind: "use", optionId: surge.id });
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 2);
+  c.encounter = JSON.parse(JSON.stringify(c.encounter));
+  for (let i = 0; i < 2; i++)
+    apply(c, { kind: "use", optionId: "custom:standard", note: "Agir" });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 0);
+  assert.throws(
+    () =>
+      apply(c, { kind: "use", optionId: "custom:standard", note: "Terceira" }),
+    /gasta/,
+  );
+  newTurn(c);
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 1);
+});
+
+test("sustaining discente preserves two standards and movement across multiple complete rounds", () => {
+  const { c, a, pa, ritual } = speed();
+  apply(c, {
+    kind: "use",
+    optionId: ritual.id,
+    targetIds: [pa.id],
+    variant: "discente",
+  });
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 0);
+  assert.equal(c.encounter.combat!.budgets[pa.id].restricted, 1);
+  apply(c, {
+    kind: "use",
+    optionId: "custom:standard",
+    note: "Ação extra imediata",
+  });
+  for (let round = 0; round < 3; round++) {
+    newTurn(c);
+    c.encounter = JSON.parse(JSON.stringify(c.encounter));
+    const pe = a.resources.pe;
+    const before = budgetFor(c.encounter, pa, a);
+    const effect = c.encounter.combat!.effects[0];
+    apply(c, { kind: "sustain", eventId: effect.id });
+    const after = budgetFor(c.encounter, pa, a);
+    assert.equal(after.standard, 1);
+    assert.equal(after.restricted, 1);
+    assert.equal(after.move, 1);
+    assert.equal(
+      after.standard + after.restricted,
+      before.standard + before.restricted,
+    );
+    assert.equal(a.resources.pe, pe - 1);
+    for (let i = 0; i < 2; i++)
+      apply(c, {
+        kind: "use",
+        optionId: "custom:standard",
+        note: "Ação efetiva",
+      });
+    assert.throws(
+      () =>
+        apply(c, {
+          kind: "use",
+          optionId: "custom:standard",
+          note: "Não há terceira",
+        }),
+      /gasta/,
+    );
+    apply(c, { kind: "use", optionId: "move" });
+    apply(c, { kind: "end" });
+  }
+});
+
+test("basic speed grants movement that cannot be used to cast even a movement ritual", () => {
+  const { c, a, pa, ritual } = speed();
+  const quick = item("Ritual breve", "Ritual", {
+    execution: "movimento",
+    circle: 1,
+    element: "Medo",
+    cost: 0,
+  });
+  a.inventory.push(quick);
+  apply(c, { kind: "use", optionId: ritual.id, targetIds: [pa.id] });
+  assert.equal(c.encounter.combat!.budgets[pa.id].restrictedMove, 1);
+  apply(c, { kind: "use", optionId: quick.id, targetIds: [pa.id] });
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: quick.id, targetIds: [pa.id] }),
+    /gasta/,
+  );
+  apply(c, { kind: "use", optionId: "move" });
+  assert.equal(budgetFor(c.encounter, pa, a).restrictedMove, 0);
+});
+
+test("self and ally grant effects allow the exact number of uses, including repeated moves", () => {
+  for (const kind of ["standard", "move"] as const) {
+    const { c, a, pa } = setup();
+    const surge = item("Surto de Adrenalina");
+    a.inventory.push(surge);
+    apply(c, { kind: "use", optionId: surge.id, grant: kind });
+    assert.equal(c.encounter.combat!.budgets[pa.id][kind], 2);
+    for (let i = 0; i < 3; i++) apply(c, { kind: "use", optionId: "move" });
+    assert.throws(() => apply(c, { kind: "use", optionId: "move" }), /gasta/);
+  }
+  const { c, a, b, pb } = setup();
+  a.nex = 99;
+  const command = item("Oficial Comandante");
+  a.inventory.push(command);
+  apply(c, { kind: "use", optionId: command.id, targetIds: [pb.id] });
+  apply(c, { kind: "end" });
+  c.actorId = pb.id;
+  assert.equal(budgetFor(c.encounter, pb, b).standard, 2);
+  for (let i = 0; i < 2; i++)
+    apply(c, {
+      kind: "use",
+      optionId: "custom:standard",
+      note: "Ordem cumprida",
+    });
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: "custom:standard", note: "Outra" }),
+    /gasta/,
+  );
+});
+
+test("GM skipping the recipient turn expires one-off actions instead of granting them a round late", () => {
+  const { c, a, b, pa, pb } = setup();
+  a.inventory.push(item("Estrategista"));
+  apply(c, {
+    kind: "use",
+    optionId: a.inventory.at(-1)!.id,
+    targetIds: [pb.id],
+  });
+  c.encounter = advanceTurn(c.encounter);
+  assert.equal(budgetFor(c.encounter, pb, b).move, 2);
+  c.encounter = advanceTurn(c.encounter);
+  assert.equal(c.encounter.combat!.effects.length, 0);
+  c.encounter = advanceTurn(c.encounter);
+  assert.equal(budgetFor(c.encounter, pb, b).move, 1);
+  assert.notEqual(pa.id, pb.id);
+});
+
+test("unconditional explicit extra-action text works for custom powers, items and rituals", () => {
+  for (const kind of ["Poder", "Item", "Ritual"] as const) {
+    const { c, a, pa } = setup();
+    a.className = "Ocultista";
+    const source = item("Impulso", kind, {
+      execution: "livre",
+      cost: 1,
+      element: "Medo",
+      notes: "Você recebe uma ação padrão adicional neste turno.",
+    });
+    a.inventory.push(source);
+    assert.equal(
+      combatOptions(a).find((x) => x.id === source.id)?.effect,
+      "grant",
+    );
+    apply(c, { kind: "use", optionId: source.id });
+    assert.equal(c.encounter.combat!.budgets[pa.id].standard, 2);
+    assert.equal(a.resources.pe, 99);
+    assert.throws(
+      () => apply(c, { kind: "use", optionId: source.id }),
+      /usado/,
+    );
+    for (let i = 0; i < 2; i++)
+      apply(c, { kind: "use", optionId: "custom:standard", note: "Agir" });
+  }
+});
+
+test("conditional grants are not invented from partial descriptions", () => {
+  for (const notes of [
+    "Se estiver escondido, você recebe uma ação padrão adicional.",
+    "Você recebe uma ação de movimento extra apenas para se deslocar.",
+    "Caso um aliado morra, você recebe uma ação padrão extra.",
+    "Discente: você recebe uma ação padrão extra.",
+    "Você recebe uma ação de movimento extra por turno.",
+  ]) {
+    const a = newAgent();
+    a.inventory.push(
+      item("Condicional", "Poder", { execution: "livre", notes }),
+    );
+    assert.notEqual(
+      combatOptions(a).find((x) => x.name === "Condicional")?.effect,
+      "grant",
+    );
+  }
+});
+
+test("GM-configured scene grants recur without stacking, can end and do not charge upkeep", () => {
+  const { c, a, pa } = setup();
+  const source = item("Bênção", "Item");
+  a.inventory.push(source);
+  c.encounter.combatRules = {
+    [source.id]: {
+      itemId: source.id,
+      name: source.name,
+      action: "free",
+      pe: 0,
+      effect: "grant",
+      grant: "standard",
+      target: "self",
+      timing: "scene",
+      limit: "turn",
+      consume: false,
+      medicine: false,
+      difficulty: 20,
+      noRitual: false,
+      note: "",
+    },
+  };
+  apply(c, { kind: "use", optionId: source.id });
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 2);
+  newTurn(c);
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: source.id }),
+    /acumulam/,
+  );
+  apply(c, { kind: "use", optionId: "custom:standard", note: "Agir" });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 1);
+  newTurn(c);
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 2);
+  apply(c, { kind: "stopEffect", eventId: c.encounter.combat!.effects[0].id });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 1);
+  assert.equal(a.resources.pe, 100);
+});
+
+test("Crânio Espiral actually grants a usable standard, once per round, without consuming the item", () => {
+  const { c, a, pa } = setup();
+  const skull = item("Crânio Espiral", "Item");
+  a.inventory.push(skull);
+  const result = apply(c, { kind: "use", optionId: skull.id });
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 2);
+  assert.match(result.event.text, /Vontade/);
+  assert.equal(result.event.pending, "interpretation");
+  assert.equal(a.inventory.find((x) => x.id === skull.id)?.quantity, 1);
+  assert.throws(() => apply(c, { kind: "use", optionId: skull.id }), /usado/);
+  for (let i = 0; i < 2; i++)
+    apply(c, { kind: "use", optionId: "custom:standard", note: "Agir" });
+});
+
+test("standard credits can replace movement when paying a complete action", () => {
+  const { c, a, pa } = setup();
+  a.inventory.push(item("Surto Temporal"));
+  apply(c, { kind: "use", optionId: a.inventory.at(-1)!.id });
+  apply(c, { kind: "use", optionId: "move" });
+  apply(c, { kind: "use", optionId: "investigate" });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 0);
+  assert.equal(budgetFor(c.encounter, pa, a).move, 0);
+});
+
+test("two sustained action effects require Fluxo de Poder and separate free-action upkeep", () => {
+  const { c, a, pa, ritual } = speed();
+  const other = item("Impulso sustentado", "Ritual", {
+    execution: "livre",
+    duration: "sustentada",
+    circle: 1,
+    element: "Medo",
+    cost: 1,
+    notes: "Você recebe uma ação de movimento extra por turno.",
+  });
+  a.inventory.push(other);
+  apply(c, {
+    kind: "use",
+    optionId: ritual.id,
+    targetIds: [pa.id],
+    variant: "discente",
+  });
+  const snapshot = JSON.stringify(c);
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: other.id }),
+    /Fluxo de Poder/,
+  );
+  assert.equal(JSON.stringify(c), snapshot);
+  a.inventory.push(item("Fluxo de Poder"));
+  apply(c, { kind: "use", optionId: other.id });
+  newTurn(c);
+  const pe = a.resources.pe;
+  for (const x of [...c.encounter.combat!.effects])
+    apply(c, { kind: "sustain", eventId: x.id });
+  assert.equal(a.resources.pe, pe - 2);
+  const budget = budgetFor(c.encounter, pa, a);
+  assert.equal(budget.standard + budget.restricted, 2);
+  assert.equal(budget.move, 2);
+});
+
+test("the original standard remains available for rituals after the restricted bonus action is spent", () => {
+  const { c, a, pa, ritual } = speed();
+  const regular = item("Ritual original", "Ritual", {
+    execution: "padrão",
+    circle: 1,
+    element: "Medo",
+    cost: 1,
+  });
+  a.inventory.push(regular);
+  apply(c, {
+    kind: "use",
+    optionId: ritual.id,
+    targetIds: [pa.id],
+    variant: "discente",
+  });
+  newTurn(c);
+  apply(c, { kind: "sustain", eventId: c.encounter.combat!.effects[0].id });
+  apply(c, {
+    kind: "use",
+    optionId: "custom:standard",
+    note: "Ação adicional",
+  });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 1);
+  apply(c, { kind: "use", optionId: regular.id, targetIds: [pa.id] });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 0);
+});
