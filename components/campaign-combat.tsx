@@ -9,6 +9,8 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import MasterCombatRoom from "./master-combat-room";
+import type { CombatCommand } from "@/lib/combat-actions";
 import PresentationLauncher from "./presentation-launcher";
 import InitiativeStrip from "./initiative-strip";
 import { ThreatArtwork, ThreatArtViewer } from "./threat-artwork";
@@ -40,6 +42,7 @@ import {
   saveMasterCombat,
   clearSharedCombat,
   withCombatRevision,
+  submitCombatAction,
 } from "@/lib/shared-combat";
 import { conditionDefinitions } from "@/lib/conditions";
 import type { Agent } from "@/lib/rules";
@@ -97,6 +100,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         remoteEncounterId.current = payload.encounter?.id || null;
         const next = withCombatRevision(payload);
         if (next) game.mergeSharedEncounter(next);
+        if (payload.agentPatches) game.mergeCombatAgents(payload.agentPatches);
         return true;
       } catch (error) {
         if (active) game.setNotice((error as Error).message);
@@ -110,7 +114,13 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       active = false;
       stop();
     };
-  }, [campaignId, game.ready, game.access.isPlayer, game.mergeSharedEncounter]);
+  }, [
+    campaignId,
+    game.ready,
+    game.access.isPlayer,
+    game.mergeSharedEncounter,
+    game.mergeCombatAgents,
+  ]);
   async function run(action: () => Promise<void>) {
     if (lock.current || game.access.isPlayer || !game.ready) return;
     lock.current = true;
@@ -120,6 +130,31 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       await action();
     } catch (e) {
       game.setNotice((e as Error).message);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function combatAction(command: CombatCommand, actorId: string) {
+    if (!encounter || lock.current) return;
+    const key = combatMasterKey(campaignId);
+    if (!key) throw Error("Inicie o combate para liberar a sala.");
+    lock.current = true;
+    actionVersion.current++;
+    setBusy(true);
+    try {
+      const payload = await submitCombatAction({
+        campaignId,
+        token: key,
+        encounterId: encounter.id,
+        revision: encounter.sharedRevision ?? remoteRevision.current,
+        actorId,
+        command,
+      });
+      remoteRevision.current = payload.revision;
+      const next = withCombatRevision(payload);
+      if (next) game.mergeSharedEncounter(next);
+      if (payload.agentPatches) game.mergeCombatAgents(payload.agentPatches);
     } finally {
       lock.current = false;
       setBusy(false);
@@ -341,7 +376,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         </h3>
         <span className="muted small">
           {encounter?.started && encounter.sharedRevision !== undefined
-            ? "Visível nos links dos jogadores · sincronizado"
+            ? "Sala liberada nos links dos jogadores selecionados"
             : "Preparação do mestre · aparece aos jogadores ao iniciar"}
         </span>
       </div>
@@ -433,6 +468,25 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                 <Trash2 size={16} />
               </button>
             </div>
+            <MasterCombatRoom
+              key={encounter.id}
+              encounter={encounter}
+              agents={agents}
+              busy={busy}
+              onCommand={combatAction}
+              save={async (e) => {
+                if (lock.current) return;
+                lock.current = true;
+                actionVersion.current++;
+                setBusy(true);
+                try {
+                  await save(e);
+                } finally {
+                  lock.current = false;
+                  setBusy(false);
+                }
+              }}
+            />
             <PresentationLauncher
               key={encounter.id}
               encounter={encounter}
@@ -476,6 +530,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                                 ),
                                 active: true,
                                 started: true,
+                                combat: undefined,
+                                turnSerial: (encounter.turnSerial || 0) + 1,
                                 turn: 0,
                                 round: 1,
                               },
@@ -483,7 +539,11 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                     )
                   }
                 >
-                  {encounter.active ? "Pausar" : "Iniciar / Retomar"}
+                  {encounter.active
+                    ? "Pausar"
+                    : encounter.started
+                      ? "Retomar sala"
+                      : "Iniciar / liberar sala"}
                 </button>
                 {encounter.started &&
                   encounter.sharedRevision === undefined && (
@@ -521,6 +581,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                         round: 1,
                         active: false,
                         started: false,
+                        combat: undefined,
+                        turnSerial: (encounter.turnSerial || 0) + 1,
                       }),
                     )
                   }
@@ -681,6 +743,23 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                         <Trash2 size={16} />
                       </button>
                     </div>
+                    {p.agentId && (
+                      <label className="check">
+                        <input
+                          type="checkbox"
+                          checked={p.playerAccess !== false}
+                          onChange={(e) =>
+                            void run(() =>
+                              updateParticipant({
+                                ...p,
+                                playerAccess: e.target.checked,
+                              }),
+                            )
+                          }
+                        />{" "}
+                        Liberar sala para este jogador
+                      </label>
+                    )}
                     <div className="combat-participant-values">
                       <label>
                         Iniciativa

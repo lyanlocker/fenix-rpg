@@ -33,7 +33,20 @@ export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
     round: Math.floor(next / size) + 1,
     turn: next % size,
     turnSerial: (encounter.turnSerial || 0) + 1,
-    ...(encounter.combat ? {combat:{...encounter.combat,effects:encounter.combat.effects.filter(x=>x.timing!=="sustained"||x.sourceId!==encounter.participants[encounter.turn]?.id||x.createdKey===turnKey(encounter)||x.upkeepKey===turnKey(encounter))}}:{}),
+    ...(encounter.combat
+      ? {
+          combat: {
+            ...encounter.combat,
+            effects: encounter.combat.effects.filter(
+              (x) =>
+                x.timing !== "sustained" ||
+                x.sourceId !== encounter.participants[encounter.turn]?.id ||
+                x.createdKey === turnKey(encounter) ||
+                x.upkeepKey === turnKey(encounter),
+            ),
+          },
+        }
+      : {}),
   };
 }
 export function removeParticipant(encounter: Encounter, id: string): Encounter {

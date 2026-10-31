@@ -105,6 +105,17 @@ export default function ItemForm({
               </select>
             </label>
           )}
+          {i.kind === "Poder" && i.name === "Surto Temporal" && (
+            <label className="check span-all">
+              <input
+                type="checkbox"
+                checked={!!i.attuned}
+                onChange={(e) => setI({ ...i, attuned: e.target.checked })}
+              />{" "}
+              Afinidade com Morte ativa (requer NEX 50%): Surto Temporal uma vez
+              por turno.
+            </label>
+          )}
           {accessory && (
             <>
               <label className="check span-all">

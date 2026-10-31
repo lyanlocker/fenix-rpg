@@ -7,6 +7,8 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
+import dynamic from "next/dynamic";
+const PlayerCombat = dynamic(() => import("./player-combat"));
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -95,7 +97,7 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
           <span>
             FÊNIX<small>ARQUIVOS DO IMPOSSÍVEL</small>
           </span>
-          <b className="version-tag">2.3</b>
+          <b className="version-tag">2.4</b>
         </Link>
         <nav aria-label="Principal">
           {(access.isPlayer && access.agentId
@@ -153,9 +155,19 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       )}
+      {access.isPlayer &&
+        access.agentId &&
+        access.shareToken &&
+        game.state.agents.find((a) => a.id === access.agentId) && (
+          <PlayerCombat
+            key={access.agentId}
+            agent={game.state.agents.find((a) => a.id === access.agentId)!}
+            token={access.shareToken}
+          />
+        )}
       <main id="content">{children}</main>
       <footer className="site-footer">
-        FÊNIX 2.3 · Toda história deixa uma marca.
+        FÊNIX 2.4 · Toda história deixa uma marca.
         <span>Fichas de Ordem Paranormal · Projeto independente</span>
       </footer>
     </Context.Provider>

@@ -2,15 +2,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Dices, Swords } from "lucide-react";
 import { useGame } from "./game-shell";
+import { Modal } from "./ui";
+import CombatArena from "./combat-arena";
 import {
   createPlayerCombatSync,
   setPlayerInitiative,
+  submitCombatAction,
   type PlayerCombat as Combat,
 } from "@/lib/shared-combat";
-import { effectiveAttributes, skillBonus, type Agent } from "@/lib/rules";
-import { alternateAgent } from "@/lib/alternate";
+import { combatFace, type CombatCommand } from "@/lib/combat-actions";
+import { rpc } from "@/lib/share";
+import { threatArtwork } from "@/lib/threat-art";
+import type { Agent } from "@/lib/rules";
 import { startVisiblePolling } from "@/lib/polling";
-
 export default function PlayerCombat({
   agent,
   token,
@@ -18,17 +22,21 @@ export default function PlayerCombat({
   agent: Agent;
   token: string;
 }) {
-  const game = useGame();
-  const [combat, setCombat] = useState<Combat | null>(null),
+  const game = useGame(),
+    [combat, setCombat] = useState<Combat | null>(null),
     [busy, setBusy] = useState(false),
-    [value, setValue] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [open, setOpen] = useState(false),
+    [portraits, setPortraits] = useState<Record<string, string>>({});
   const lock = useRef(false),
-    request = useRef(0);
+    request = useRef(0),
+    opened = useRef<string | null>(null),
+    combatRef = useRef(combat);
+  combatRef.current = combat;
   useEffect(() => {
     let active = true,
-      fetching = false;
-    let sync = createPlayerCombatSync(agent.id, token);
+      fetching = false,
+      sync = createPlayerCombatSync(agent.id, token);
     async function refresh() {
       if (lock.current || fetching) return true;
       fetching = true;
@@ -36,13 +44,23 @@ export default function PlayerCombat({
       try {
         const next = await sync();
         if (active && version === request.current && !lock.current) {
-          if (next !== undefined) setCombat(next);
+          if (next !== undefined) {
+            setCombat(next);
+            if (next && opened.current !== next.id) {
+              opened.current = next.id;
+              setOpen(true);
+            }
+            if (!next) {
+              opened.current = null;
+              setOpen(false);
+            }
+          }
           setError("");
         } else {
           sync = createPlayerCombatSync(agent.id, token);
           return true;
         }
-        return next !== undefined;
+        return !!combatRef.current || next !== undefined;
       } catch (reason) {
         if (active) setError((reason as Error).message);
         throw reason;
@@ -50,48 +68,109 @@ export default function PlayerCombat({
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 5000, 15000);
+    const stop = startVisiblePolling(refresh, 3000, 15000);
     return () => {
       active = false;
       stop();
     };
   }, [agent.id, token]);
-  const mine = combat?.participants.find((p) => p.mine);
-  const face =
-    mine?.face === "alternate" && agent.alternate
-      ? alternateAgent(agent)
-      : agent;
-  const attribute = effectiveAttributes(face).AGI,
-    bonus = skillBonus(face, "Iniciativa");
-  async function initiative(manual = false) {
-    if (!combat || lock.current) return;
-    const n = Number(value);
-    if (manual && (!value || !Number.isInteger(n) || n < -1000 || n > 10000)) {
-      setError("Informe uma iniciativa inteira entre -1000 e 10000.");
+  const portraitKey =
+      combat?.participants
+        .map((p) => `${p.id}:${p.portraitVersion}:${p.threatId}`)
+        .join("|") || "",
+    cache = useRef<Record<string, { version: string; src: string }>>({});
+  useEffect(() => {
+    let active = true;
+    const current = combatRef.current;
+    if (!current) {
+      setPortraits({});
+      cache.current = {};
       return;
     }
+    async function load() {
+      const next: Record<string, string> = {};
+      for (let offset = 0; offset < current!.participants.length; offset += 4) {
+        await Promise.all(
+          current!.participants.slice(offset, offset + 4).map(async (p) => {
+            if (!p.isAgent) {
+              const art = threatArtwork(
+                p.threatId,
+                game.threatLibrary.library.art,
+              );
+              next[p.id] = art?.thumbnail || art?.src || "";
+              return;
+            }
+            const c = cache.current[p.id];
+            if (c?.version === p.portraitVersion) {
+              next[p.id] = c.src;
+              return;
+            }
+            try {
+              const src = await rpc<string>("fenix_combat_portrait", {
+                requested_agent_id: agent.id,
+                share_token: token,
+                participant_id: p.id,
+              });
+              next[p.id] = /^data:image\/(png|jpeg|webp);base64,/.test(src)
+                ? src
+                : "";
+              if (active)
+                cache.current[p.id] = {
+                  version: p.portraitVersion || "",
+                  src: next[p.id],
+                };
+            } catch {
+              next[p.id] = "";
+            }
+          }),
+        );
+      }
+      if (active) setPortraits(next);
+    }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [portraitKey, agent.id, token, game.threatLibrary.library.art]);
+  const mine = combat?.participants.find((p) => p.mine),
+    face = mine ? combatFace(agent, { face: mine.face || "main" }) : agent;
+  async function run(command?: CombatCommand) {
+    if (!combat || lock.current) return;
     lock.current = true;
     request.current++;
     setBusy(true);
+    setError("");
+    window.dispatchEvent(
+      new CustomEvent("fenix:combat-mutation", { detail: true }),
+    );
     try {
-      const result = await setPlayerInitiative(
-        agent.id,
-        token,
-        combat.id,
-        manual ? n : null,
-      );
-      setCombat(result.combat);
-      setError("");
-      setValue("");
-      if (result.roll)
-        game.setNotice(
-          `Iniciativa: ${result.roll.total} · ${result.roll.expression} · dados: ${result.roll.dice.join(", ")}`,
-        );
+      if (command) {
+        const result = await submitCombatAction({
+          agentId: agent.id,
+          token,
+          encounterId: combat.id,
+          revision: combat.revision,
+          command,
+        });
+        if (result.combat) setCombat(result.combat);
+        if (result.agentPatch)
+          game.mergeCombatAgents([{ id: agent.id, ...result.agentPatch }]);
+      } else {
+        const result = await setPlayerInitiative(agent.id, token, combat.id);
+        setCombat(result.combat);
+        if (result.roll)
+          game.setNotice(
+            `Iniciativa: ${result.roll.total} · ${result.roll.expression}`,
+          );
+      }
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
       lock.current = false;
       setBusy(false);
+      window.dispatchEvent(
+        new CustomEvent("fenix:combat-mutation", { detail: false }),
+      );
     }
   }
   if (!combat)
@@ -101,111 +180,43 @@ export default function PlayerCombat({
       </p>
     ) : null;
   return (
-    <section
-      className="combat player-combat"
-      aria-label="Combate compartilhado"
-    >
-      <div className="section-title">
-        <h3>
-          <Swords size={20} /> {combat.name}
-        </h3>
-        <span className="muted small">Combate da campanha · sincronizado</span>
-      </div>
-      <div className="combat-turn" aria-live="polite">
+    <>
+      <aside className="arena-invitation" aria-live="polite">
+        <Swords size={22} />
         <div>
-          <small>RODADA {combat.round}</small>
-          <h4>
+          <strong>{combat.name}</strong>
+          <small>
             {combat.active
-              ? `Turno de ${combat.currentName}`
+              ? `Rodada ${combat.round} · ${combat.currentName}`
               : "Combate pausado"}
-          </h4>
-          {mine && (
-            <p className="muted small">
-              Você participa com {mine.name}
-              {mine.face === "alternate" ? " · NEX 35" : ""} · PV {mine.pv} /{" "}
-              {mine.maxPv}
-            </p>
-          )}
+          </small>
         </div>
-      </div>
-      {mine ? (
-        <fieldset disabled={busy} className="combat-controls">
-          <div className="combat-toolbar">
-            <button onClick={() => void initiative()}>
-              <Dices size={17} /> Rolar minha iniciativa
+        <button className="primary" onClick={() => setOpen(true)}>
+          Entrar no combate
+        </button>
+      </aside>
+      {open && (
+        <Modal
+          title="Sala de combate"
+          onClose={() => setOpen(false)}
+          wide
+          className="arena-modal"
+        >
+          {mine && !mine.initiativeRolled && (
+            <button disabled={busy} onClick={() => void run()}>
+              <Dices size={17} />
+              Rolar minha iniciativa
             </button>
-            <span className="muted small">
-              {attribute === 0 ? "2d20 (menor)" : `${attribute}d20 (maior)`}{" "}
-              {bonus.total >= 0 ? "+" : ""}
-              {bonus.total} · treinamento {bonus.training >= 0 ? "+" : ""}
-              {bonus.training}
-              {bonus.adjustment || bonus.sources.length
-                ? " · inclui ajustes e equipamentos"
-                : ""}
-            </span>
-          </div>
-          <form
-            className="combat-toolbar"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void initiative(true);
-            }}
-          >
-            <label>
-              Resultado manual
-              <input
-                aria-label="Minha iniciativa"
-                type="number"
-                min={-1000}
-                max={10000}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="Resultado final"
-              />
-            </label>
-            <button type="submit" disabled={!value}>
-              Informar iniciativa
-            </button>
-          </form>
-        </fieldset>
-      ) : (
-        <p className="hint">
-          Você pode acompanhar os turnos. O mestre precisa adicionar sua ficha
-          para você rolar iniciativa.
-        </p>
+          )}
+          <CombatArena
+            combat={{ ...combat, portraits }}
+            agent={face}
+            busy={busy}
+            error={error}
+            onCommand={(c) => void run(c)}
+          />
+        </Modal>
       )}
-      {error && (
-        <p role="alert" className="hint">
-          {error}
-        </p>
-      )}
-      <ol className="combat-participants">
-        {combat.participants.map((p, index) => (
-          <li
-            key={p.id}
-            className={
-              p.id === combat.currentParticipantId ? "combat-current" : ""
-            }
-          >
-            <div className="combat-participant-heading">
-              <span className="combat-position">{index + 1}</span>
-              <div>
-                <strong>
-                  {p.name}
-                  {p.mine ? " · você" : ""}
-                </strong>
-                <small>
-                  Iniciativa {p.initiativeRolled ? p.initiative : "aguardando"}
-                </small>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <p className="hint">
-        O mestre controla os turnos e aplica o dano final. A tela sai da sua
-        ficha quando o combate é encerrado.
-      </p>
-    </section>
+    </>
   );
 }
