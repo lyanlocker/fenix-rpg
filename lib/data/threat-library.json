@@ -44,8 +44,8 @@
       "attacks": [
         {
           "name": "Ataque",
-          "test": "1d",
-          "damage": "1d6"
+          "test": "4d20+8",
+          "damage": "2d10+"
         }
       ],
       "details": "",
