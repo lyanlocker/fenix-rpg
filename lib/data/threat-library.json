@@ -56,6 +56,34 @@
       "details": "PRESENÇA PERTURBADORA\nDT 24  5d6 mental  NEX 60%+ é imune (se passar no teste de Vontade, sofre metade do dano).   SENTIDOS\nPercepção 3O+15 | Iniciativa 4O+15\nPercepção às cegas   DEFESA 29\nFortitude 4O+15 | Reflexos 4O+15 | Vontade 3O+10   PONTOS DE VIDA 380 | 190 machucado   RESISTÊNCIAS Balístico, corte, impacto e perfuração 10, Sangue 15, Energia 20   VULNERABILIDADES ConhecimentoATRIBUTOS\nAGI 4 | FOR 4 | INT 2 | PRE 3 | VIG 4   PERÍCIAS\nAcrobacia 4O+12 | Atletismo 4O+15 | Furtividade 4O+10   DESLOCAMENTO 12m | 8 \n\nANTENAS DE RESSONÂNCIA VIRAL: As três espículas no ombro esquerdo da criatura emitem uma frequência constante que agita o vírus nos corpos próximos. No início de cada turno do Transmissor, qualquer personagem em alcance curto que já possua pelo menos 1 ponto/nível na barra de Infecção sofre 2d6 pontos de dano de Energia (sem teste de resistência) devido à fervura dos fluidos infectados em seu corpo.  \n\n PONTO FRACO — DESTRUIR AS ANTENAS: Um personagem pode mirar especificamente no conjunto de antenas do ombro esquerdo (sofre –2O no teste de ataque). O ninho de antenas possui RD 10 e suporta 60 pontos de dano (dano de Conhecimento ignora essa RD). Se for destruído, os tubos magenta perdem a pressão: a habilidade Antenas de Ressonância Viral e a ação Pulso de Sobrecarga são desativadas pelo resto do combate.   \n\nFRENESI DE SOBRECARGA (MACHUCADO): Quando é reduzido à metade de seus PV (190 PV), as pústulas verdes e os cabos cor-de-rosa entram em hiperatividade. O Transmissor passa a somar +1d8 de Energia em todos os ataques de garra e recebe +3m de deslocamento.  \n\nLIVRE  INOCULAÇÃO POR TUBOS\nSe o Transmissor acertar os dois ataques de Garras Condutoras no mesmo alvo na mesma rodada, os cabos brilhantes de seus braços injetam uma carga direta do patógeno verde na vítima. O alvo deve fazer um teste de Fortitude (DT 24). Se falhar, sua barra de Infecção sobe em +1 nível/ponto e ele fica enjoado por 1 rodada.   \n\nMOVIMENTO  SALTO ERRÁTICO\nImpulsionado por espasmos elétricos nas pernas, o Transmissor se transforma em um vulto neon e salta até 9 metros para um espaço desocupado sem provocar ataques de oportunidade, podendo atravessar o espaço de inimigos. Qualquer ser cujo espaço seja atravessado sofre 2d6 pontos de dano de Energia (Reflexos DT 24 reduz à metade).   \n\nREAÇÃO  CURTO-CIRCUITO BIOLÓGICO\nUma vez por rodada, quando sofre um acerto crítico ou mais de 30 pontos de dano de um único ataque corpo a corpo, uma das pústulas verdes do Transmissor estoura em um jato cáustico e elétrico. O atacante deve fazer um teste de Reflexos (DT 24); se falhar, sofre 3d6 pontos de dano químico/Energia e tem sua arma ou equipamento empunhado sobrecarregado (sofrendo –1O em testes com aquele item até o fim do seu próximo turno). \n\n  COMPLETA  PULSO DE SOBRECARGA (Recarga: 1d4 rodadas)\nO Transmissor crava os pés no chão, abre o sorriso até rasgar as bochechas e dispara um arco devastador de raios magenta e esporos virais pelas três antenas dorsais. Todos os seres em alcance médio (ou em um cone de 9m, a seu critério) devem fazer um teste de Fortitude (DT 24).   Falha: Sofre 6d8 pontos de dano (metade Energia, metade Sangue), fica atordoado por 1 rodada e aumenta sua barra de Infecção em +1 nível/ponto.   Sucesso: Sofre metade do dano, evita o atordoamento e a infecção.   ",
       "bookId": "custom",
       "page": 0
+    },
+    {
+      "id": "c94239a9-fd81-49d1-919e-57778084256d",
+      "name": "Rastejante",
+      "element": "Energia",
+      "secondaryElements": [],
+      "kind": "Criatura",
+      "vd": 140,
+      "pv": 140,
+      "defense": 26,
+      "initiative": "4d20+8",
+      "attributes": {},
+      "tests": {},
+      "attacks": [
+        {
+          "name": "GARRAS DILACERADORAS",
+          "test": "4D20+15",
+          "damage": "2d8+6"
+        },
+        {
+          "name": "MORDIDA VIRAL",
+          "test": "4d20+15",
+          "damage": "2d10+6"
+        }
+      ],
+      "details": "PRESENÇA PERTURBADORA\nDT 21  4d6 mental  NEX 50%+ é imune.   SENTIDOS\nPercepção 3O+10 | Iniciativa 4O+15\nPercepção às cegas, visão no escuro   DEFESA 26\nFortitude 3O+10 | Reflexos 4O+15 | Vontade 2O+8   PONTOS DE VIDA 220 | 110 machucado   RESISTÊNCIAS Balístico, corte e perfuração 10, Sangue 10, Energia 15   VULNERABILIDADES Conhecimento   ATRIBUTOS\nAGI 4 | FOR 3 | INT 1 | PRE 2 | VIG 3   PERÍCIAS\nAcrobacia 4O+12 | Atletismo 3O+12 | Furtividade 4O+15   DESLOCAMENTO 12m | 8, escalada 12m | 8   \n\nCOLUNA DE NÓDULOS (6 CARGAS): As costas abertas da criatura exibem 6 pústulas vertebrais verdes interligadas pelos tubos cor-de-rosa. Ele inicia o combate com 6 cargas e as utiliza para potencializar suas ações. Sempre que o Rastejante sofre um acerto crítico ou 25 ou mais pontos de dano de um único ataque (especialmente de Impacto ou Conhecimento), uma das pústulas da coluna estoura: ele perde 1 carga e espirra fluido cáustico e elétrico, causando 2d6 pontos de dano de Energia a todos os seres adjacentes (Reflexos DT 21 evita). Quando ficar com 0 cargas, perde o acesso às habilidades que exigem gasto de cargas e sua Defesa cai para 23.\n\nLIVRE  PRENDER NO CHÃO\nSe o Rastejante acertar seus dois ataques de Garras Dilaceradoras em um mesmo alvo na mesma rodada, ele usa o peso das mãos gigantescas para imobilizar a vítima no solo, deixando-a agarrada (teste 4O+15). Uma vez por rodada, como ação livre, o Rastejante pode desferir sua Mordida Viral automaticamente contra um ser que esteja mantendo agarrado (Fortitude DT 21 reduz o dano à metade; em caso de falha, o alvo também aumenta sua barra de Infecção em +1 nível/ponto).   \n\nLIVRE  ACELERAÇÃO NEURAL (Gasta 1 Carga da Coluna)\nSempre que um personagem sofre dano das Garras Dilaceradoras, o Rastejante pode descarregar a energia dos cabos magenta presos ao seu pulso para acelerar o sistema nervoso da vítima de forma caótica. No próximo turno do personagem afetado, caso ele realize uma ação de movimento e uma ação padrão (ou uma ação completa), sofrerá 3d10 pontos de dano de Energia pelo curto-circuito biológico (Fortitude DT 21 reduz à metade).  \n\n MOVIMENTO  RECUO PELAS FRESTAS E TETOS\nImpulsionado pelas pernas traseiras flexionadas, o Rastejante salta até metade do seu deslocamento (6m) para uma parede, teto ou cobertura próxima sem provocar ataques de oportunidade.   \n\nCOMPLETA  INVESTIDA DO PREDADOR (Gasta 1 Carga da Coluna)\nSe o Rastejante estiver posicionado em um local acima de um ser (como no teto, parede alta ou sobre escombros) em alcance médio, ele salta na direção da vítima e aterrissa em um espaço adjacente a ela. Isso funciona como uma investida, permitindo que ele faça seus dois ataques de Garras Dilaceradoras (ambos recebendo o bônus de +O da investida) contra o alvo e deixando-o caído se acertar pelo menos um dos golpes.   ",
+      "bookId": "custom",
+      "page": 0
     }
   ],
   "art": {
@@ -88,6 +116,17 @@
       "height": 1024,
       "thumbnailWidth": 213,
       "thumbnailHeight": 320,
+      "bookId": "custom",
+      "page": 0,
+      "pdfPage": 0
+    },
+    "c94239a9-fd81-49d1-919e-57778084256d": {
+      "src": "/art/custom/ecfada4d20802dcdb8906eae441f25c54da6d26240a754b8b691eecfd113d764.webp",
+      "thumbnail": "/art/custom/6f03c33d1633f17e39b07179a08829c43ea0d7be93abc8bfb7f3e4d391732ae3.webp",
+      "width": 1024,
+      "height": 682,
+      "thumbnailWidth": 320,
+      "thumbnailHeight": 213,
       "bookId": "custom",
       "page": 0,
       "pdfPage": 0
