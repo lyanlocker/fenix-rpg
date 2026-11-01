@@ -1,6 +1,35 @@
 {
   "version": 1,
-  "threats": [],
+  "threats": [
+    {
+      "id": "beb8557c-23fa-4c00-890b-069e054ddfa7",
+      "name": "ESCRIBA AMORTALHADO",
+      "element": "Morte",
+      "secondaryElements": [],
+      "kind": "Criatura",
+      "vd": 60,
+      "pv": 60,
+      "defense": 15,
+      "initiative": "2d20+5",
+      "attributes": {},
+      "tests": {},
+      "attacks": [
+        {
+          "name": "LANÇA ENCHARCADA DE LODO",
+          "test": "",
+          "damage": "2d6+4 "
+        },
+        {
+          "name": "IMPACTO DO GRIMÓRIO",
+          "test": "2d20+10",
+          "damage": "2d8+3"
+        }
+      ],
+      "details": "PESCOÇO DISTORCIDO: A deformação alongada do pescoço permite que a criatura projete os sentidos por cima de obstáculos. O Escriba ignora cobertura leve e não pode ser flanqueado.\n\nATADURAS INFLAMÁVEIS: O tecido ressecado e o Lodo Preto que escorre de suas vestes reagem violentamente ao calor e ao caos. Sempre que sofre dano de Fogo ou de Energia, o Escriba fica em chamas (1d6 de dano por rodada) e perde suas resistências a dano físico até o fim do seu próximo turno.\n\nMOVIMENTO  FAIXAS APREENSORAS\n\nAs ataduras soltas e as correntes na cintura da criatura chicoteiam de forma viva contra um ser em alcance curto. O alvo deve fazer um teste de Reflexos (DT 18). Se falhar, é puxado por até 3 metros na direção do Escriba e fica enredado pelas faixas (exige uma ação padrão e um teste de Atletismo ou Acrobacia DT 18 para se soltar).\n\nLIVRE  LITANIA SINÁPTICA (1x por rodada)\n\nO tomo amarrado à mão direita da criatura se abre sozinho, fazendo brilhar os sigilos vermelhos e dourados de suas vestes enquanto um sussurro abafado ecoa sob as faixas do rosto. Um ser em alcance curto deve fazer um teste de Vontade (DT 18). Se falhar, tem parte de seus neurônios inexistidos, sofrendo 2d6+2 pontos de dano de Conhecimento e ficando frustrado por 1 rodada (se passar, sofre apenas metade do dano e evita a condição).   \n\nREAÇÃO  INOCULAR LODO\n\nUma vez por rodada, quando acerta um ataque com a Lança Encharcada de Lodo em um alvo que esteja enredado ou frustrado, a criatura injeta o líquido negro diretamente na ferida. O alvo deve passar em um teste de Fortitude (DT 18) ou sofrerá 1d10 pontos de dano de Morte adicionais, fazendo o Escriba recuperar a mesma quantidade em Pontos de Vida.\n(Opcional para Apocalypsis: caso o alvo falhe na Fortitude, o contato direto com o lodo na corrente sanguínea também aumenta sua barra de Infecção em +1 nível/ponto).   ",
+      "bookId": "custom",
+      "page": 0
+    }
+  ],
   "art": {
     "01-degolificada": {
       "src": "/art/custom/7c645a3b6ecb41ec2993c40d45b3f0d9f6288a9599ca51eedb16c2748bc5314b.webp",
@@ -8,6 +37,17 @@
       "width": 616,
       "height": 1024,
       "thumbnailWidth": 192,
+      "thumbnailHeight": 320,
+      "bookId": "custom",
+      "page": 0,
+      "pdfPage": 0
+    },
+    "beb8557c-23fa-4c00-890b-069e054ddfa7": {
+      "src": "/art/custom/3d7b45b85cc6a1a2f2b90e079c0b6eee0373ebc7c92100639a76c54af955e2db.webp",
+      "thumbnail": "/art/custom/25579c5c91f5e34c828c3f6dda2dc061381445575c255a3841806f2b79ea7c3f.webp",
+      "width": 687,
+      "height": 1024,
+      "thumbnailWidth": 215,
       "thumbnailHeight": 320,
       "bookId": "custom",
       "page": 0,
