@@ -43,12 +43,17 @@
       "tests": {},
       "attacks": [
         {
-          "name": "Ataque",
-          "test": "4d20+8",
-          "damage": "2d10+"
+          "name": "MORDIDA EUFÓRICA",
+          "test": "3d20",
+          "damage": "1d6"
+        },
+        {
+          "name": "GARRAS CONDUTORAS",
+          "test": "1d20",
+          "damage": "1d6"
         }
       ],
-      "details": "",
+      "details": "PRESENÇA PERTURBADORA\nDT 24  5d6 mental  NEX 60%+ é imune (se passar no teste de Vontade, sofre metade do dano).   SENTIDOS\nPercepção 3O+15 | Iniciativa 4O+15\nPercepção às cegas   DEFESA 29\nFortitude 4O+15 | Reflexos 4O+15 | Vontade 3O+10   PONTOS DE VIDA 380 | 190 machucado   RESISTÊNCIAS Balístico, corte, impacto e perfuração 10, Sangue 15, Energia 20   VULNERABILIDADES ConhecimentoATRIBUTOS\nAGI 4 | FOR 4 | INT 2 | PRE 3 | VIG 4   PERÍCIAS\nAcrobacia 4O+12 | Atletismo 4O+15 | Furtividade 4O+10   DESLOCAMENTO 12m | 8 \n\nANTENAS DE RESSONÂNCIA VIRAL: As três espículas no ombro esquerdo da criatura emitem uma frequência constante que agita o vírus nos corpos próximos. No início de cada turno do Transmissor, qualquer personagem em alcance curto que já possua pelo menos 1 ponto/nível na barra de Infecção sofre 2d6 pontos de dano de Energia (sem teste de resistência) devido à fervura dos fluidos infectados em seu corpo.  \n\n PONTO FRACO — DESTRUIR AS ANTENAS: Um personagem pode mirar especificamente no conjunto de antenas do ombro esquerdo (sofre –2O no teste de ataque). O ninho de antenas possui RD 10 e suporta 60 pontos de dano (dano de Conhecimento ignora essa RD). Se for destruído, os tubos magenta perdem a pressão: a habilidade Antenas de Ressonância Viral e a ação Pulso de Sobrecarga são desativadas pelo resto do combate.   \n\nFRENESI DE SOBRECARGA (MACHUCADO): Quando é reduzido à metade de seus PV (190 PV), as pústulas verdes e os cabos cor-de-rosa entram em hiperatividade. O Transmissor passa a somar +1d8 de Energia em todos os ataques de garra e recebe +3m de deslocamento.  \n\n",
       "bookId": "custom",
       "page": 0
     }
@@ -71,6 +76,17 @@
       "width": 687,
       "height": 1024,
       "thumbnailWidth": 215,
+      "thumbnailHeight": 320,
+      "bookId": "custom",
+      "page": 0,
+      "pdfPage": 0
+    },
+    "82345c2a-da6c-49a4-a7a4-84c1f0f0e4d2": {
+      "src": "/art/custom/b031902233415a834aadb748f5924989b444c15c0b00d04dc01412e7736fc78a.webp",
+      "thumbnail": "/art/custom/847feab37004e18839f050ac9f3c07dc5f40cd02069d825f249bcc6872d312bb.webp",
+      "width": 682,
+      "height": 1024,
+      "thumbnailWidth": 213,
       "thumbnailHeight": 320,
       "bookId": "custom",
       "page": 0,
