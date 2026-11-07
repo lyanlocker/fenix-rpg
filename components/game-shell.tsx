@@ -97,7 +97,7 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
           <span>
             FÊNIX<small>ARQUIVOS DO IMPOSSÍVEL</small>
           </span>
-          <b className="version-tag">2.5.1</b>
+          <b className="version-tag">2.6.0</b>
         </Link>
         <nav aria-label="Principal">
           {(access.isPlayer && access.agentId
@@ -167,7 +167,7 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
         )}
       <main id="content">{children}</main>
       <footer className="site-footer">
-        FÊNIX 2.5.1 · Toda história deixa uma marca.
+        FÊNIX 2.6.0 · Toda história deixa uma marca.
         <span>Fichas de Ordem Paranormal · Projeto independente</span>
       </footer>
     </Context.Provider>

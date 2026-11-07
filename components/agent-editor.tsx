@@ -50,6 +50,10 @@ export default function AgentEditor({
   async function save() {
     setError("");
     if (!a.name.trim()) return setError("Informe o nome do agente.");
+    if (
+      Object.values(a.attributes).some((n) => !Number.isSafeInteger(n) || n < 0)
+    )
+      return setError("Use números inteiros a partir de zero nos atributos.");
     setBusy(true);
     try {
       await onSave({
@@ -188,12 +192,12 @@ export default function AgentEditor({
                   <input
                     type="number"
                     min={0}
-                    max={10}
+                    step={1}
                     value={a.attributes[k]}
                     onChange={(e) =>
                       update("attributes", {
                         ...a.attributes,
-                        [k]: Math.min(10, Math.max(0, +e.target.value)),
+                        [k]: +e.target.value,
                       })
                     }
                   />

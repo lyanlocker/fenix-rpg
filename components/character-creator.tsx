@@ -14,7 +14,13 @@ import {
   type Agent,
   type ClassName,
 } from "@/lib/rules";
-import { classGuide, originSkills, attributeNames } from "@/lib/creation";
+import {
+  classGuide,
+  originSkills,
+  attributeNames,
+  trainingLevels,
+  creationStepError,
+} from "@/lib/creation";
 import CharacterOptions from "./character-options";
 import { addBenefits, originSkillsFor } from "@/lib/books";
 import PortraitPicker from "./portrait-picker";
@@ -31,18 +37,7 @@ export default function CharacterCreator() {
     [busy, setBusy] = useState(false);
   const guide = classGuide[a.className],
     sum = Object.values(a.attributes).reduce((x, y) => x + y, 0),
-    initial = a.nex === 5,
     trained = Object.values(a.skills).filter((n) => n > 0).length;
-  const target =
-    (a.className === "Sobrevivente"
-      ? 1
-      : a.className === "Combatente"
-        ? 3
-        : a.className === "Especialista"
-          ? 7
-          : 5) +
-    a.attributes.INT +
-    2;
   if (game.access.ready && game.access.isPlayer)
     return (
       <div className="page">
@@ -57,42 +52,18 @@ export default function CharacterCreator() {
     );
   function next() {
     setError("");
-    if (step === 0 && !a.name.trim()) return setError("Informe o nome.");
-    if (step === 1 && !a.origin.trim()) return setError("Escolha uma origem.");
-    if (
-      step === 2 &&
-      initial &&
-      (sum !== 9 ||
-        Object.values(a.attributes).filter((n) => n === 0).length > 1 ||
-        Object.values(a.attributes).some((n) => n > 3))
-    )
-      return setError(
-        "A distribuição básica precisa somar 9; máximo 3 por atributo e apenas um atributo em 0.",
-      );
-    if (step === 3 && initial) {
-      if (trained !== target)
-        return setError(
-          `Selecione ${target} perícias treinadas para esta configuração básica.`,
-        );
-      if (
-        (originSkills[a.origin] || originSkillsFor(a)).some((s) => !a.skills[s])
-      )
-        return setError("Inclua as perícias da origem.");
-      if (
-        a.className === "Ocultista" &&
-        (!a.skills.Ocultismo || !a.skills.Vontade)
-      )
-        return setError("Ocultistas precisam de Ocultismo e Vontade.");
-      if (
-        a.className === "Combatente" &&
-        (!(a.skills.Luta || a.skills.Pontaria) ||
-          !(a.skills.Fortitude || a.skills.Reflexos))
-      )
-        return setError("Escolha Luta ou Pontaria e Fortitude ou Reflexos.");
-    }
+    const validation = creationStepError(a, step);
+    if (validation) return setError(validation);
     setStep(step + 1);
   }
   async function create() {
+    const validation = [0, 1, 2, 3]
+      .map((step) => creationStepError(a, step))
+      .find(Boolean);
+    if (validation) {
+      setError(validation);
+      return;
+    }
     setBusy(true);
     try {
       await game.save("agents", {
@@ -278,9 +249,8 @@ export default function CharacterCreator() {
         {step === 2 && (
           <>
             <p>
-              Na criação básica, todos começam em 1. Distribua 4 pontos; pode
-              reduzir um único atributo a 0 para receber mais um ponto. Máximo
-              inicial: 3.
+              Distribua os atributos conforme as regras da sua mesa. O mestre
+              define os valores e a quantidade de pontos, em qualquer NEX.
             </p>
             <div className="attribute-edit">
               {attributes.map((k) => (
@@ -290,17 +260,14 @@ export default function CharacterCreator() {
                     aria-label={attributeNames[k]}
                     type="number"
                     min={0}
-                    max={initial ? 3 : 10}
+                    step={1}
                     value={a.attributes[k]}
                     onChange={(e) =>
                       setA({
                         ...a,
                         attributes: {
                           ...a.attributes,
-                          [k]: Math.max(
-                            0,
-                            Math.min(initial ? 3 : 10, +e.target.value),
-                          ),
+                          [k]: +e.target.value,
                         },
                       })
                     }
@@ -310,10 +277,7 @@ export default function CharacterCreator() {
               ))}
             </div>
             <p className="help">
-              Soma: <b>{sum}</b>
-              {initial
-                ? " / 9"
-                : ". Confira aumentos de NEX e regras de sobrevivente com o mestre."}
+              Soma: <b>{sum}</b>. Distribuição definida pelo mestre.
             </p>
             <p className="hint">
               Atributo 0: 2d20, menor resultado. Nos demais, role a quantidade
@@ -339,11 +303,14 @@ export default function CharacterCreator() {
                       ...a.skills,
                       ...Object.fromEntries(
                         (originSkills[a.origin] || originSkillsFor(a)).map(
-                          (s) => [s, 5],
+                          (s) => [s, Math.max(a.skills[s] || 0, 5)],
                         ),
                       ),
                       ...(a.className === "Ocultista"
-                        ? { Ocultismo: 5, Vontade: 5 }
+                        ? {
+                            Ocultismo: Math.max(a.skills.Ocultismo || 0, 5),
+                            Vontade: Math.max(a.skills.Vontade || 0, 5),
+                          }
                         : {}),
                     },
                   })
@@ -353,19 +320,9 @@ export default function CharacterCreator() {
               </button>
             </div>
             <p>
-              <b>{trained}</b>
-              {initial ? ` / ${target}` : ""} perícias treinadas.{" "}
-              {initial
-                ? "Complete o treinamento inicial."
-                : "Confira treinamento e aumentos conforme o NEX da ficha."}
+              <b>{trained}</b> perícias treinadas. Escolha livremente os graus e
+              a quantidade combinados com o mestre.
             </p>
-            {a.nex < 70 && (
-              <p className="hint">
-                Expert +15 está disponível para ajustes aprovados pelo mestre;
-                na progressão padrão, o segundo aumento de treinamento ocorre em
-                NEX 70%.
-              </p>
-            )}
             <div className="skill-picker">
               {Object.entries(skillAttributes).map(([s, k]) => (
                 <label key={s}>
@@ -381,12 +338,7 @@ export default function CharacterCreator() {
                       })
                     }
                   >
-                    {[
-                      0,
-                      5,
-                      ...(a.nex >= 35 ? [10] : []),
-                      15,
-                    ].map((n) => (
+                    {trainingLevels.map((n) => (
                       <option value={n} key={n}>
                         {
                           [

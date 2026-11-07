@@ -231,7 +231,7 @@ test("ritual circles follow the class and NEX and edits cannot exceed them", () 
   assert.throws(() => validateAlternateFace(face), /Expert/);
 });
 
-test("approved face is independent, exported and only opens for its campaign", () => {
+test("retired face remains archived and exportable but cannot open in any campaign", () => {
   const base = newAgent("Base");
   const campaignId = crypto.randomUUID();
   base.campaign_id = campaignId;
@@ -239,7 +239,7 @@ test("approved face is independent, exported and only opens for its campaign", (
     approvedCampaignId: campaignId,
     face: makeAlternateFace(base),
   };
-  assert.equal(alternateIsApproved(base), true);
+  assert.equal(alternateIsApproved(base), false);
   assert.equal(
     alternateIsApproved(base, {
       id: campaignId,
@@ -249,7 +249,7 @@ test("approved face is independent, exported and only opens for its campaign", (
       notes: "",
       rules: "Livro Básico",
     }),
-    true,
+    false,
   );
   assert.equal(
     alternateIsApproved(base, {
@@ -263,9 +263,9 @@ test("approved face is independent, exported and only opens for its campaign", (
     false,
   );
   const altered = alternateAgent(base);
-  altered.name = "Outro nome";
-  assert.equal(base.name, "Base");
-  assert.equal(altered.nex, 35);
+  assert.equal(altered, base);
+  assert.equal(altered.name, "Base");
+  assert.equal(altered.nex, base.nex);
   const restored = validateAgentImport({ version: 1, agent: base });
   assert.equal(restored.alternate?.face.nex, 35);
   assert.equal(restored.alternate?.approvedCampaignId, campaignId);

@@ -1,4 +1,5 @@
 "use client";
+import { ALTERNATE_FACE_ENABLED } from "@/lib/features";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, ArrowRight } from "lucide-react";
@@ -107,7 +108,7 @@ export default function Campaigns() {
   }, [selected, game.ready, game.access.isPlayer, participantIds]);
 
   async function enableAlternate(agentId: string, campaign: Campaign) {
-    if (!isApocalypsisCampaign(campaign)) return;
+    if (!ALTERNATE_FACE_ENABLED || !isApocalypsisCampaign(campaign)) return;
     setBusyId(agentId);
     try {
       const local = game.state.agents.find((a) => a.id === agentId);
@@ -152,6 +153,7 @@ export default function Campaigns() {
     }
   }
   async function refreshInheritance(agentId: string, campaign: Campaign) {
+    if (!ALTERNATE_FACE_ENABLED) return;
     setBusyId(agentId);
     try {
       const token = getShareCredentials(agentId)?.masterToken;
@@ -279,7 +281,8 @@ export default function Campaigns() {
                     </span>
                     <ArrowRight size={17} />
                   </Link>
-                  {isApocalypsisCampaign(c) &&
+                  {ALTERNATE_FACE_ENABLED &&
+                    isApocalypsisCampaign(c) &&
                     !game.access.isPlayer &&
                     (a.alternate ? (
                       <button
@@ -300,7 +303,9 @@ export default function Campaigns() {
                       </button>
                     ))}
                   {!game.access.isPlayer &&
-                    (a.nex === 35 || a.alternate?.face.nex === 35) && (
+                    (a.nex === 35 ||
+                      (ALTERNATE_FACE_ENABLED &&
+                        a.alternate?.face.nex === 35)) && (
                       <div className="campaign-infection-action">
                         <small>
                           Infecção:{" "}
@@ -328,68 +333,73 @@ export default function Campaigns() {
                     )}
                 </div>
               ))}
-            {isApocalypsisCampaign(c) && !game.access.isPlayer && (
-              <section
-                className="alternate-feed"
-                aria-label="Alterações da face NEX 35"
-              >
-                <div className="section-title">
-                  <h3>Alterações da face NEX 35</h3>
-                  {events.some((event) => event.created_at > seenAt) && (
-                    <button
-                      onClick={() => {
-                        const date = events[0].created_at;
-                        localStorage.setItem(
-                          `fenix.alternate.seen.${c.id}`,
-                          date,
-                        );
-                        setSeenAt(date);
-                      }}
-                    >
-                      Marcar como lidas (
-                      {
-                        events.filter((event) => event.created_at > seenAt)
-                          .length
-                      }
-                      )
-                    </button>
-                  )}
-                </div>
-                <p className="hint">
-                  Atualização automática a cada 10 segundos para fichas
-                  compartilhadas com sua chave de mestre.
-                </p>
-                {feedError && (
-                  <p role="alert" className="error">
-                    {feedError}
+            {ALTERNATE_FACE_ENABLED &&
+              isApocalypsisCampaign(c) &&
+              !game.access.isPlayer && (
+                <section
+                  className="alternate-feed"
+                  aria-label="Alterações da face NEX 35"
+                >
+                  <div className="section-title">
+                    <h3>Alterações da face NEX 35</h3>
+                    {events.some((event) => event.created_at > seenAt) && (
+                      <button
+                        onClick={() => {
+                          const date = events[0].created_at;
+                          localStorage.setItem(
+                            `fenix.alternate.seen.${c.id}`,
+                            date,
+                          );
+                          setSeenAt(date);
+                        }}
+                      >
+                        Marcar como lidas (
+                        {
+                          events.filter((event) => event.created_at > seenAt)
+                            .length
+                        }
+                        )
+                      </button>
+                    )}
+                  </div>
+                  <p className="hint">
+                    Atualização automática a cada 10 segundos para fichas
+                    compartilhadas com sua chave de mestre.
                   </p>
-                )}
-                {events.length ? (
-                  events.slice(0, 30).map((event) => (
-                    <article
-                      key={event.id}
-                      className={
-                        event.created_at > seenAt ? "alternate-unread" : ""
-                      }
-                    >
-                      <strong>
-                        {game.state.agents.find((a) => a.id === event.agent_id)
-                          ?.name || "Agente"}
-                      </strong>
-                      <span>
-                        {event.summary} ·{" "}
-                        {event.actor === "player" ? "jogador" : "mestre"}
-                      </span>
-                      <time dateTime={event.created_at}>
-                        {new Date(event.created_at).toLocaleString("pt-BR")}
-                      </time>
-                    </article>
-                  ))
-                ) : (
-                  <p className="muted">Nenhuma edição registrada nessa face.</p>
-                )}
-              </section>
-            )}
+                  {feedError && (
+                    <p role="alert" className="error">
+                      {feedError}
+                    </p>
+                  )}
+                  {events.length ? (
+                    events.slice(0, 30).map((event) => (
+                      <article
+                        key={event.id}
+                        className={
+                          event.created_at > seenAt ? "alternate-unread" : ""
+                        }
+                      >
+                        <strong>
+                          {game.state.agents.find(
+                            (a) => a.id === event.agent_id,
+                          )?.name || "Agente"}
+                        </strong>
+                        <span>
+                          {event.summary} ·{" "}
+                          {event.actor === "player" ? "jogador" : "mestre"}
+                        </span>
+                        <time dateTime={event.created_at}>
+                          {new Date(event.created_at).toLocaleString("pt-BR")}
+                        </time>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="muted">
+                      Nenhuma edição registrada nessa face.
+                    </p>
+                  )}
+                </section>
+              )}
             <CampaignCombat key={c.id} campaignId={c.id} />
             <h3>Anotações</h3>
             <p className="prose">{c.notes || "Nenhuma anotação."}</p>

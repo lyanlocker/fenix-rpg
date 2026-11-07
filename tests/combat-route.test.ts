@@ -160,6 +160,19 @@ test("HTTP actions carry edited dice and delay intentions through server validat
           execution: "padrão",
           cost: 3,
         },
+        {
+          id: "regular",
+          name: "Ritual da mesa",
+          kind: "Ritual",
+          quantity: 1,
+          spaces: 0,
+          damage: "",
+          notes: "",
+          circle: 1,
+          element: "Medo",
+          execution: "padrão",
+          cost: 1,
+        },
       ],
     });
     context.encounter = {
@@ -177,7 +190,7 @@ test("HTTP actions carry edited dice and delay intentions through server validat
       variant: "discente",
     });
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).combat.budget.restricted, 1);
+    assert.equal((await response.json()).combat.budget.standard, 1);
     context.encounter = advanceTurn(advanceTurn(context.encounter));
     response = await send({
       kind: "sustain",
@@ -185,22 +198,23 @@ test("HTTP actions carry edited dice and delay intentions through server validat
     });
     assert.equal(response.status, 200);
     const sustained = (await response.json()).combat.budget;
-    assert.equal(sustained.standard, 1);
-    assert.equal(sustained.restricted, 1);
+    assert.equal(sustained.standard, 2);
+    assert.equal(sustained.restricted, 0);
     assert.equal(sustained.move, 1);
     assert.equal(context.sheets[a.id].resources.pe, 93);
     for (let i = 0; i < 2; i++) {
       response = await send({
         kind: "use",
-        optionId: "custom:standard",
-        note: "Ação da rodada",
+        optionId: "regular",
+        targetIds: [pa.id],
       });
       assert.equal(response.status, 200);
     }
+    assert.equal(context.sheets[a.id].resources.pe, 91);
     response = await send({
       kind: "use",
-      optionId: "custom:standard",
-      note: "Ação excedente",
+      optionId: "regular",
+      targetIds: [pa.id],
     });
     assert.equal(response.status, 400);
   } finally {

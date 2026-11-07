@@ -247,8 +247,8 @@ test("the player projection retains two standards after upkeep and does not appl
   ];
   const serialized = JSON.parse(JSON.stringify(combat));
   const encounter = arenaEncounter(serialized);
-  assert.equal(budgetFor(encounter, encounter.participants[0]).standard, 1);
-  assert.equal(budgetFor(encounter, encounter.participants[0]).restricted, 1);
+  assert.equal(budgetFor(encounter, encounter.participants[0]).standard, 2);
+  assert.equal(budgetFor(encounter, encounter.participants[0]).restricted, 0);
   const html = renderToStaticMarkup(
     createElement(CombatArena, {
       combat: serialized,
@@ -259,7 +259,7 @@ test("the player projection retains two standards after upkeep and does not appl
     }),
   );
   assert.match(html, /<b>2<\/b> padrão/);
-  assert.match(html, /1 sem ritual/);
+  assert.doesNotMatch(html, /sem ritual/);
   assert.match(html, /Ações extras ativas/);
   assert.doesNotMatch(html, /Sustentar · 1/);
   assert.doesNotMatch(html, /<fieldset disabled/);

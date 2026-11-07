@@ -69,10 +69,10 @@ begin
   if parts is null then raise exception 'Expressão inválida'; end if;
   n=parts[1]::integer;sides=parts[2]::integer;modifier=coalesce(parts[3]::integer,0);expr=damage_expression;
  else
-  if attribute_value is null or attribute_value<0 or attribute_value>10 or bonus is null or abs(bonus)>100 then raise exception 'Atributo ou bônus inválido'; end if;
+  if attribute_value is null or attribute_value<0 or attribute_value>1000 or bonus is null or abs(bonus)>100 then raise exception 'Atributo ou bônus inválido'; end if;
   n=case when attribute_value=0 then 2 else attribute_value end;sides=20;expr=n||'d20 ('||case when attribute_value=0 then 'menor' else 'maior' end||') '||case when bonus>=0 then '+' else '' end||bonus;
  end if;
- if n<1 or n>40 then raise exception 'Quantidade de dados inválida'; end if;
+ if n<1 or n>1000 or (coalesce(damage_expression,'')<>'' and n>40) then raise exception 'Quantidade de dados inválida'; end if;
  for i in 1..n loop dice=array_append(dice,1+floor(random()*sides)::integer);end loop;
  if damage_expression is not null and damage_expression<>'' then select sum(x) into total from unnest(dice) x;
  elsif attribute_value=0 then select min(x) into total from unnest(dice) x;
