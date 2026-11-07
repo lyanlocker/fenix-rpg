@@ -1,8 +1,10 @@
-# Fênix — fichas compartilhadas e face alternativa NEX 35
+# Fênix — fichas compartilhadas e combate
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. A publicação do catálogo de ameaças no GitHub tem conexão administrativa exclusiva do proprietário.
 
-Correção **2.5.1 — Ações extras e vozes entre as faces**: créditos efetivos no turno, sustentação como ação livre, bônus recorrentes e novas mensagens em latim ao trocar a face de NEX. Consulte as [notas da correção](docs/FENIX-2.5.1.md).
+Atualização **2.6 — Fichas livres e ações padrão**: distribuição de atributos e perícias definida pelo mestre, Veterano +10 em qualquer NEX, rituais com ações padrão extras e encerramento da face alternativa NEX 35, preservando os arquivos antigos. Consulte as [notas da atualização](docs/FENIX-2.6.md).
+
+Histórico: correção **2.5.1 — Ações extras e vozes entre as faces**: créditos efetivos no turno, sustentação como ação livre, bônus recorrentes e novas mensagens em latim ao trocar a face de NEX. Consulte as [notas da correção](docs/FENIX-2.5.1.md).
 
 Atualização **2.5 — Ações e rolagens do jogador**: execução dos rituais e habilidades integrada à ficha, Investigar, ações avulsas, atraso permanente de iniciativa e ataque/dano em etapas com dados editáveis. Consulte o [guia da atualização](docs/FENIX-2.5.md).
 
@@ -19,7 +21,7 @@ Node 22+; `npm ci`, `npm run dev`. Produção: `npm run build`, `npm start`.
 ## Fluxos
 
 - `/`: lista de agentes e importação de fichas.
-- `/agentes/novo`: criação em cinco etapas, com distribuição básica de atributos e perícias.
+- `/agentes/novo`: criação em cinco etapas, com distribuição livre de atributos e perícias, incluindo +0/+5/+10/+15 em qualquer NEX.
 - `/agentes/[id]`: tela própria do personagem, atributos, recursos, testes, armas e abas de jogo.
 - `/biblioteca`: catálogo por livro e categoria; criação, importação e exportação de conteúdo próprio.
 - `/campanhas`: organização local de personagens e anotações.
@@ -30,15 +32,9 @@ Treinamento de perícia vai até Expert (+15). O editor separa bônus manuais de
 
 A aba Resumo reúne aparência, atributos, perícias, recursos e poderes. Retratos locais são reduzidos e salvos dentro da própria ficha, inclusive no JSON exportado. O rolador flutuante aceita de 1 a 100 dados com 2 a 1.000.000 lados.
 
-### Face alternativa da campanha Apocalypsis
+### Face alternativa encerrada
 
-Na página **Campanhas**, vincule a ficha à campanha Apocalypsis e clique em **Liberar face NEX 35** para cada personagem autorizado. Somente o navegador que possui a chave de mestre daquela ficha consegue efetivar a liberação. Para quem tem a liberação, dois toques ou cliques rápidos sobre a aparência no Resumo alternam entre as faces; os mesmos gestos devolvem à ficha original. Cada face tem nome, aparência, recursos, perícias, equipamentos, rituais e poderes próprios. A segunda é derivada como cópia independente da ficha publicada, com NEX fixo em 35% e máximos de recursos recalculados.
-
-Rituais de 3º círculo ou superior ficam fora da derivação; para outras classes além de Ocultista, os de 2º círculo também ficam fora em NEX 35. Rituais antigos sem círculo salvo são identificados pelo catálogo quando há correspondência inequívoca; os demais exigem classificar o círculo. Itens e habilidades de trilha com NEX exigido acima de 35 são omitidos. Entre os poderes e habilidades elegíveis, a derivação sorteia até metade da quantidade de poderes da ficha NEX 65 (arredondando para cima); quando há menos opções elegíveis, usa somente as disponíveis. O sorteio é salvo na ficha e não muda sozinho. O treinamento Expert (+15) é reduzido a Veterano (+10).
-
-Se a ficha original recebeu rituais ou poderes depois da liberação da segunda face, o mestre usa **Atualizar herança NEX 35** na página Campanhas. A atualização consulta a versão publicada mais recente, inclui rituais elegíveis, sorteia os poderes faltantes e mantém as escolhas sorteadas anteriormente. Ela preserva nome, retrato, recursos e itens exclusivos; após a primeira atualização, também respeita rituais e poderes herdados que o jogador removeu. Na primeira atualização de uma face antiga, a seleção de poderes herdados é refeita uma vez para chegar à metade solicitada. Confira manualmente bônus, atributos, escolhas adquiridas em níveis posteriores e pré-requisitos descritos no livro, que não permitem derivação segura só pelo registro da ficha.
-
-A campanha apresenta o registro de alterações da segunda face, com campo alterado, agente, autor e horário, atualizado a cada 10 segundos. Os avisos dependem das chaves de mestre salvas no navegador da campanha e do acesso ao banco; são visíveis **na tela Campanhas**, não são notificações por celular com o site fechado. A edição e a auditoria da face publicada exigem o SQL `database/alternate-face.sql` no mesmo projeto Supabase de compartilhamento. As migrações já foram aplicadas ao projeto configurado nesta instalação.
+A mecânica da face NEX 35 foi desativada na versão 2.6. A ficha original é usada em toda a interface. As faces antigas continuam no armazenamento e nas exportações; nenhum personagem é apagado. Nos encontros antigos que ainda referenciam a face, use **Restaurar fichas originais** e depois retome o combate. A restauração preserva iniciativa e participantes, encerra efeitos pendentes ligados à face e mantém o encontro pausado para conferência.
 
 ### Infecção
 
@@ -67,11 +63,11 @@ Testes de regras, importação e equipamentos; compilação de produção com Ty
 ## Ameaças e combate
 
 - `/ameacas`: catálogo de 140 registros do Livro de Regras, Sobrevivendo ao Horror, Arquivos Secretos 06/07 e EaF — Guia das Marcas. Busca por nome, elemento principal/secundário, origem e VD máximo; referência do livro/página, estatísticas e texto de ações. Ameaças próprias podem ser criadas, editadas, removidas e importadas/exportadas. As fichas não numéricas permanecem como referência especial.
-- `/campanhas`: selecione uma campanha e use **Combate → Criar combate**. Adicione personagens (face principal ou NEX 35 autorizada), ameaças do catálogo ou participantes avulsos. As cópias de criaturas têm PV independentes. Role ou edite iniciativas, inicie o combate e avance/retorne turnos, com rodadas automáticas, pausa e reinício.
+- `/campanhas`: selecione uma campanha e use **Combate → Criar combate**. Adicione personagens (ficha original), ameaças do catálogo ou participantes avulsos. As cópias de criaturas têm PV independentes. Role ou edite iniciativas, inicie o combate e avance/retorne turnos, com rodadas automáticas, pausa e reinício.
 - Ataques e dano das ameaças podem ser rolados com histórico na campanha. Ajuste o dano final após resistências, imunidades, críticos e efeitos especiais; essas regras não são automatizadas. Condições são selecionadas no encontro e seus efeitos podem ser consultados.
 - Ao **Iniciar / Retomar**, o encontro aparece automaticamente dentro das fichas abertas pelos links existentes dos jogadores. Uma sala por campanha sincroniza turnos, rodadas, pausa e iniciativas aproximadamente a cada 2,5 segundos. **Encerrar combate** remove a tela temporária dos jogadores; pausar mantém a tela visível. A preparação e as notas da campanha continuam na área do mestre.
-- Cada jogador pode **Rolar minha iniciativa** ou **Informar iniciativa** (resultado final) somente para o próprio personagem. A rolagem é feita no banco com os atributos e treinamento da face escolhida pelo mestre, incluindo ajustes, equipamentos ativos e Destreza; AGI zero usa dois d20 e o menor. O resultado entra na ordem de iniciativa e no histórico da ficha. Treinado +5, Veterano +10 e Expert +15 seguem o treinamento cadastrado, respeitando a face NEX 35.
-- Dano/cura no combate compartilhado atualiza somente os PV da face escolhida no banco, com bloqueio da linha durante a operação; não reenvia uma ficha inteira. A face principal permanece intacta ao ajustar NEX 35. Dano em criaturas altera os PV da cópia da ameaça no encontro. **Atualizar fichas** recarrega também máximos, Defesa e os bônus de iniciativa. As condições do encontro são anotações; não alteram as condições da ficha.
+- Cada jogador pode **Rolar minha iniciativa** ou **Informar iniciativa** (resultado final) somente para o próprio personagem. A rolagem é feita no banco com os atributos e treinamento da ficha original, incluindo ajustes, equipamentos ativos e Destreza; AGI zero usa dois d20 e o menor. O resultado entra na ordem de iniciativa e no histórico da ficha. Treinado +5, Veterano +10 e Expert +15 seguem o treinamento cadastrado.
+- Dano/cura no combate compartilhado atualiza somente os PV da ficha original no banco, com bloqueio da linha durante a operação; não reenvia uma ficha inteira. Dano em criaturas altera os PV da cópia da ameaça no encontro. **Atualizar fichas** recarrega também máximos, Defesa e os bônus de iniciativa. As condições do encontro são anotações; não alteram as condições da ficha.
 - O jogador acompanha participantes revelados e seus próprios PV. Ameaças ocultas, PV/Defesa das criaturas, fichas de outros personagens e chaves do mestre não são enviados à tela do jogador. O ícone de olho do mestre revela uma ameaça na ordem dos turnos. Somente o mestre adiciona participantes, aplica dano/cura, edita condições e avança turnos. Revisões impedem que uma atualização antiga apague uma iniciativa recém-rolada.
 - Ao iniciar, fichas locais vinculadas à campanha são publicadas no compartilhamento existente; uma campanha precisa de pelo menos uma ficha para criar a sala. As chaves administrativas do combate permanecem neste navegador, junto das chaves de ficha. As tabelas são privadas (RLS e sem acesso direto pela Data API), e as RPCs validam chaves por ficha ou campanha. `database/combat.sql` adiciona a sala e as permissões após as migrações anteriores; já foi aplicado ao projeto desta instalação. Ameaças próprias e encontros em preparação continuam salvos localmente, preservando os dados anteriores.
 

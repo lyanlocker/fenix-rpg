@@ -312,10 +312,12 @@ export function check(attribute: number, bonus = 0, roll = die) {
   if (
     !Number.isInteger(attribute) ||
     attribute < 0 ||
-    attribute > 10 ||
+    attribute > 1000 ||
     !Number.isFinite(bonus)
   )
-    throw Error("Atributo inválido");
+    throw Error(
+      "A rolagem aceita de 0 a 1.000 dados de atributo e bônus finito.",
+    );
   const dice = Array.from({ length: attribute || 2 }, () => roll(20));
   return {
     dice,

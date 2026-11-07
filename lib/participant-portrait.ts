@@ -1,3 +1,4 @@
+import { ALTERNATE_FACE_ENABLED } from "./features";
 import type { Participant } from "./model";
 import type { Agent } from "./rules";
 import type { Threat } from "./threats";
@@ -11,7 +12,10 @@ export function participantPortrait(
 ) {
   if (p.agentId) {
     const agent = agents.find((a) => a.id === p.agentId);
-    const face = p.face === "alternate" ? agent?.alternate?.face : agent;
+    const face =
+      ALTERNATE_FACE_ENABLED && p.face === "alternate"
+        ? agent?.alternate?.face
+        : agent;
     return { portrait: face?.portrait || "" };
   }
   const threat = threats.find((t) => t.id === p.threatId);

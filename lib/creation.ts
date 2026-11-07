@@ -1,4 +1,4 @@
-import type { ClassName } from "./rules";
+import type { Agent, ClassName } from "./rules";
 export const attributeNames = {
   AGI: "Agilidade",
   FOR: "Força",
@@ -94,3 +94,24 @@ export const originSkills: Record<string, string[]> = {
   Universitário: ["Atualidades", "Investigação"],
   Vítima: ["Reflexos", "Vontade"],
 };
+
+export const trainingLevels = [0, 5, 10, 15] as const;
+export function creationStepError(agent: Agent, step: number): string {
+  if (step === 0 && !agent.name.trim()) return "Informe o nome.";
+  if (step === 1 && !agent.origin.trim()) return "Escolha uma origem.";
+  if (
+    step === 2 &&
+    Object.values(agent.attributes).some(
+      (n) => !Number.isSafeInteger(n) || n < 0,
+    )
+  )
+    return "Use números inteiros a partir de zero nos atributos.";
+  if (
+    step === 3 &&
+    Object.values(agent.skills).some(
+      (n) => !(trainingLevels as readonly number[]).includes(n),
+    )
+  )
+    return "Escolha um dos graus de treinamento disponíveis.";
+  return "";
+}

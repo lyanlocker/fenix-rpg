@@ -1,3 +1,4 @@
+import { ALTERNATE_FACE_ENABLED } from "./features";
 import type { Encounter, Participant } from "./model";
 import { turnKey } from "./combat-actions";
 import type { Threat } from "./threats";
@@ -130,6 +131,8 @@ export function participantFromAgent(
   agent: Agent,
   alternate = false,
 ): Participant {
+  if (alternate && !ALTERNATE_FACE_ENABLED)
+    throw Error("A face NEX 35 foi desativada.");
   if (alternate && !agent.alternate)
     throw Error("A face NEX 35 ainda não foi liberada.");
   const face: Agent = alternate
@@ -153,5 +156,76 @@ export function participantFromAgent(
       accessoryDefenseBonus(face),
     initiativeAttribute: effectiveAttributes(face).AGI,
     initiativeBonus: skillBonus(face, "Iniciativa").total,
+  };
+}
+
+/** Retire only encounter references; archived alternate sheets are never rewritten. */
+export function restoreOriginalParticipants(
+  encounter: Encounter,
+  agents: Agent[],
+): Encounter {
+  const retired = new Set(
+    encounter.participants
+      .filter((p) => p.face === "alternate")
+      .map((p) => p.id),
+  );
+  if (!retired.size) return encounter;
+  const participants = encounter.participants.map((p) => {
+    if (!retired.has(p.id)) return p;
+    const agent = agents.find((a) => a.id === p.agentId);
+    if (!agent)
+      throw Error(`Carregue a ficha original de ${p.name} antes de retomar.`);
+    return {
+      ...p,
+      ...participantFromAgent(agent),
+      id: p.id,
+      initiative: p.initiative,
+      initiativeRolled: p.initiativeRolled,
+      hidden: p.hidden,
+      playerAccess: p.playerAccess,
+    };
+  });
+  const combat = encounter.combat && structuredClone(encounter.combat);
+  if (combat) {
+    for (const id of retired) delete combat.budgets[id];
+    combat.effects = combat.effects.filter((effect) => {
+      if (!retired.has(effect.sourceId) && !retired.has(effect.targetId))
+        return true;
+      const budget = combat.budgets[effect.targetId];
+      if (budget && budget.key === effect.appliedKey) {
+        if (effect.grant === "standard") {
+          budget.standard = Math.max(
+            0,
+            budget.standard + budget.restricted - 1,
+          );
+          budget.restricted = 0;
+        } else if (effect.grant === "move") {
+          const key = effect.noRitual ? "restrictedMove" : "move";
+          budget[key] = Math.max(0, (budget[key] || 0) - 1);
+        } else if (effect.grant === "attack")
+          budget.attack = Math.max(0, budget.attack - 1);
+      }
+      return false;
+    });
+    combat.events = combat.events.map((event) =>
+      event.pending &&
+      !event.resolved &&
+      (retired.has(event.actorId) ||
+        event.targetIds.some((id) => retired.has(id)))
+        ? {
+            ...event,
+            resolved: true,
+            text:
+              event.text +
+              " Encerrada na restauração das fichas originais, sem aplicar efeitos.",
+          }
+        : event,
+    );
+  }
+  return {
+    ...encounter,
+    participants,
+    active: false,
+    ...(combat ? { combat } : {}),
   };
 }

@@ -14,9 +14,11 @@ import {
 export type AttackMode = "highest" | "lowest";
 export function parseAttackDice(text: string) {
   const value = text.toLowerCase().replace(/\s/g, "");
-  const m = /^(\d{1,2})d20([+-]\d{1,4})?$/.exec(value);
-  if (!m || +m[1] < 1 || +m[1] > 10 || Math.abs(Number(m[2] || 0)) > 1000)
-    throw Error("Ataque: use de 1 a 10d20 e bônus de até 1.000, como 3d20+5.");
+  const m = /^(\d{1,4})d20([+-]\d{1,4})?$/.exec(value);
+  if (!m || +m[1] < 1 || +m[1] > 1000 || Math.abs(Number(m[2] || 0)) > 1000)
+    throw Error(
+      "Ataque: use de 1 a 1.000d20 e bônus de até 1.000, como 3d20+5.",
+    );
   return { count: +m[1], bonus: Number(m[2] || 0) };
 }
 export function rollAttackDice(
@@ -102,7 +104,7 @@ export function weaponRollSuggestion(a: Agent, item: Item) {
     damage = damage.replace(/([+-]\d+)$/, "") + (fixed >= 0 ? "+" : "") + fixed;
   }
   return {
-    attack: `${Math.min(10, attributes[attr] || 2)}d20${bonus >= 0 ? "+" : ""}${bonus}`,
+    attack: `${attributes[attr] || 2}d20${bonus >= 0 ? "+" : ""}${bonus}`,
     mode: (attributes[attr] === 0 ? "lowest" : "highest") as AttackMode,
     damage,
     skill,

@@ -236,7 +236,7 @@ begin
     end if;
     expression := replace(damage_expression, ' ', '');
   else
-    if attribute_value is null or attribute_value < 0 or attribute_value > 10
+    if attribute_value is null or attribute_value < 0 or attribute_value > 1000
       or bonus is null or abs(bonus) > 100000 then
       raise exception 'Atributo ou bônus inválido';
     end if;
