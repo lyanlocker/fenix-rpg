@@ -352,7 +352,6 @@ export default function CombatArena({
             <div className="arena-budget" aria-label="Ações restantes">
               <span>
                 <b>{budget.standard + budget.restricted}</b> padrão
-                {budget.restricted ? ` (${budget.restricted} sem ritual)` : ""}
               </span>
               <span>
                 <b>{budget.move + (budget.restrictedMove || 0)}</b> movimento
@@ -422,7 +421,9 @@ export default function CombatArena({
                       {x.targetId !== mine?.id
                         ? ` para ${combat.participants.find((p) => p.id === x.targetId)?.name || "aliado"}`
                         : ""}
-                      {x.noRitual ? " · sem ritual" : ""}
+                      {x.noRitual && x.grant !== "standard"
+                        ? " · sem ritual"
+                        : ""}
                       {x.timing === "sustained"
                         ? " · sustentada"
                         : x.timing === "scene"

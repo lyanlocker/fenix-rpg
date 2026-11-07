@@ -7,6 +7,7 @@ import {
   participantFromThreat,
   removeParticipant,
   reorderEncounter,
+  restoreOriginalParticipants,
 } from "../lib/combat";
 import {
   parseThreatImport,
@@ -14,6 +15,7 @@ import {
   threatCatalog,
 } from "../lib/threats";
 import { newAgent } from "../lib/rules";
+import { emptyLedger } from "../lib/combat-actions";
 import type { Encounter, Participant } from "../lib/model";
 const p = (id: string, initiative: number): Participant => ({
   id,
@@ -77,7 +79,7 @@ test("hit point adjustments clamp and reject invalid inputs", () => {
   assert.throws(() => changeHitPoints(p("a", 1), NaN));
   assert.throws(() => changeHitPoints(p("a", 1), 1.5));
 });
-test("alternate combat uses the NEX 35 face and does not change the main sheet", () => {
+test("retired face is unavailable; restoring old combat preserves sheets and initiative", () => {
   const a = newAgent("Principal");
   a.nex = 65;
   a.resources.pv = 50;
@@ -89,14 +91,34 @@ test("alternate combat uses the NEX 35 face and does not change the main sheet",
       resources: { pv: 12, pe: 5, san: 5, pd: 5 },
     },
   };
-  const main = participantFromAgent(a),
-    other = participantFromAgent(a, true);
-  assert.equal(main.name, "Principal");
-  assert.equal(other.name, "Parente");
-  assert.equal(other.pv, 12);
-  assert.equal(other.agentId, a.id);
-  assert.equal(other.face, "alternate");
-  assert.equal(a.resources.pv, 50);
+  const before = structuredClone(a);
+  assert.throws(() => participantFromAgent(a, true), /desativada/);
+  const main = participantFromAgent(a);
+  const old = {
+    ...encounter(),
+    participants: [
+      {
+        ...main,
+        face: "alternate" as const,
+        name: "Parente",
+        pv: 12,
+        initiative: 22,
+        initiativeRolled: true,
+      },
+    ],
+  };
+  const restored = restoreOriginalParticipants(old, [a]);
+  assert.equal(restored.active, false);
+  assert.equal(restored.participants[0].face, "main");
+  assert.equal(restored.participants[0].name, "Principal");
+  assert.equal(restored.participants[0].pv, 50);
+  assert.equal(restored.participants[0].id, main.id);
+  assert.equal(restored.participants[0].initiative, 22);
+  assert.equal(restored.participants[0].initiativeRolled, true);
+  assert.deepEqual(a, before);
+  assert.equal(old.participants[0].face, "alternate");
+  assert.equal(restoreOriginalParticipants(restored, [a]), restored);
+  assert.throws(() => restoreOriginalParticipants(old, []), /Carregue/);
 });
 test("catalog entries match representative printed stat blocks and do not fabricate special PV", () => {
   assert.equal(
@@ -141,4 +163,80 @@ test("threat d20 tests use the highest die and printed negative pools use the lo
   assert.deepEqual(parseThreatTest("3d20+15"), { attribute: 3, bonus: 15 });
   assert.deepEqual(parseThreatTest("–2d20"), { attribute: 0, bonus: 0 });
   assert.throws(() => parseThreatTest("Veja texto"));
+});
+
+test("restoring originals retires only related effects and pending damage without refilling allies' turns", () => {
+  const a = newAgent("Original");
+  const old = { ...participantFromAgent(a), face: "alternate" as const };
+  const e = encounter();
+  const ally = e.participants[1];
+  e.participants[0] = old;
+  e.combat = {
+    ...emptyLedger(),
+    budgets: {
+      [ally.id]: {
+        key: "1:b:0",
+        standard: 0,
+        restricted: 1,
+        move: 0,
+        attack: 0,
+        spentPe: 2,
+        attacked: true,
+        ended: false,
+      },
+    },
+    uses: {},
+    effects: [
+      {
+        id: "old",
+        sourceId: old.id,
+        targetId: ally.id,
+        name: "Velocidade Mortal",
+        grant: "standard",
+        noRitual: true,
+        timing: "sustained",
+        createdKey: "1:a:0",
+        appliedKey: "1:b:0",
+      },
+      {
+        id: "keep",
+        sourceId: ally.id,
+        targetId: ally.id,
+        name: "Outro efeito",
+        grant: "move",
+        noRitual: false,
+        timing: "scene",
+        createdKey: "1:b:0",
+        appliedKey: "1:b:0",
+      },
+    ],
+    events: [
+      {
+        id: "pending",
+        actorId: ally.id,
+        actor: "Aliado",
+        targetIds: [old.id],
+        label: "Ataque",
+        text: "Pendente",
+        round: 1,
+        secret: false,
+        createdAt: "2026-11-07",
+        rolls: [],
+        pending: "damage",
+        proposedDamage: 8,
+      },
+    ],
+  };
+  const before = structuredClone(e);
+  const restored = restoreOriginalParticipants(e, [a]);
+  assert.equal(restored.combat!.budgets[ally.id].standard, 0);
+  assert.equal(restored.combat!.budgets[ally.id].restricted, 0);
+  assert.equal(restored.combat!.budgets[ally.id].spentPe, 2);
+  assert.deepEqual(
+    restored.combat!.effects.map((x) => x.id),
+    ["keep"],
+  );
+  assert.equal(restored.combat!.events[0].resolved, true);
+  assert.equal(a.resources.pv, newAgent().resources.pv);
+  assert.deepEqual(e, before);
 });

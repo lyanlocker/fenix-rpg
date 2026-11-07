@@ -1,3 +1,4 @@
+import { ALTERNATE_FACE_ENABLED } from "./features";
 import { combatItem, ritualDamage } from "./combat-metadata";
 import type { AttackMode } from "./combat-dice";
 import type { Agent, Item } from "./rules";
@@ -173,7 +174,7 @@ export function hasMedicineKit(a: Agent) {
   );
 }
 export function combatFace(a: Agent, p: Pick<Participant, "face">): Agent {
-  if (p.face !== "alternate") return a;
+  if (!ALTERNATE_FACE_ENABLED || p.face !== "alternate") return a;
   if (!a.alternate || a.alternate.approvedCampaignId !== a.campaign_id)
     throw Error("Face alternativa não autorizada.");
   return { ...a, ...a.alternate.face };
@@ -203,6 +204,9 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
           attacked: false,
           ended: false,
         };
+  // Older encounters may still store standard credits in the restricted bucket.
+  b.standard += b.restricted;
+  b.restricted = 0;
   if (old?.key !== key && a && e.round === 1) {
     if (hasPower(a, "Iniciativa Aprimorada")) b.move++;
     if (hasPower(a, "Sempre Alerta")) b.standard++;
@@ -214,8 +218,7 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
       (effect.timing === "next" && effect.createdKey === key)
     )
       continue;
-    if (effect.grant === "standard")
-      b[effect.noRitual ? "restricted" : "standard"]++;
+    if (effect.grant === "standard") b.standard++;
     if (effect.grant === "move") {
       if (effect.noRitual) b.restrictedMove = (b.restrictedMove || 0) + 1;
       else b.move++;
@@ -231,7 +234,7 @@ export function actionAvailable(
   attack = false,
 ) {
   if (b.ended) return false;
-  const s = b.standard + (ritual ? 0 : b.restricted);
+  const s = b.standard + b.restricted;
   const m = b.move + (ritual ? 0 : b.restrictedMove || 0);
   return (
     cost === "free" ||

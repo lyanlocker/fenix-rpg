@@ -1,3 +1,4 @@
+import { ALTERNATE_FACE_ENABLED } from "./features";
 import { maximums, type Agent, type AlternateFace, type Item } from "./rules";
 import type { Campaign } from "./model";
 import { bookCatalog } from "./books";
@@ -258,13 +259,14 @@ export function makeAlternateFace(agent: Agent): AlternateFace {
 }
 
 export function alternateAgent(agent: Agent): Agent {
-  return agent.alternate
+  return ALTERNATE_FACE_ENABLED && agent.alternate
     ? { ...agent, ...agent.alternate.face, nex: 35 }
     : agent;
 }
 
 export function alternateIsApproved(agent: Agent, campaign?: Campaign) {
   return (
+    ALTERNATE_FACE_ENABLED &&
     !!agent.alternate &&
     agent.campaign_id === agent.alternate.approvedCampaignId &&
     (!campaign ||

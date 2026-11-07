@@ -105,7 +105,7 @@ test("attack dice respect highest/lowest selection and strict bounds", () => {
   assert.equal(rollAttackDice("3d20-2", "lowest", () => ++n).total, -1);
   for (const expression of [
     "0d20",
-    "11d20",
+    "1001d20",
     "2d6",
     "2d20+1001",
     "1d20;alert(1)",

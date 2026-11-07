@@ -179,6 +179,13 @@ export default function PlayerCombat({
         Combate: {error}
       </p>
     ) : null;
+  if (combat.participants.some((p) => p.face === "alternate"))
+    return (
+      <p className="hint" role="status">
+        O mestre precisa restaurar as fichas originais nos controles do combate
+        para liberar esta sala.
+      </p>
+    );
   return (
     <>
       <aside className="arena-invitation" aria-live="polite">

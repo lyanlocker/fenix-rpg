@@ -1,3 +1,4 @@
+import { ALTERNATE_FACE_ENABLED } from "../features";
 import {
   rollAttackDice,
   rollDamageDice,
@@ -71,6 +72,13 @@ export function executeCombatCommand(
   let e = structuredClone(context.encounter);
   const sheets = structuredClone(context.sheets);
   if (!e.started) fail("O combate já foi encerrado.");
+  if (
+    !ALTERNATE_FACE_ENABLED &&
+    e.participants.some((x) => x.face === "alternate")
+  )
+    fail(
+      "A face NEX 35 foi desativada. O mestre precisa restaurar as fichas originais nos controles do combate.",
+    );
   e.combat ||= emptyLedger();
   const ledger = e.combat;
   const p = e.participants.find((p) => p.id === actorId);
@@ -138,10 +146,12 @@ export function executeCombatCommand(
   ) {
     return addRoll(
       skill,
-      check(
-        Math.min(10, effectiveAttributes(a)[attr]),
-        skillBonus(a, skill).total + bonus,
-        roll,
+      safeDice(() =>
+        check(
+          effectiveAttributes(a)[attr],
+          skillBonus(a, skill).total + bonus,
+          roll,
+        ),
       ),
     );
   }
@@ -257,7 +267,7 @@ export function executeCombatCommand(
         if (!actionAvailable(budget, cost, ritual, attack))
           fail("Esta ação já foi gasta neste turno.");
         const standard = () => {
-          if (!ritual && budget.restricted > 0) budget.restricted--;
+          if (budget.restricted > 0) budget.restricted--;
           else budget.standard--;
         };
         if (cost === "standard") {
@@ -353,8 +363,7 @@ export function executeCombatCommand(
             }
             if (effect.grant === "attack") b.attack = Math.max(0, b.attack - 1);
             if (effect.grant === "standard") {
-              const k = effect.noRitual ? "restricted" : "standard";
-              b[k] = Math.max(0, b[k] - 1);
+              b.standard = Math.max(0, b.standard - 1);
             }
           }
         }
@@ -717,7 +726,7 @@ export function executeCombatCommand(
                 targetId: t.id,
                 name: option.name,
                 grant,
-                noRitual: !!option.noRitual,
+                noRitual: grant !== "standard" && !!option.noRitual,
                 timing: option.timing || "now",
                 createdKey: key,
                 upkeepKey: key,
@@ -729,7 +738,7 @@ export function executeCombatCommand(
               event.text +=
                 " Crânio empunhado: o mestre confere Vontade (DT 15 + 5 por uso adicional no dia). A ação vale mesmo em falha; envelhecimento e proibição de novo uso no dia dependem do teste.";
             }
-            event.text += ` Ação ${grant === "standard" ? "padrão" : grant === "move" ? "de movimento" : grant === "attack" ? "somente para atacar" : "livre"}${option.timing === "next" ? " no próximo turno" : option.timing === "sustained" ? " a cada turno enquanto sustentado" : option.timing === "scene" ? " a cada turno até encerrar o efeito" : " adicional"}${option.noRitual ? "; não permite rituais" : ""}.`;
+            event.text += ` Ação ${grant === "standard" ? "padrão" : grant === "move" ? "de movimento" : grant === "attack" ? "somente para atacar" : "livre"}${option.timing === "next" ? " no próximo turno" : option.timing === "sustained" ? " a cada turno enquanto sustentado" : option.timing === "scene" ? " a cada turno até encerrar o efeito" : " adicional"}${option.noRitual && grant !== "standard" ? "; não permite rituais" : ""}.`;
           } else if (option.effect === "ritual" && option.formula) {
             safeDice(() => rollDamageDice(option.formula!, () => 1));
             event.damageRoll = {

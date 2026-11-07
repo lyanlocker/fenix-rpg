@@ -136,7 +136,7 @@ test("revealing a participant adds its identity but still excludes its numeric s
   ]);
 });
 
-test("the alternate portrait matches the participant face without sending either full sheet", () => {
+test("retired alternate portraits fall back to the original without sending either full sheet", () => {
   const alternate = {
     ...encounter,
     participants: [
@@ -144,8 +144,8 @@ test("the alternate portrait matches the participant face without sending either
     ],
   };
   const frame = presentationFrame("Campaign", alternate, [agent], [], since);
-  assert.equal(frame.participants[0].portrait, agent.alternate!.face.portrait);
-  assert.ok(!JSON.stringify(frame).includes("MAIN"));
+  assert.equal(frame.participants[0].portrait, agent.portrait);
+  assert.ok(!JSON.stringify(frame).includes("ALTERNATE"));
 });
 
 test("presentation preserves the confirmed dice and total and does not mutate the source", () => {

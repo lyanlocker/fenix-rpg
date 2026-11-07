@@ -1,6 +1,6 @@
 {
   "name": "fenix-rpg",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",

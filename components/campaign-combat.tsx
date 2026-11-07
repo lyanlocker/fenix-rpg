@@ -26,6 +26,7 @@ import {
   participantFromThreat,
   removeParticipant,
   reorderEncounter,
+  restoreOriginalParticipants,
   sortParticipants,
 } from "@/lib/combat";
 import {
@@ -69,6 +70,9 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     (e) => e.campaign_id === campaignId,
   );
   const encounter = encounters.find((e) => e.id === selected) || encounters[0];
+  const legacyFaces = !!encounter?.participants.some(
+    (p) => p.face === "alternate",
+  );
   const threats = game.allThreats;
   const artOverrides = game.threatLibrary.library.art;
   const current = encounter?.participants[encounter.turn];
@@ -234,17 +238,26 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       p.agentId &&
       encounter.participants.some((x) => x.agentId === p.agentId)
     )
-      throw Error(
-        "Este personagem já participa do combate. Remova-o antes de trocar a face.",
-      );
+      throw Error("Este personagem já participa do combate.");
     await save({ ...encounter, participants: [...encounter.participants, p] });
     setPicker(null);
   }
-  async function addAgent(a: Agent, alternate: boolean) {
+  async function addAgent(a: Agent) {
     const { agent } = await freshAgent(a.id);
-    if (alternate && agent.alternate?.approvedCampaignId !== campaignId)
-      throw Error("Esta face não foi liberada nesta campanha.");
-    await add(participantFromAgent(agent, alternate));
+    await add(participantFromAgent(agent));
+  }
+  async function restoreOriginals() {
+    if (!encounter) return;
+    const originals: Agent[] = [];
+    for (const p of encounter.participants) {
+      if (p.face !== "alternate" || !p.agentId) continue;
+      const { agent } = await freshAgent(p.agentId);
+      originals.push(agent);
+    }
+    await save(restoreOriginalParticipants(encounter, originals));
+    game.setNotice(
+      "Fichas originais restauradas. Confira os participantes e retome o combate quando quiser.",
+    );
   }
   async function updateParticipant(p: Participant) {
     if (!encounter) return;
@@ -254,7 +267,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     });
   }
   async function adjustHp(p: Participant, delta: number) {
-    if (!encounter) return;
+    if (!encounter || legacyFaces) return;
     const key = combatMasterKey(campaignId);
     if (key && encounter.sharedRevision !== undefined) {
       const payload = await adjustSharedCombatHp(encounter, key, p.id, delta);
@@ -267,33 +280,22 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     let next = changeHitPoints(p, delta);
     if (p.agentId) {
       const { agent, token } = await freshAgent(p.agentId);
-      const alternate = p.face === "alternate";
-      if (alternate && agent.alternate?.approvedCampaignId !== campaignId)
-        throw Error("Esta face não está liberada para a campanha.");
-      const actual = participantFromAgent(agent, alternate);
+      const actual = participantFromAgent(agent);
       next = changeHitPoints(
         { ...p, pv: actual.pv, maxPv: actual.maxPv },
         delta,
       );
-      const updated: Agent = alternate
-        ? {
-            ...agent,
-            alternate: {
-              ...agent.alternate!,
-              face: {
-                ...agent.alternate!.face,
-                resources: { ...agent.alternate!.face.resources, pv: next.pv },
-              },
-            },
-          }
-        : { ...agent, resources: { ...agent.resources, pv: next.pv } };
+      const updated: Agent = {
+        ...agent,
+        resources: { ...agent.resources, pv: next.pv },
+      };
       if (token) await saveSharedAgent(updated, token);
       await game.save("agents", updated);
     }
     await updateParticipant(next);
   }
   async function refreshAgents() {
-    if (!encounter) return;
+    if (!encounter || legacyFaces) return;
     const participants: Participant[] = [];
     for (const p of encounter.participants) {
       if (!p.agentId) {
@@ -301,7 +303,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         continue;
       }
       const { agent } = await freshAgent(p.agentId);
-      const actual = participantFromAgent(agent, p.face === "alternate");
+      const actual = participantFromAgent(agent);
       participants.push({
         ...p,
         pv: actual.pv,
@@ -316,13 +318,13 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     game.setNotice("PV, Defesa e iniciativa atualizados a partir das fichas.");
   }
   async function rollInitiative() {
-    if (!encounter) return;
+    if (!encounter || legacyFaces) return;
     const participants: Participant[] = [];
     for (const p of encounter.participants) {
       let test;
       if (p.agentId) {
         const { agent } = await freshAgent(p.agentId);
-        const actual = participantFromAgent(agent, p.face === "alternate");
+        const actual = participantFromAgent(agent);
         test = {
           attribute: actual.initiativeAttribute!,
           bonus: actual.initiativeBonus!,
@@ -380,7 +382,18 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
             : "Preparação do mestre · aparece aos jogadores ao iniciar"}
         </span>
       </div>
-      <fieldset disabled={busy} className="combat-controls">
+      {legacyFaces && (
+        <div className="hint" role="status">
+          <p>
+            A face NEX 35 foi desativada. Restaure as fichas originais para
+            continuar este combate. Os dados da face antiga ficam preservados.
+          </p>
+          <button disabled={busy} onClick={() => void run(restoreOriginals)}>
+            Restaurar fichas originais
+          </button>
+        </div>
+      )}
+      <fieldset disabled={busy || legacyFaces} className="combat-controls">
         <div className="combat-toolbar">
           <label>
             Encontro
@@ -663,9 +676,9 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
               </button>
             </div>
             <p className="hint">
-              Dano e cura em personagens vinculados atualizam a ficha escolhida,
-              incluindo NEX 35. Aplique o valor final após resistências,
-              imunidades e efeitos especiais.
+              Dano e cura em personagens vinculados atualizam a ficha original.
+              Aplique o valor final após resistências, imunidades e efeitos
+              especiais.
               {encounter.started
                 ? " Os jogadores veem o combate na própria ficha. Revele as ameaças pelo ícone de olho para mostrá-las na ordem dos turnos."
                 : " Ao iniciar, as fichas desta campanha serão compartilhadas para permitir o combate sincronizado."}
@@ -951,14 +964,9 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
               agents.map((a) => (
                 <div className="combat-agent-choice" key={a.id}>
                   <strong>{a.name}</strong>
-                  <button onClick={() => void run(() => addAgent(a, false))}>
+                  <button onClick={() => void run(() => addAgent(a))}>
                     Adicionar NEX {a.nex}
                   </button>
-                  {a.alternate?.approvedCampaignId === campaignId && (
-                    <button onClick={() => void run(() => addAgent(a, true))}>
-                      {a.alternate.face.name} · NEX 35
-                    </button>
-                  )}
                 </div>
               ))
             ) : (

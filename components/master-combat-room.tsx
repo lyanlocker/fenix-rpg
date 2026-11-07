@@ -31,6 +31,7 @@ export default function MasterCombatRoom({
   const [open, setOpen] = useState(false),
     [rules, setRules] = useState(false),
     [error, setError] = useState("");
+  if (encounter.participants.some((p) => p.face === "alternate")) return null;
   const current = encounter.participants[encounter.turn];
   const participant = current?.agentId
     ? current
@@ -350,7 +351,11 @@ function CombatRuleEditor({
                   <select
                     value={rule.grant}
                     onChange={(e) =>
-                      update({ grant: e.target.value as CombatRule["grant"] })
+                      update({
+                        grant: e.target.value as CombatRule["grant"],
+                        noRitual:
+                          e.target.value === "standard" ? false : rule.noRitual,
+                      })
                     }
                   >
                     <option value="standard">Padrão</option>
@@ -377,14 +382,16 @@ function CombatRuleEditor({
                     </option>
                   </select>
                 </label>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={rule.noRitual}
-                    onChange={(e) => update({ noRitual: e.target.checked })}
-                  />{" "}
-                  Ação adicional não permite ritual
-                </label>
+                {rule.grant === "move" && (
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={rule.noRitual}
+                      onChange={(e) => update({ noRitual: e.target.checked })}
+                    />{" "}
+                    Ação de movimento adicional não permite ritual
+                  </label>
+                )}
               </>
             )}
             <label>

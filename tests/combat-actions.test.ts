@@ -228,7 +228,7 @@ function speed() {
   data.a.inventory.push(ritual);
   return { ...data, ritual };
 }
-test("Velocidade Mortal discente adds restricted standard actions and charges upkeep on the next caster turn", () => {
+test("Velocidade Mortal discente adds unrestricted standard actions and charges upkeep on the next caster turn", () => {
   const { c, a, pa, ritual } = speed();
   apply(c, {
     kind: "use",
@@ -237,11 +237,11 @@ test("Velocidade Mortal discente adds restricted standard actions and charges up
     variant: "discente",
   });
   const budget = budgetFor(c.encounter, pa, a);
-  assert.equal(budget.standard, 0);
-  assert.equal(budget.restricted, 1);
+  assert.equal(budget.standard, 1);
+  assert.equal(budget.restricted, 0);
   assert.throws(
     () => apply(c, { kind: "use", optionId: ritual.id, targetIds: [pa.id] }),
-    /gasta/,
+    /acumulam/,
   );
   newTurn(c);
   assert.throws(() => apply(c, { kind: "use", optionId: "move" }), /Sustente/);
@@ -388,7 +388,7 @@ test("GM can configure a bandage with a Medicine test, healing and item consumpt
   assert.equal(b.resources.pv, 10);
   assert.ok(!a.inventory.some((i) => i.id === bandage.id));
 });
-test("alternate face changes only its own resources/inventory and never creates recursive state", () => {
+test("retired alternate face cannot act or mutate the original or archived sheet", () => {
   const { c, a, pa, pb } = setup();
   const face = newAgent("Outra face");
   face.campaign_id = a.campaign_id;
@@ -398,11 +398,12 @@ test("alternate face changes only its own resources/inventory and never creates 
   face.inventory.push(heal);
   a.alternate = { approvedCampaignId: a.campaign_id!, face };
   pa.face = "alternate";
-  const before = structuredClone(a.resources);
-  const r = apply(c, { kind: "use", optionId: heal.id, targetIds: [pb.id] });
-  assert.deepEqual(a.resources, before);
-  assert.equal(a.alternate.face.inventory.length, 0);
-  assert.equal(r.patches[0].face, "alternate");
+  const before = structuredClone(c);
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: heal.id, targetIds: [pb.id] }),
+    /desativada/,
+  );
+  assert.deepEqual(c, before);
   assert.doesNotThrow(() => JSON.stringify(c));
 });
 test("minimum PE cost may exceed a low-NEX turn limit once, but a second paid action may not", () => {
@@ -755,8 +756,8 @@ test("sustaining discente preserves two standards and movement across multiple c
     targetIds: [pa.id],
     variant: "discente",
   });
-  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 0);
-  assert.equal(c.encounter.combat!.budgets[pa.id].restricted, 1);
+  assert.equal(c.encounter.combat!.budgets[pa.id].standard, 1);
+  assert.equal(c.encounter.combat!.budgets[pa.id].restricted, 0);
   apply(c, {
     kind: "use",
     optionId: "custom:standard",
@@ -770,8 +771,8 @@ test("sustaining discente preserves two standards and movement across multiple c
     const effect = c.encounter.combat!.effects[0];
     apply(c, { kind: "sustain", eventId: effect.id });
     const after = budgetFor(c.encounter, pa, a);
-    assert.equal(after.standard, 1);
-    assert.equal(after.restricted, 1);
+    assert.equal(after.standard, 2);
+    assert.equal(after.restricted, 0);
     assert.equal(after.move, 1);
     assert.equal(
       after.standard + after.restricted,
@@ -1008,7 +1009,7 @@ test("two sustained action effects require Fluxo de Poder and separate free-acti
   assert.equal(budget.move, 2);
 });
 
-test("the original standard remains available for rituals after the restricted bonus action is spent", () => {
+test("both standard actions from sustained speed can cast rituals", () => {
   const { c, a, pa, ritual } = speed();
   const regular = item("Ritual original", "Ritual", {
     execution: "padrão",
@@ -1025,12 +1026,68 @@ test("the original standard remains available for rituals after the restricted b
   });
   newTurn(c);
   apply(c, { kind: "sustain", eventId: c.encounter.combat!.effects[0].id });
-  apply(c, {
-    kind: "use",
-    optionId: "custom:standard",
-    note: "Ação adicional",
-  });
+  apply(c, { kind: "use", optionId: regular.id, targetIds: [pa.id] });
   assert.equal(budgetFor(c.encounter, pa, a).standard, 1);
   apply(c, { kind: "use", optionId: regular.id, targetIds: [pa.id] });
   assert.equal(budgetFor(c.encounter, pa, a).standard, 0);
+});
+
+test("legacy restricted standard credits cast rituals once after reload without duplicating the effect", () => {
+  const { c, a, pa, ritual } = speed();
+  const regular = item("Ritual livre", "Ritual", {
+    execution: "padrão",
+    circle: 1,
+    element: "Medo",
+    cost: 1,
+  });
+  a.inventory.push(regular);
+  apply(c, {
+    kind: "use",
+    optionId: ritual.id,
+    targetIds: [pa.id],
+    variant: "discente",
+  });
+  const b = c.encounter.combat!.budgets[pa.id];
+  b.standard = 0;
+  b.restricted = 1;
+  c.encounter.combat!.effects[0].noRitual = true;
+  c.encounter = JSON.parse(JSON.stringify(c.encounter));
+  const pe = a.resources.pe;
+  apply(c, { kind: "use", optionId: regular.id, targetIds: [pa.id] });
+  assert.equal(a.resources.pe, pe - 1);
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 0);
+  assert.equal(budgetFor(c.encounter, pa, a).restricted, 0);
+  const snapshot = JSON.stringify(c);
+  assert.throws(
+    () => apply(c, { kind: "use", optionId: regular.id, targetIds: [pa.id] }),
+    /gasta/,
+  );
+  assert.equal(JSON.stringify(c), snapshot);
+});
+test("ending a legacy standard effect removes its remaining bonus credit", () => {
+  const { c, a, pa, ritual } = speed();
+  apply(c, {
+    kind: "use",
+    optionId: ritual.id,
+    targetIds: [pa.id],
+    variant: "discente",
+  });
+  const b = c.encounter.combat!.budgets[pa.id];
+  b.standard = 0;
+  b.restricted = 1;
+  c.encounter.combat!.effects[0].noRitual = true;
+  apply(c, { kind: "stopEffect", eventId: c.encounter.combat!.effects[0].id });
+  assert.equal(budgetFor(c.encounter, pa, a).standard, 0);
+  assert.equal(c.encounter.combat!.effects.length, 0);
+});
+test("combat investigation rolls use the full custom intellect", () => {
+  const { c, a } = setup();
+  a.attributes.INT = 12;
+  const option = combatOptions(a).find((o) => o.name === "Investigar")!;
+  assert.ok(option);
+  const result = apply(c, { kind: "use", optionId: option.id });
+  assert.equal(
+    result.encounter.combat!.events.at(-1)!.rolls[0].dice.length,
+    12,
+  );
 });
