@@ -1,61 +1,79 @@
-// Monta uma previa estatica em out/ a partir das paginas que o Next ja
-// prerenderizou. Nao remove nem desabilita nenhuma rota de servidor: o build
-// continua gerando .next/ (usado pela Vercel) e apenas acrescenta a copia
-// estatica usada pela previa do Editor.
+// Gera a previa estatica do projeto depois do `next build`.
+//
+// Contexto: o projeto roda em Node (rotas de API com cookies, Github OAuth e
+// Supabase), entao `output: "export"` nao se aplica e o Next so produz
+// `.next/`. Este script aproveita o HTML que o proprio Next ja prerenderizou
+// (`.next/server/app/**/*.html`) e monta as pastas de saida estatica usadas
+// pela previa: `out/` (padrao do Next export) e `dist/` e `build/` (nomes
+// alternativos verificados pelo gerador de previa).
+//
+// Nada e removido: `.next/` continua intacto e e o que a Vercel consome.
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
 const nextDir = path.join(root, ".next");
 const serverApp = path.join(nextDir, "server", "app");
 const outDir = path.join(root, "out");
+const mirrorDirs = [path.join(root, "dist"), path.join(root, "build")];
+
+async function findHtml(dir) {
+  const found = [];
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      found.push(...(await findHtml(full)));
+    } else if (entry.name.endsWith(".html")) {
+      found.push(full);
+    }
+  }
+  return found;
+}
+
+// Converte o caminho do arquivo .next/server/app em rota da aplicacao.
+// `.next/server/app/ameacas.html` -> `/ameacas`
+// `.next/server/app/ameacas/index.html` -> `/ameacas`
+// `.next/server/app/index.html` -> `/`
+function routeFromHtml(file) {
+  let rel = path.relative(serverApp, file).split(path.sep).join("/");
+  rel = rel.replace(/\.html$/, "");
+  rel = rel.replace(/\/index$/, "");
+  // Rotas dinamicas (ex.: agentes/[id]) sao renderizadas no servidor e nao
+  // possuem equivalente estatico; ficam de fora da previa.
+  if (rel.includes("[")) return null;
+  if (rel === "index") return "/";
+  return `/${rel}`;
+}
 
 if (!existsSync(serverApp)) {
-  console.warn("[preview] .next/server/app ausente; previa estatica ignorada.");
+  console.warn(
+    "[preview] .next/server/app ausente: rode `next build` antes deste script. A previa nao foi montada.",
+  );
   process.exit(0);
 }
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
-const manifestPath = path.join(nextDir, "prerender-manifest.json");
-let routes = [];
-try {
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  routes = Object.keys(manifest.routes || {}).filter(
-    (route) => route !== "/_not-found",
-  );
-} catch {
-  routes = [];
-}
-
-if (routes.length === 0) routes = ["/"];
-
-function htmlCandidates(route) {
-  const clean = route.replace(/^\/+|\/+$/g, "");
-  const base = path.join(serverApp, clean);
-  return [
-    path.join(base, "index.html"),
-    `${base}.html`,
-    path.join(base, "page.html"),
-  ];
-}
-
-let copied = 0;
-const missing = [];
-for (const route of routes) {
-  const candidate = htmlCandidates(route).find((file) =>
-    existsSync(file),
-  );
-  if (!candidate) {
-    missing.push(route);
-    continue;
-  }
-  const target = path.join(outDir, route.replace(/^\/+|\/+$/g, ""), "index.html");
+const htmlFiles = await findHtml(serverApp);
+const copied = [];
+for (const file of htmlFiles) {
+  const route = routeFromHtml(file);
+  if (!route || route === "/_not-found") continue;
+  const target =
+    route === "/"
+      ? path.join(outDir, "index.html")
+      : path.join(outDir, route.replace(/^\//, ""), "index.html");
   await mkdir(path.dirname(target), { recursive: true });
-  await cp(candidate, target);
-  copied += 1;
+  await cp(file, target);
+  copied.push(route);
 }
 
 const notFound = path.join(serverApp, "_not-found.html");
@@ -75,15 +93,23 @@ if (existsSync(path.join(root, "public"))) {
 
 const indexFile = path.join(outDir, "index.html");
 if (!existsSync(indexFile)) {
-  await writeFile(
-    indexFile,
-    "<!doctype html><meta charset=\"utf-8\"><title>Fenix</title><p>Previa estatica nao gerada. Consulte o log do build.</p>",
+  console.error(
+    "[preview] nenhuma pagina estatica encontrada em .next/server/app; a previa nao pode ser montada.",
   );
-  console.warn("[preview] index.html ausente em out/ apos a montagem.");
   process.exit(0);
 }
 
+const html = await readFile(indexFile, "utf8");
+if (!/<div id="__next"|id="__next"|<body/.test(html)) {
+  console.warn("[preview] out/index.html parece incompleto; confira o build.");
+}
+
+// Espelha a mesma previa em dist/ e build/ para o gerador encontrar a entrada.
+for (const dir of mirrorDirs) {
+  await rm(dir, { recursive: true, force: true });
+  await cp(outDir, dir, { recursive: true });
+}
+
 console.log(
-  `[preview] out/ pronto: ${copied} pagina(s) estatica(s)` +
-    (missing.length ? `, sem html local: ${missing.join(", ")}` : ""),
+  `[preview] previa pronta em out/ (${copied.length} rota(s): ${copied.join(", ")}), espelhada em dist/ e build/.`,
 );
