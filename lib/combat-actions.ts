@@ -585,3 +585,18 @@ export function extraActionFromText(
         : "turn",
   };
 }
+
+/** Keep every unresolved event and only the latest completed history entries. */
+export function retainCombatEvents(
+  events: CombatEvent[],
+  history = 40,
+): CombatEvent[] {
+  let remaining = history;
+  return events
+    .toReversed()
+    .filter((event) => {
+      if (event.pending && !event.resolved) return true;
+      return remaining-- > 0;
+    })
+    .reverse();
+}

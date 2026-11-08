@@ -1,4 +1,5 @@
 "use client";
+import { replaceInventoryItem } from "@/lib/agent-patch";
 import RuleDetails from "./rule-details";
 import { motion } from "motion/react";
 import { useExperience } from "./experience";
@@ -100,6 +101,7 @@ export default function CharacterSheet({ id }: { id: string }) {
     [section, setSection] = useState("Resumo"),
     [editing, setEditing] = useState(false),
     [item, setItem] = useState<Item | null>(null),
+    [itemOriginal, setItemOriginal] = useState<Item | undefined>(undefined),
     [catalog, setCatalog] = useState<Item["kind"] | null>(null),
     [result, setResult] = useState<Roll | null>(null),
     [history, setHistory] = useState(false),
@@ -273,7 +275,7 @@ export default function CharacterSheet({ id }: { id: string }) {
       skillBonus(agent, s).total + bonus,
     );
   }
-  async function save(p: Partial<Agent>) {
+  async function save(p: Partial<Agent>, original = agent) {
     mutations.current.version++;
     mutations.current.active++;
     try {
@@ -286,11 +288,15 @@ export default function CharacterSheet({ id }: { id: string }) {
                 face: faceFromAgent({ ...agent, ...p, nex: 35 }),
               },
             }
-          : { ...agent, ...p };
+          : { ...original, ...p };
       if (otherFace && faceAvailable && updated.alternate)
         validateAlternateFace(updated.alternate.face);
-      await game.syncSharedAgent(updated, game.access.shareToken || undefined);
-      await game.save("agents", updated);
+      const saved = await game.syncSharedAgent(
+        updated,
+        original,
+        game.access.shareToken || undefined,
+      );
+      await game.save("agents", saved);
     } finally {
       mutations.current.active--;
       mutations.current.version++;
@@ -351,8 +357,12 @@ export default function CharacterSheet({ id }: { id: string }) {
       );
     });
   }
+  function openItem(value: Item) {
+    setItemOriginal(agent.inventory.find((entry) => entry.id === value.id));
+    setItem(value);
+  }
   function add() {
-    setItem({
+    openItem({
       id: crypto.randomUUID(),
       name: "",
       kind,
@@ -364,7 +374,7 @@ export default function CharacterSheet({ id }: { id: string }) {
     });
   }
   function addAccessory(type: "Vestimenta" | "Utensílio") {
-    setItem({
+    openItem({
       id: crypto.randomUUID(),
       name: type,
       kind: "Item",
@@ -757,7 +767,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                           <button
                             disabled={busy}
                             aria-label={"Editar " + i.name}
-                            onClick={() => setItem(i)}
+                            onClick={() => openItem(i)}
                           >
                             <Pencil size={16} />
                           </button>
@@ -1032,7 +1042,7 @@ export default function CharacterSheet({ id }: { id: string }) {
           agent={a}
           campaigns={game.state.campaigns}
           lockedNex={otherFace && faceAvailable ? 35 : undefined}
-          onSave={(value) => save(value)}
+          onSave={(value, original) => save(value, original)}
           onClose={() => setEditing(false)}
           onRoll={(_, s) => test(s)}
         />
@@ -1051,7 +1061,11 @@ export default function CharacterSheet({ id }: { id: string }) {
               throw Error(
                 "Este ritual ou poder não está disponível no NEX 35%.",
               );
-            const inventory = [...a.inventory.filter((x) => x.id !== i.id), i];
+            const inventory = replaceInventoryItem(
+              a.inventory,
+              i,
+              itemOriginal,
+            );
             const equipped = inventory.filter(
               (entry) =>
                 accessoryType(entry) === "Vestimenta" &&
@@ -1082,7 +1096,7 @@ export default function CharacterSheet({ id }: { id: string }) {
                 !i.circle
               ) {
                 setCatalog(null);
-                setItem(i);
+                openItem(i);
                 game.setNotice(
                   "Defina o círculo deste ritual antes de adicioná-lo à face NEX 35%.",
                 );

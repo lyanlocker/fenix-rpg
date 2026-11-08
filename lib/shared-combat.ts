@@ -1,3 +1,4 @@
+import { readLocalRecord, validShareToken } from "./local-record";
 import type { Encounter, Roll } from "./model";
 import type { Agent } from "./rules";
 import { rpc } from "./share";
@@ -53,9 +54,16 @@ export function combatMasterKey(
   create = false,
 ): string | null {
   if (typeof window === "undefined") return null;
-  const keys: Record<string, string> = JSON.parse(
-    localStorage.getItem(KEY) || "{}",
-  );
+  let keys: Record<string, string>;
+  try {
+    keys = readLocalRecord(KEY, validShareToken);
+  } catch {
+    if (create)
+      throw Error(
+        "As chaves do combate não puderam ser lidas. Os dados locais foram preservados.",
+      );
+    return null;
+  }
   if (!keys[campaignId] && create) {
     keys[campaignId] = Array.from(
       crypto.getRandomValues(new Uint8Array(32)),
@@ -189,4 +197,21 @@ export async function submitCombatAction(input: {
     combat?: PlayerCombat;
     agentPatch?: Omit<CombatAgentPatch, "id">;
   };
+}
+
+/** A room closure/replacement must also stop the old local encounter. */
+export function reconcileMasterEncounters(
+  encounters: Encounter[],
+  campaignId: string,
+  payload: MasterCombat,
+) {
+  const next = withCombatRevision(payload);
+  const remaining = encounters
+    .filter((e) => e.id !== next?.id)
+    .map((e) =>
+      e.campaign_id === campaignId && e.sharedRevision !== undefined
+        ? { ...e, active: false, started: false, sharedRevision: undefined }
+        : e,
+    );
+  return next ? [next, ...remaining] : remaining;
 }

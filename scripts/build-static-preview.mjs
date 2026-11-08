@@ -82,7 +82,7 @@ if (existsSync(notFound)) {
 }
 
 if (existsSync(path.join(nextDir, "static"))) {
-  await cp(path.join(nextDir, "static"), path.join(outDir, "_next"), {
+  await cp(path.join(nextDir, "static"), path.join(outDir, "_next", "static"), {
     recursive: true,
   });
 }

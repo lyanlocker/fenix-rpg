@@ -42,7 +42,6 @@ import {
   createMasterCombatSync,
   saveMasterCombat,
   clearSharedCombat,
-  withCombatRevision,
   submitCombatAction,
 } from "@/lib/shared-combat";
 import { conditionDefinitions } from "@/lib/conditions";
@@ -102,8 +101,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         if (!payload) return false;
         remoteRevision.current = payload.revision;
         remoteEncounterId.current = payload.encounter?.id || null;
-        const next = withCombatRevision(payload);
-        if (next) game.mergeSharedEncounter(next);
+        game.mergeMasterCombat(campaignId, payload);
         if (payload.agentPatches) game.mergeCombatAgents(payload.agentPatches);
         return true;
       } catch (error) {
@@ -122,7 +120,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
     campaignId,
     game.ready,
     game.access.isPlayer,
-    game.mergeSharedEncounter,
+    game.mergeMasterCombat,
     game.mergeCombatAgents,
   ]);
   async function run(action: () => Promise<void>) {
@@ -156,8 +154,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         command,
       });
       remoteRevision.current = payload.revision;
-      const next = withCombatRevision(payload);
-      if (next) game.mergeSharedEncounter(next);
+      game.mergeMasterCombat(campaignId, payload);
       if (payload.agentPatches) game.mergeCombatAgents(payload.agentPatches);
     } finally {
       lock.current = false;
@@ -194,14 +191,12 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       );
       remoteRevision.current = payload.revision;
       remoteEncounterId.current = payload.encounter?.id || null;
-      const next = withCombatRevision(payload);
-      if (next) game.mergeSharedEncounter(next);
+      game.mergeMasterCombat(campaignId, payload);
     } catch (error) {
       const payload = await loadMasterCombat(campaignId, key);
       remoteRevision.current = payload.revision;
       remoteEncounterId.current = payload.encounter?.id || null;
-      const latest = withCombatRevision(payload);
-      if (latest) game.mergeSharedEncounter(latest);
+      game.mergeMasterCombat(campaignId, payload);
       throw error;
     }
   }
@@ -273,8 +268,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
       const payload = await adjustSharedCombatHp(encounter, key, p.id, delta);
       remoteRevision.current = payload.revision;
       if (payload.agent) await game.save("agents", payload.agent);
-      const next = withCombatRevision(payload);
-      if (next) game.mergeSharedEncounter(next);
+      game.mergeMasterCombat(campaignId, payload);
       return;
     }
     let next = changeHitPoints(p, delta);
@@ -289,8 +283,10 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         ...agent,
         resources: { ...agent.resources, pv: next.pv },
       };
-      if (token) await saveSharedAgent(updated, token);
-      await game.save("agents", updated);
+      const saved = token
+        ? await saveSharedAgent(updated, token, agent)
+        : updated;
+      await game.save("agents", saved);
     }
     await updateParticipant(next);
   }

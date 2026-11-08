@@ -1,3 +1,5 @@
+import { readLocalRecord, validShareToken } from "./local-record";
+import { agentPatch } from "./agent-patch";
 import type { Roll } from "./model";
 import type { Agent } from "./rules";
 import { validateAgentImport } from "./validation";
@@ -55,7 +57,8 @@ export async function rpc<T>(name: string, body: Record<string, unknown>) {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const error = new Error(
-      payload?.message || `Não foi possível acessar a ficha compartilhada (HTTP ${response.status}).`,
+      payload?.message ||
+        `Não foi possível acessar a ficha compartilhada (HTTP ${response.status}).`,
     ) as Error & { status: number };
     error.status = response.status;
     throw error;
@@ -63,14 +66,26 @@ export async function rpc<T>(name: string, body: Record<string, unknown>) {
   return payload as T;
 }
 
-function readCredentialMap() {
+function readCredentialMap(strict = false) {
   if (typeof window === "undefined")
     return {} as Record<string, ShareCredentials>;
   try {
-    return JSON.parse(
-      localStorage.getItem(SHARE_STORAGE_KEY) || "{}",
-    ) as Record<string, ShareCredentials>;
-  } catch {
+    return readLocalRecord(
+      SHARE_STORAGE_KEY,
+      (value): value is ShareCredentials => {
+        const entry = value as Partial<ShareCredentials> | null;
+        return (
+          !!entry &&
+          validShareToken(entry.masterToken) &&
+          validShareToken(entry.playerToken)
+        );
+      },
+    );
+  } catch (error) {
+    if (strict)
+      throw Error(
+        "As chaves locais não puderam ser lidas. Os dados armazenados foram preservados.",
+      );
     return {};
   }
 }
@@ -83,7 +98,7 @@ export function storeShareCredentials(
   agentId: string,
   credentials: ShareCredentials,
 ) {
-  const values = readCredentialMap();
+  const values = readCredentialMap(true);
   values[agentId] = credentials;
   localStorage.setItem(SHARE_STORAGE_KEY, JSON.stringify(values));
 }
@@ -92,10 +107,16 @@ export async function publishSharedAgent(
   agent: Agent,
   credentials = getShareCredentials(agent.id),
 ) {
+  if (credentials) {
+    const shared = await loadSharedAgent(agent.id, credentials.masterToken);
+    if (shared.role !== "master")
+      throw Error("É necessária a chave de mestre desta ficha.");
+    return credentials;
+  }
   const value = await rpc<PublishedAgent>("fenix_publish_agent", {
     agent_data: agent,
-    supplied_master_token: credentials?.masterToken || null,
-    supplied_player_token: credentials?.playerToken || null,
+    supplied_master_token: null,
+    supplied_player_token: null,
   });
   const next = {
     masterToken: value.master_token,
@@ -199,12 +220,20 @@ export async function updateSharedInfection(
   });
 }
 
-export async function saveSharedAgent(agent: Agent, token: string) {
-  await rpc("fenix_save_shared_agent", {
+export async function saveSharedAgent(
+  agent: Agent,
+  token: string,
+  original: Agent,
+) {
+  validateAgentImport({ version: 1, agent });
+  const patch = agentPatch(original, agent);
+  const result = await rpc<{ agent: unknown }>("fenix_patch_shared_agent", {
     requested_agent_id: agent.id,
     share_token: token,
-    agent_data: agent,
+    expected_data: patch.expected,
+    changed_data: patch.changes,
   });
+  return validateAgentImport({ version: 1, agent: result.agent });
 }
 
 export async function rollSharedAgent(

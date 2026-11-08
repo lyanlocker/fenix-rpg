@@ -93,6 +93,14 @@ export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
   };
 }
 export function removeParticipant(encounter: Encounter, id: string): Encounter {
+  encounter = {
+    ...encounter,
+    combat: retireCombatParticipants(
+      encounter,
+      new Set([id]),
+      " Cancelada porque um participante saiu do combate, sem aplicar efeitos.",
+    ),
+  };
   const current = encounter.participants[encounter.turn];
   const participants = encounter.participants.filter((p) => p.id !== id);
   if (!participants.length)
@@ -185,6 +193,24 @@ export function restoreOriginalParticipants(
       playerAccess: p.playerAccess,
     };
   });
+  const combat = retireCombatParticipants(
+    encounter,
+    retired,
+    " Encerrada na restauração das fichas originais, sem aplicar efeitos.",
+  );
+  return {
+    ...encounter,
+    participants,
+    active: false,
+    ...(combat ? { combat } : {}),
+  };
+}
+
+function retireCombatParticipants(
+  encounter: Encounter,
+  retired: Set<string>,
+  message: string,
+) {
   const combat = encounter.combat && structuredClone(encounter.combat);
   if (combat) {
     for (const id of retired) delete combat.budgets[id];
@@ -215,17 +241,10 @@ export function restoreOriginalParticipants(
         ? {
             ...event,
             resolved: true,
-            text:
-              event.text +
-              " Encerrada na restauração das fichas originais, sem aplicar efeitos.",
+            text: event.text + message,
           }
         : event,
     );
   }
-  return {
-    ...encounter,
-    participants,
-    active: false,
-    ...(combat ? { combat } : {}),
-  };
+  return combat;
 }
