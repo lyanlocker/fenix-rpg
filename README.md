@@ -2,6 +2,8 @@
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. A publicação do catálogo de ameaças no GitHub tem conexão administrativa exclusiva do proprietário.
 
+Atualização **2.6.1 — Qualidade e sincronização**: edições compartilhadas com proteção contra conflitos, links sem sobrescrita da ficha, pendências de dano preservadas, limpeza de efeitos de participantes removidos e correções de sincronização e prévia. Consulte as [notas e verificações](docs/FENIX-2.6.1.md).
+
 Atualização **2.6 — Fichas livres e ações padrão**: distribuição de atributos e perícias definida pelo mestre, Veterano +10 em qualquer NEX, rituais com ações padrão extras e encerramento da face alternativa NEX 35, preservando os arquivos antigos. Consulte as [notas da atualização](docs/FENIX-2.6.md).
 
 Histórico: correção **2.5.1 — Ações extras e vozes entre as faces**: créditos efetivos no turno, sustentação como ação livre, bônus recorrentes e novas mensagens em latim ao trocar a face de NEX. Consulte as [notas da correção](docs/FENIX-2.5.1.md).
@@ -44,7 +46,7 @@ Na página **Campanhas**, o mestre pode clicar em **Liberar Infecção** para ca
 
 O botão “Link do jogador” publica a ficha no banco e gera um endereço no formato `/agentes/ID?mode=player&agent=ID&share=CHAVE`. A chave de alta entropia autoriza somente aquela ficha. O jogador abre o endereço diretamente, sem importar JSON e sem preencher login. Ficha e histórico de rolagens são sincronizados entre os aparelhos aproximadamente a cada 2,5 segundos.
 
-As chaves do mestre ficam somente no armazenamento local do navegador que publicou a ficha. O banco guarda apenas hashes dessas chaves. Clicar novamente em “Link do jogador” preserva o endereço enquanto as credenciais locais existirem.
+As chaves do mestre ficam somente no armazenamento local do navegador que publicou a ficha. O banco guarda apenas hashes dessas chaves. Clicar novamente em “Link do jogador” preserva o endereço enquanto as credenciais locais existirem e não reenvia a ficha local. A versão 2.6.1 envia somente os campos editados; se o mesmo campo mudou em outro aparelho, avisa o conflito e pede reabrir a edição após sincronizar. Recursos e inventário são comparados como conjuntos, para não perder gastos ou itens consumidos durante a edição. A migração `database/quality-saves.sql` deve ser aplicada depois de `database/interactive-combat.sql` e antes de servir esta versão; já foi aplicada ao projeto configurado.
 
 ## Dados e limites
 

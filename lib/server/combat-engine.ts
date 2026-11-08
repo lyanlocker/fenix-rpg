@@ -25,6 +25,7 @@ import { maxRitualCircle } from "../alternate";
 import { advanceTurn, delayTurn } from "../combat";
 import {
   actionAvailable,
+  retainCombatEvents,
   budgetFor,
   combatFace,
   combatOptions,
@@ -764,7 +765,11 @@ export function executeCombatCommand(
     }
   }
   event.text = event.text.slice(0, 1800);
-  ledger.events = [...ledger.events, event].slice(-40);
+  ledger.events = retainCombatEvents([...ledger.events, event]);
+  if (ledger.events.filter((x) => x.pending && !x.resolved).length > 100)
+    fail(
+      "O mestre precisa resolver as ações pendentes antes de registrar novas pendências.",
+    );
   e.combat = { ...ledger, effects: e.combat?.effects || ledger.effects };
   const present = new Set(e.participants.map((p) => p.id));
   e.combat.effects = e.combat.effects.filter(

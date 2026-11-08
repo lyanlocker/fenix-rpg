@@ -33,12 +33,13 @@ export default function AgentEditor({
 }: {
   agent: Agent;
   campaigns: Campaign[];
-  onSave: (a: Agent) => Promise<void>;
+  onSave: (a: Agent, original: Agent) => Promise<void>;
   onClose: () => void;
   onRoll: (a: Agent, s: string) => void;
   readOnly?: boolean;
   lockedNex?: number;
 }) {
+  const [original] = useState<Agent>(() => structuredClone(agent));
   const [a, setA] = useState<Agent>(() => structuredClone(agent)),
     [tab, setTab] = useState("Ficha"),
     [busy, setBusy] = useState(false),
@@ -56,16 +57,19 @@ export default function AgentEditor({
       return setError("Use números inteiros a partir de zero nos atributos.");
     setBusy(true);
     try {
-      await onSave({
-        ...a,
-        name: a.name.trim(),
-        resources: Object.fromEntries(
-          Object.entries(a.resources).map(([k, v]) => [
-            k,
-            Math.min(max[k as Resource], Math.max(0, v)),
-          ]),
-        ) as Agent["resources"],
-      });
+      await onSave(
+        {
+          ...a,
+          name: a.name.trim(),
+          resources: Object.fromEntries(
+            Object.entries(a.resources).map(([k, v]) => [
+              k,
+              Math.min(max[k as Resource], Math.max(0, v)),
+            ]),
+          ) as Agent["resources"],
+        },
+        original,
+      );
       onClose();
     } catch (e) {
       setError((e as Error).message);

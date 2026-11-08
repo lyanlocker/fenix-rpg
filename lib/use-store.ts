@@ -1,7 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import type { Threat } from "./threats";
-import type { CombatAgentPatch } from "./shared-combat";
+import {
+  reconcileMasterEncounters,
+  type MasterCombat,
+  type CombatAgentPatch,
+} from "./shared-combat";
 import { demoState } from "./demo";
 import {
   emptyState,
@@ -111,9 +115,13 @@ export function useStore() {
     setState((s) => ({ ...s, rolls: [value, ...s.rolls].slice(0, 100) }));
     return value;
   }
-  async function syncSharedAgent(a: Agent, explicitShareToken?: string) {
+  async function syncSharedAgent(
+    a: Agent,
+    original: Agent,
+    explicitShareToken?: string,
+  ) {
     const token = explicitShareToken || getShareCredentials(a.id)?.masterToken;
-    if (token) await saveSharedAgent(a, token);
+    return token ? await saveSharedAgent(a, token, original) : a;
   }
   const mergeSharedAgent = useCallback((a: Agent | null, rolls: Roll[]) => {
     setState((current) => {
@@ -133,15 +141,19 @@ export function useStore() {
       };
     });
   }, []);
-  const mergeSharedEncounter = useCallback((encounter: Encounter) => {
-    setState((s) => ({
-      ...s,
-      encounters: [
-        encounter,
-        ...s.encounters.filter((e) => e.id !== encounter.id),
-      ],
-    }));
-  }, []);
+  const mergeMasterCombat = useCallback(
+    (campaignId: string, payload: MasterCombat) => {
+      setState((s) => ({
+        ...s,
+        encounters: reconcileMasterEncounters(
+          s.encounters,
+          campaignId,
+          payload,
+        ),
+      }));
+    },
+    [],
+  );
   async function adjustResource(
     a: Agent,
     key: Resource,
@@ -160,11 +172,11 @@ export function useStore() {
         ),
       },
     };
-    await syncSharedAgent(updated, explicitShareToken);
+    const saved = await syncSharedAgent(updated, a, explicitShareToken);
     setState((s) => ({
       ...s,
       agents: s.agents.map((current) =>
-        current.id === a.id ? updated : current,
+        current.id === a.id ? saved : current,
       ),
     }));
   }
@@ -179,7 +191,7 @@ export function useStore() {
     roll,
     syncSharedAgent,
     mergeSharedAgent,
-    mergeSharedEncounter,
+    mergeMasterCombat,
     adjustResource,
   };
 }

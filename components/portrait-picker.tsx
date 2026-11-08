@@ -47,6 +47,19 @@ export default function PortraitPicker({
     }
   }
 
+  async function remove() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onChange("");
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div
       className={`portrait-picker ${compact ? "compact" : ""} ${hero ? "hero" : ""}`}
@@ -107,7 +120,7 @@ export default function PortraitPicker({
             className="danger"
             aria-label="Remover imagem"
             title="Remover imagem"
-            onClick={() => void onChange("")}
+            onClick={() => void remove()}
           >
             <Trash2 size={15} />
             <span>Remover</span>
