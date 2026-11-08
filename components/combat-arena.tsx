@@ -15,6 +15,7 @@ import type { Encounter } from "@/lib/model";
 import type { PlayerCombat } from "@/lib/shared-combat";
 import {
   actionAvailable,
+  retainCombatEvents,
   actionLabels,
   budgetFor,
   combatOptions,
@@ -71,8 +72,7 @@ export function CombatEvents({
         <p className="muted">As ações e rolagens aparecerão aqui.</p>
       )}
       <ol>
-        {events
-          .slice(-30)
+        {retainCombatEvents(events, 30)
           .toReversed()
           .map((event) => (
             <li key={event.id}>

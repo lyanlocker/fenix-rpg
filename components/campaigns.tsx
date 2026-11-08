@@ -131,8 +131,12 @@ export default function Campaigns() {
           ...derived,
         },
       };
-      await saveSharedAgent(updated, credentials.masterToken);
-      await game.save("agents", updated);
+      const saved = await saveSharedAgent(
+        updated,
+        credentials.masterToken,
+        shared.agent,
+      );
+      await game.save("agents", saved);
       game.setNotice(
         "Face NEX 35 liberada. O jogador pode usar o botão “Assumir face NEX 35” ou tocar duas vezes no retrato.",
       );
@@ -169,8 +173,8 @@ export default function Campaigns() {
       const updated = refreshAlternateInheritance(shared.agent);
       const before = shared.agent.alternate!.face.inventory;
       const after = updated.alternate!.face.inventory;
-      await saveSharedAgent(updated, token);
-      await game.save("agents", updated);
+      const saved = await saveSharedAgent(updated, token, shared.agent);
+      await game.save("agents", saved);
       const rituals = after.filter(
         (entry) =>
           entry.kind === "Ritual" &&

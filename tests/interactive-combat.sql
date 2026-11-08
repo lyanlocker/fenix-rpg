@@ -45,6 +45,8 @@ begin
   if not denied then raise exception 'Player impersonated master';end if;
   denied:=false;begin perform public.fenix_save_shared_agent(aid,player,jsonb_set(sheet,'{resources,pe}','999'));exception when others then denied:=true;end;
   if not denied then raise exception 'Active player edited combat resources through sheet';end if;
+  denied:=false;begin perform public.fenix_patch_shared_agent(aid,player,jsonb_build_object('resources',sheet->'resources'),jsonb_build_object('resources',jsonb_set(sheet->'resources','{pe}','999')));exception when others then denied:=true;end;
+  if not denied then raise exception 'Partial edits bypassed active combat resource guard';end if;
   -- Reading full context is server-only and strips the bulky portraits.
   ctx:=public.fenix_combat_context(server_key,player,aid,null);
   if ctx->>'role'<>'player' or ctx->>'actorId'<>pa::text or ctx::text like '%TEST_A%' or ctx::text like '%TEST_B%' then raise exception 'Invalid server context';end if;

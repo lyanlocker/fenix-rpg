@@ -52,8 +52,9 @@ async function verify() {
     const rolled = await player();
     assert.equal(rolled?.agent, undefined);
     assert.ok(rolled?.rolls?.length);
+    const original = structuredClone(fixture);
     fixture.resources.pv = 27;
-    await saveSharedAgent(fixture, keys.master_token);
+    await saveSharedAgent(fixture, keys.master_token, original);
     const hp = await player();
     assert.equal(hp?.agent?.resources.pv, 27);
     assert.equal(hp?.agent?.portrait, fixture.portrait);
