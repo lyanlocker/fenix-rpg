@@ -1,3 +1,4 @@
+import { validItemImage, itemImageLimit } from "./item-image-value";
 import { z } from "zod";
 import type { Agent } from "./rules";
 const num = z.number().finite();
@@ -49,6 +50,7 @@ const schema = z.object({
     .array(
       z.object({
         id: z.string(),
+        image: z.string().max(itemImageLimit).refine(validItemImage).optional(),
         name: z.string().max(150),
         kind: z.enum(["Item", "Arma", "Ritual", "Poder"]),
         quantity: num.int().min(1),

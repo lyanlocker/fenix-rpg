@@ -254,3 +254,15 @@ export async function rollSharedAgent(
     damage_expression: expression,
   });
 }
+
+export async function deleteSharedAgent(agentId: string, masterToken: string) {
+  await rpc("fenix_delete_shared_agent", {
+    requested_agent_id: agentId,
+    master_token: masterToken,
+  });
+}
+export function forgetShareCredentials(agentId: string) {
+  const values = readCredentialMap(true);
+  delete values[agentId];
+  localStorage.setItem(SHARE_STORAGE_KEY, JSON.stringify(values));
+}

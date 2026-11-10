@@ -1,4 +1,7 @@
 "use client";
+import { useGame } from "./game-shell";
+import ItemImagePicker from "./item-image-picker";
+import { githubApi } from "@/lib/github-api";
 import { useState } from "react";
 import { Modal } from "./ui";
 import { skillAttributes, damage, accessoryType, type Item } from "@/lib/rules";
@@ -15,6 +18,9 @@ export default function ItemForm({
   onClose: () => void;
   requireCircle?: boolean;
 }) {
+  const game = useGame();
+  const [imageBusy, setImageBusy] = useState(false),
+    [sendImage, setSendImage] = useState(true);
   const [i, setI] = useState(item),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -42,6 +48,7 @@ export default function ItemForm({
     </label>
   );
   async function submit() {
+    if (busy || imageBusy) return;
     setError("");
     if (!i.name.trim()) return setError("Informe o nome.");
     if (requireCircle && i.kind === "Ritual" && !i.circle)
@@ -66,7 +73,21 @@ export default function ItemForm({
     try {
       if (i.damage) damage(i.damage, () => 1);
       setBusy(true);
-      await onSave({ ...i, name: i.name.trim() });
+      let image = i.image;
+      if (
+        image?.startsWith("data:") &&
+        sendImage &&
+        game.threatLibrary.connected &&
+        !game.access.isPlayer
+      ) {
+        image = (
+          await githubApi<{ image: string }>("/api/github/item-image", "POST", {
+            image,
+          })
+        ).image;
+        setI((current) => ({ ...current, image }));
+      }
+      await onSave({ ...i, image, name: i.name.trim() });
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -78,10 +99,35 @@ export default function ItemForm({
     <Modal
       wide
       title={item.name || `Adicionar ${item.kind.toLowerCase()}`}
-      onClose={onClose}
+      onClose={() => {
+        if (!busy && !imageBusy) onClose();
+      }}
     >
       <fieldset disabled={busy}>
         <div className="form-grid">
+          <ItemImagePicker
+            item={i}
+            onChange={(image) => setI((current) => ({ ...current, image }))}
+            onBusy={setImageBusy}
+          />
+          {i.image?.startsWith("data:") &&
+            game.threatLibrary.connected &&
+            !game.access.isPlayer && (
+              <label className="check span-all">
+                <input
+                  type="checkbox"
+                  checked={sendImage}
+                  onChange={(e) => setSendImage(e.target.checked)}
+                />
+                Salvar a imagem no GitHub ao concluir (imagem pública).
+              </label>
+            )}
+          {i.image?.startsWith("data:") && !game.threatLibrary.connected && (
+            <p className="hint span-all">
+              A imagem será guardada na ficha e no backup. O mestre pode
+              conectar o GitHub em Agentes para enviar imagens ao repositório.
+            </p>
+          )}
           {text("name", "Nome")}
           {text("source", "Fonte / autoria")}
           {text("category", "Categoria")}
@@ -382,8 +428,14 @@ export default function ItemForm({
         </p>
       )}
       <div className="wizard-actions">
-        <button onClick={onClose}>Cancelar</button>
-        <button className="primary" disabled={busy} onClick={submit}>
+        <button disabled={busy || imageBusy} onClick={onClose}>
+          Cancelar
+        </button>
+        <button
+          className="primary"
+          disabled={busy || imageBusy}
+          onClick={submit}
+        >
           {busy ? "Salvando…" : "Salvar"}
         </button>
       </div>

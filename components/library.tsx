@@ -225,6 +225,7 @@ export function LibraryContent({
                       ...i,
                       id: crypto.randomUUID(),
                       name: i.name + " (cópia)",
+                      catalogId: i.catalogId || i.id,
                     })
                   }
                 >

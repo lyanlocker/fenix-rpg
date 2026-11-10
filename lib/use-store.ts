@@ -1,4 +1,5 @@
 "use client";
+import { withoutAgent } from "./agent-removal";
 import { useCallback, useEffect, useState } from "react";
 import type { Threat } from "./threats";
 import {
@@ -80,6 +81,9 @@ export function useStore() {
     id: string,
   ) {
     setState((s) => ({ ...s, [kind]: s[kind].filter((x) => x.id !== id) }));
+  }
+  function removeAgent(id: string) {
+    setState((current) => withoutAgent(current, id));
   }
   async function roll(
     a: Agent | null,
@@ -188,6 +192,7 @@ export function useStore() {
     setNotice,
     save,
     remove,
+    removeAgent,
     roll,
     syncSharedAgent,
     mergeSharedAgent,

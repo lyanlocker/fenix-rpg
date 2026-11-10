@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Github, Check, RefreshCw } from "lucide-react";
 import { useGame } from "./game-shell";
 
-export function GithubThreatPanel() {
+export function GithubThreatPanel({ archive = false }: { archive?: boolean }) {
   const { threatLibrary: sync } = useGame();
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState("");
@@ -21,15 +21,18 @@ export function GithubThreatPanel() {
     }
   }
   return (
-    <section
-      className="github-threat-panel"
-      aria-label="Conexão do catálogo com GitHub"
-    >
+    <section className="github-threat-panel" aria-label="Conexão com GitHub">
       <div className="github-threat-heading">
         <Github size={22} />
         <div>
-          <strong>Catálogo no GitHub</strong>
-          <p>Criaturas e imagens fazem parte do acervo geral do Fênix.</p>
+          <strong>
+            {archive ? "Seu arquivo no GitHub" : "Catálogo no GitHub"}
+          </strong>
+          <p>
+            {archive
+              ? "Backups protegidos de fichas e imagens para o seu acervo."
+              : "Criaturas e imagens fazem parte do acervo geral do Fênix."}
+          </p>
         </div>
         {sync.connected ? (
           <span className="github-connected">
@@ -56,8 +59,9 @@ export function GithubThreatPanel() {
             Desconectar
           </button>
           <small>
-            Ao salvar, a mudança vai para o GitHub e inicia a publicação do
-            site.
+            {archive
+              ? "Backups ficam protegidos por senha e não republicam o site. Imagens enviadas ao acervo são públicas."
+              : "Ao salvar, a mudança vai para o GitHub e inicia a publicação do site."}
           </small>
         </div>
       )}

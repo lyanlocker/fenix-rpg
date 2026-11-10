@@ -1,4 +1,5 @@
 "use client";
+import ItemArtwork from "./item-artwork";
 import { useState } from "react";
 import Image from "next/image";
 import {
@@ -514,6 +515,7 @@ export default function CombatArena({
             {selected && (
               <div className="arena-action-detail">
                 <h3>{selected.name}</h3>
+                {selected.item && <ItemArtwork item={selected.item} />}
                 <details>
                   <summary>Regra e alcance</summary>
                   <p className="preserve">{selected.description}</p>
