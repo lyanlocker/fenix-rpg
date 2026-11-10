@@ -3,6 +3,15 @@ const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [
+      ...["rituals", "items"].map((directory) => ({
+        source: `/art/${directory}/:path*`,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      })),
       {
         source: "/art/custom/:path*",
         headers: [

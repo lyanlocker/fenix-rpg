@@ -1,7 +1,9 @@
+import ItemArtwork from "./item-artwork";
 import type { Item } from "@/lib/rules";
 export default function RuleDetails({ item: i }: { item: Item }) {
   return (
     <div className="rule-details">
+      <ItemArtwork item={i} />
       <p className="hint">
         {[
           i.className,

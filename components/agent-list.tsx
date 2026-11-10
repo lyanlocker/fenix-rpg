@@ -11,15 +11,22 @@ import {
   UsersRound,
   Layers,
   Dices,
+  Trash2,
+  Archive,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { maximums, resourceKeys } from "@/lib/rules";
+import DeleteAgentDialog from "./delete-agent-dialog";
+import { SaveSheetBackup, RestoreSheetBackups } from "./sheet-backup-panel";
+import { GithubThreatPanel } from "./github-threat-panel";
+import { maximums, resourceKeys, type Agent } from "@/lib/rules";
 import { useExperience } from "./experience";
 import { useGame } from "./game-shell";
 import { validateAgentImport } from "@/lib/validation";
 export default function AgentList() {
   const game = useGame(),
     [q, setQ] = useState(""),
+    [deleting, setDeleting] = useState<Agent | null>(null),
+    [backingUp, setBackingUp] = useState<Agent | null>(null),
     [classFilter, setClassFilter] = useState("Todas"),
     input = useRef<HTMLInputElement>(null);
   const { reduced, duration } = useExperience();
@@ -60,7 +67,7 @@ export default function AgentList() {
     <div className="page agents-page">
       <div className="page-heading agents-hero">
         <div>
-          <p className="eyebrow">ARQUIVO VIVO · FÊNIX 2.6.1</p>
+          <p className="eyebrow">ARQUIVO VIVO · FÊNIX 2.9.0</p>
           <h1>
             O impossível
             <br />
@@ -91,6 +98,7 @@ export default function AgentList() {
           Pronto para a próxima história
         </span>
       </div>
+      {!game.access.isPlayer && <GithubThreatPanel archive />}
       <div className="section-title agents-section-title">
         <div>
           <p className="eyebrow">SELECIONE UM DOSSIÊ</p>
@@ -111,6 +119,7 @@ export default function AgentList() {
           <Upload size={16} />
           {game.access.isPlayer ? "Importar minha ficha" : "Importar ficha"}
         </button>
+        {!game.access.isPlayer && <RestoreSheetBackups />}
         <input
           hidden
           ref={input}
@@ -232,10 +241,35 @@ export default function AgentList() {
                     <ArrowRight size={17} />
                   </span>
                 </Link>
+                {!game.access.isPlayer && (
+                  <div className="dossier-controls">
+                    <button
+                      aria-label={`Salvar backup de ${a.name}`}
+                      onClick={() => setBackingUp(a)}
+                    >
+                      <Archive size={16} />
+                      Backup no GitHub
+                    </button>
+                    <button
+                      className="danger"
+                      aria-label={`Excluir ficha de ${a.name}`}
+                      onClick={() => setDeleting(a)}
+                    >
+                      <Trash2 size={16} />
+                      Excluir
+                    </button>
+                  </div>
+                )}
               </motion.div>
             );
           })}
         </div>
+      )}
+      {deleting && (
+        <DeleteAgentDialog agent={deleting} onClose={() => setDeleting(null)} />
+      )}
+      {backingUp && (
+        <SaveSheetBackup agent={backingUp} onClose={() => setBackingUp(null)} />
       )}
     </div>
   );
