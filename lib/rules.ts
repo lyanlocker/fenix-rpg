@@ -20,6 +20,7 @@ export type ItemEnhancement = {
   element?: string;
 };
 export type Item = {
+  image?: string;
   id: string;
   name: string;
   kind: "Item" | "Arma" | "Ritual" | "Poder";

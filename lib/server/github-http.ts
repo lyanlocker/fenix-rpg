@@ -37,10 +37,7 @@ export async function requireSession(request: Request) {
   assertConfigured(request);
   const session = await getSession(request);
   if (!session)
-    throw new SyncError(
-      "Conecte seu GitHub antes de publicar no catálogo.",
-      401,
-    );
+    throw new SyncError("Conecte seu GitHub antes de continuar.", 401);
   return session;
 }
 export function errorResponse(error: unknown) {
@@ -48,7 +45,7 @@ export function errorResponse(error: unknown) {
     error instanceof SyncError
       ? error
       : error instanceof ZodError
-        ? new SyncError("Confira os dados da criatura e tente novamente.")
+        ? new SyncError("Confira os dados enviados e tente novamente.")
         : new SyncError(
             "Não foi possível concluir o envio. Sua ficha e o arquivo escolhido continuam disponíveis para tentar novamente.",
             500,

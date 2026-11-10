@@ -1,6 +1,8 @@
 # Fênix — fichas compartilhadas e combate
 
-Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. A publicação do catálogo de ameaças no GitHub tem conexão administrativa exclusiva do proprietário.
+Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. O envio de ameaças, imagens e backups ao GitHub tem conexão administrativa exclusiva do proprietário.
+
+Atualização **2.9 — Arquivo de fichas e símbolos**: exclusão pelo mestre, backups criptografados e restauráveis no GitHub, símbolos em 769 registros de rituais e imagens personalizadas para rituais, armas e equipamentos. As imagens somam 29,04 MB. Veja o [guia de uso e validação](docs/FENIX-2.9.md) e a [cobertura das fontes](docs/RITUAIS-ILUSTRADOS.md).
 
 Atualização **2.6.1 — Qualidade e sincronização**: edições compartilhadas com proteção contra conflitos, links sem sobrescrita da ficha, pendências de dano preservadas, limpeza de efeitos de participantes removidos e correções de sincronização e prévia. Consulte as [notas e verificações](docs/FENIX-2.6.1.md).
 
