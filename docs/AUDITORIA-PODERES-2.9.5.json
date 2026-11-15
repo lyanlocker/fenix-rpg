@@ -1,8 +1,8 @@
 {
   "total": 933,
   "counts": {
-    "efeito_estruturado": 71,
-    "resolucao_do_mestre": 805,
+    "efeito_estruturado": 72,
+    "resolucao_do_mestre": 804,
     "integrado_passivo": 13,
     "conferir_fonte_ou_execucao": 39,
     "integrado": 5
@@ -1291,10 +1291,10 @@
       "id": "book-28acf1eaba672930",
       "nome": "Arma de Sangue",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "move",
       "peBase": 2,
-      "aviso": "Cria uma arma leve de Sangue (1d6; 1d10 com afinidade). A criação não concede o ataque adicional de 1 PE; use a regra específica do mestre para esse ataque."
+      "aviso": "A arma leve de Sangue fica disponível nas ações de ataque até o fim da cena. Após agredir, o ataque adicional com ela custa 1 PE, uma vez por turno."
     },
     {
       "id": "book-20040a9adc28a235",

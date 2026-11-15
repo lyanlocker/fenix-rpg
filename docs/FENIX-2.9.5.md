@@ -11,6 +11,7 @@ Bônus são separados dos dados base editáveis. O resultado do ataque e os dado
 Há regras específicas para Ataque Especial, Ataque Furtivo, Ataque Extra, Combater com Duas Armas, Combate Defensivo, Golpe Pesado, Golpe Demolidor, Ritual Potente, Tiro Certeiro, Técnica Secreta/Sublime, Potência Máxima, Perito, Sangue Fervente, Conjuração Marcial e outros modificadores. Ensaio e Mosh Pit também reconhecem as versões personalizadas presentes nas fichas, sem trocar suas descrições pelas entradas antigas usadas como base.
 
 - Ataque Especial: distribuição de parcelas de +5 e custo conforme NEX.
+- Arma de Sangue: criação por movimento e 2 PE, arma temporária de 1d6, ataque adicional de 1 PE após agredir e limite por turno. Com afinidade, a arma de 1d10 já fica disponível, sem criação paga. A arma temporária não altera o inventário permanente.
 - Ataque Furtivo: confirmar o acerto, ativar antes do dano, pagar 1 PE; uma vez por rodada.
 - Técnicas da arma favorita: selecionar arma e efeitos; custo de cada efeito; Letal simples e duplo são alternativas.
 - Conjuração Marcial: crédito exclusivo de ataque corpo a corpo, após um ritual de ação padrão. Não serve para disparar ou conjurar outro ritual.
@@ -34,11 +35,11 @@ O inventário contém **933 poderes**. O relatório reproduzível `AUDITORIA-POD
 
 | Classificação | Entradas |
 |---|---:|
-| Algum efeito estruturado | 71 |
+| Algum efeito estruturado | 72 |
 | Integração com ações já existentes | 5 |
 | Integração passiva sem modificador separado | 13 |
 | Conferir fonte ou execução prolongada | 39 |
-| Resolução/configuração do mestre | 805 |
+| Resolução/configuração do mestre | 804 |
 
 Essas categorias não significam que todos os poderes restantes sejam ações de combate: há benefícios permanentes, preparação em interlúdio, alterações de treinamento, narrativas e regras complexas. Mesmo um poder com efeito estruturado pode ter cláusulas narrativas ou efeitos secundários resolvidos pelo mestre. **Não anunciar que os 933 poderes estão automatizados.**
 
@@ -60,7 +61,7 @@ Poderes renomeados com NEX ou escolhas são reconhecidos pelo identificador e co
 
 ## Verificação
 
-Snapshot validado: **183 testes aprovados**, TypeScript sem erros e compilação de produção concluída. A interface ainda não passou por inspeção visual em navegador nesta etapa.
+Snapshot validado: **186 testes aprovados**, TypeScript sem erros e compilação de produção concluída. A interface ainda não passou por inspeção visual em navegador nesta etapa.
 
 - Testes do motor: custos, escolhas, escopo de arma/alvo, crítico, consumo, duração, ações extras, impossibilidade de repetir dano, comandos fora do turno e ausência de mutação após erro.
 - Regressões: dados editáveis, sustentação de Velocidade Mortal, criação livre de fichas, backups, imagens, proteção de dados ocultos e salvamento concorrente.

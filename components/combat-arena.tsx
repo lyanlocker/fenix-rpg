@@ -208,7 +208,13 @@ export default function CombatArena({
     budget = p ? budgetFor(e, p, agent) : null,
     myTurn = !!mine && combat.active && mine.id === combat.currentParticipantId,
     canAct = myTurn && !!agent && agent.resources.pv > 0 && !busy;
-  const options = agent ? combatOptions(agent, combat.rules) : [],
+  const options = agent
+      ? combatOptions(
+          agent,
+          combat.rules,
+          (e.combat?.effects || []).filter((x) => x.targetId === mine?.id),
+        )
+      : [],
     selected = options.find((o) => o.id === optionId),
     name = normalizeCombatName(
       selected?.item ? combatRuleName(selected.item) : selected?.name || "",

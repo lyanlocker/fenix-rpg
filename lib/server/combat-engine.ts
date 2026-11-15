@@ -466,9 +466,11 @@ export function executeCombatCommand(
           event.text = `${p.name} concluiu o turno.`;
           e = advanceTurn(e);
         } else {
-          const option = combatOptions(face, e.combatRules).find(
-            (o) => o.id === command.optionId,
-          );
+          const option = combatOptions(
+            face,
+            e.combatRules,
+            ledger.effects.filter((x) => x.targetId === p.id),
+          ).find((o) => o.id === command.optionId);
           if (!option) fail("Esta ação não está disponível na ficha.");
           const targets = [...new Set(command.targetIds || [])].map((id) => {
             const t = e.participants.find((t) => t.id === id);
@@ -601,6 +603,7 @@ export function executeCombatCommand(
           }
           if (command.extraAttack) {
             if (
+              option.bloodAttack ||
               option.effect !== "attack" ||
               !hasPower(face, "Ataque Extra") ||
               !budget.attacked
@@ -612,6 +615,19 @@ export function executeCombatCommand(
             action = "free";
             cost += 2;
           }
+          if (
+            option.bloodAttack &&
+            !ledger.events.some(
+              (x) =>
+                x.actorId === p.id &&
+                x.turnKey === key &&
+                x.itemKind === "Arma" &&
+                x.action === "standard",
+            )
+          )
+            fail(
+              "O ataque adicional de Arma de Sangue exige usar agredir neste turno.",
+            );
           if (
             name === "primeira impressao" &&
             ledger.events.some(
@@ -687,6 +703,13 @@ export function executeCombatCommand(
             ? fixedBonus(ritualModifiers, "ritualCost", face, option.item)
             : 0;
           if (ritual) cost = Math.max(cost > 0 ? 1 : 0, cost + ritualDiscount);
+          const usesAttackCredit =
+            option.effect === "attack" &&
+            action === "standard" &&
+            (budget.attack > 0 ||
+              ((budget.meleeAttack || 0) > 0 &&
+                !!option.item &&
+                weaponType(option.item) === "Corpo a corpo"));
           spend(
             action,
             !!ritual,
@@ -703,7 +726,7 @@ export function executeCombatCommand(
           event.label = option.name;
           event.sourceItemId = option.item?.id;
           event.itemKind = option.item?.kind;
-          event.action = action;
+          event.action = usesAttackCredit ? "free" : action;
           event.targetIds = targets.map((t) => t.id);
           event.secret ||= targets.some((t) => t.hidden);
           event.text = `${option.name}${targets.length ? ` → ${targets.map((t) => t.name).join(", ")}` : ""}.`;
@@ -781,9 +804,11 @@ export function executeCombatCommand(
                   "Confirme seu acerto crítico e ative Frase de Efeito antes de rolar o dano.",
                 );
               once(`criticalPhrase:${pending.id}`, "scene");
-              const weapon = combatOptions(face, e.combatRules).find(
-                (x) => x.id === pending.damageRoll!.sourceItemId,
-              )?.item;
+              const weapon = combatOptions(
+                face,
+                e.combatRules,
+                ledger.effects.filter((x) => x.targetId === p.id),
+              ).find((x) => x.id === pending.damageRoll!.sourceItemId)?.item;
               if (!weapon) fail("Arma indisponível.");
               const delta =
                 pending.damageRoll.critical! < effectiveAttributes(face).PRE
@@ -829,9 +854,11 @@ export function executeCombatCommand(
                 fail(
                   "Faça o ataque, confirme que acertou o alvo elegível e ative Ataque Furtivo antes de rolar o dano.",
                 );
-              const weapon = combatOptions(face, e.combatRules).find(
-                (x) => x.id === pending.damageRoll!.sourceItemId,
-              )?.item;
+              const weapon = combatOptions(
+                face,
+                e.combatRules,
+                ledger.effects.filter((x) => x.targetId === p.id),
+              ).find((x) => x.id === pending.damageRoll!.sourceItemId)?.item;
               if (!weapon)
                 fail("A arma deste ataque não está mais disponível.");
               pending.damageRoll.bonuses = [
@@ -850,7 +877,7 @@ export function executeCombatCommand(
             }
             for (const target of targets) {
               if (
-                modifiers.length &&
+                (modifiers.length || resolved.manifestation) &&
                 !attached &&
                 !(
                   name === "combater com duas armas" &&
@@ -872,6 +899,9 @@ export function executeCombatCommand(
                     itemId: option.item!.id,
                     ruleName: name,
                     duration: resolved.duration,
+                    ...(resolved.manifestation
+                      ? { manifestation: resolved.manifestation }
+                      : {}),
                     ...(resolved.expires ? { expires: resolved.expires } : {}),
                     modifiers,
                     ...(resolved.weaponChoice || resolved.ritualChoice
@@ -898,6 +928,9 @@ export function executeCombatCommand(
                 });
             }
             budget = settleBudget();
+            if (resolved.manifestation)
+              event.text +=
+                " Arma de Sangue manifestada; selecione-a nas ações de ataque.";
             event.text += modifiers.length
               ? ` Efeito aplicado: ${modifiers.map(modifierLabel).join("; ")}.`
               : "";

@@ -1007,3 +1007,113 @@ test("skipping beyond a sustained ritual's unpaid turn cannot preserve its credi
   assert.equal(advanceTurn(c.encounter, 2).combat!.effects.length, 1);
   assert.equal(advanceTurn(c.encounter, 3).combat!.effects.length, 0);
 });
+
+test("Arma de Sangue creates a temporary weapon and charges its own extra attack once per turn", () => {
+  const { a, c, p, target, equip, use, attack } = setup();
+  const power = equip("Arma de Sangue");
+  const originalInventory = a.inventory.length;
+  assert.ok(!combatOptions(a).some((o) => o.id === "blood-weapon"));
+  assert.throws(
+    () =>
+      use({
+        kind: "use",
+        optionId: "blood-weapon-extra",
+        targetIds: [target.id],
+        attackDice: "3d20",
+      }),
+    /disponível|encontrad/i,
+  );
+  use({ kind: "use", optionId: power.id });
+  assert.equal(a.resources.pe, 98);
+  assert.equal(budgetFor(c.encounter, p, a).move, 0);
+  const options = combatOptions(a, {}, c.encounter.combat!.effects);
+  assert.equal(
+    options.find((o) => o.id === "blood-weapon")?.item?.damage,
+    "1d6",
+  );
+  assert.throws(
+    () =>
+      use({
+        kind: "use",
+        optionId: "blood-weapon-extra",
+        targetIds: [target.id],
+        attackDice: "3d20",
+      }),
+    /agredir/,
+  );
+  attack();
+  const extra = use({
+    kind: "use",
+    optionId: "blood-weapon-extra",
+    targetIds: [target.id],
+    attackDice: "3d20",
+  });
+  assert.equal(extra.damageRoll?.formula, "1d6+3");
+  assert.equal(extra.action, "free");
+  assert.equal(a.resources.pe, 97);
+  assert.throws(
+    () =>
+      use({
+        kind: "use",
+        optionId: "blood-weapon-extra",
+        targetIds: [target.id],
+        attackDice: "3d20",
+      }),
+    /período/,
+  );
+  assert.equal(a.inventory.length, originalInventory);
+  use({ kind: "stopEffect", eventId: c.encounter.combat!.effects[0].id });
+  assert.ok(
+    !combatOptions(a, {}, c.encounter.combat!.effects).some(
+      (o) => o.id === "blood-weapon",
+    ),
+  );
+});
+
+test("affinity grants a permanent blood weapon without creation costs and with its larger die", () => {
+  const { a, c, p, target, equip, use } = setup();
+  const power = equip("Arma de Sangue", { attuned: true });
+  assert.equal(powerRule(power, a).passive, true);
+  assert.equal(
+    combatOptions(a).find((o) => o.id === "blood-weapon")?.item?.damage,
+    "1d10",
+  );
+  const attack = use({
+    kind: "use",
+    optionId: "blood-weapon",
+    targetIds: [target.id],
+    attackDice: "3d20",
+  });
+  assert.equal(attack.damageRoll?.formula, "1d10+3");
+  assert.equal(a.resources.pe, 100);
+  assert.equal(budgetFor(c.encounter, p, a).move, 1);
+  assert.equal(c.encounter.combat!.effects.length, 0);
+});
+
+test("a free attack credit alone does not satisfy the agredir trigger of Arma de Sangue", () => {
+  const { a, c, target, equip, use, attack, p } = setup();
+  equip("Arma de Sangue", { attuned: true });
+  c.encounter.combat!.effects.push({
+    id: "credit",
+    sourceId: p.id,
+    targetId: p.id,
+    name: "Ataque livre",
+    grant: "meleeAttack",
+    noRitual: false,
+    timing: "now",
+    createdKey: "previous",
+  });
+  const free = attack();
+  assert.equal(free.action, "free");
+  assert.equal(budgetFor(c.encounter, p, a).standard, 1);
+  assert.throws(
+    () =>
+      use({
+        kind: "use",
+        optionId: "blood-weapon-extra",
+        targetIds: [target.id],
+        attackDice: "3d20",
+      }),
+    /agredir/,
+  );
+});

@@ -29,6 +29,7 @@ const records = bookCatalog
           : rule.modifiers.length ||
               rule.choices?.length ||
               rule.special ||
+              rule.manifestation ||
               rule.grants.length
             ? "efeito_estruturado"
             : rule.passive

@@ -130,6 +130,7 @@ export type CombatCommand = {
   note?: string;
 };
 export type CombatOption = {
+  bloodAttack?: boolean;
   power?: PowerRule;
   id: string;
   name: string;
@@ -297,6 +298,7 @@ export function executionCost(text = ""): ActionCost | null {
 export function combatOptions(
   a: Agent,
   rules: Record<string, CombatRule> = {},
+  actorEffects: CombatEffect[] = [],
 ): CombatOption[] {
   const unarmed: Item = {
     id: "unarmed",
@@ -358,6 +360,59 @@ export function combatOptions(
       description: `Medicina (INT), DT 20 + 5 por estabilização nesta cena. Retira morrendo e inconsciente e deixa com 1 PV. ${hasMedicineKit(a) ? "Kit de Medicina disponível." : "Sem kit: −5 no teste."}`,
     },
   ];
+  const bloodPowers = a.inventory.filter(
+    (i) =>
+      i.kind === "Poder" &&
+      eligible(a, i) &&
+      normalizeCombatName(combatRuleName(i)) === "arma de sangue" &&
+      !rules[i.id],
+  );
+  const permanentBlood = bloodPowers.some((i) => i.attuned && a.nex >= 50);
+  if (
+    permanentBlood ||
+    bloodPowers.some((i) =>
+      actorEffects.some(
+        (x) =>
+          x.power?.manifestation === "bloodWeapon" && x.power.itemId === i.id,
+      ),
+    )
+  ) {
+    const bloodWeapon: Item = {
+      id: "blood-weapon",
+      name: "Arma de Sangue",
+      kind: "Arma",
+      quantity: 1,
+      spaces: 0,
+      damage: permanentBlood ? "1d10" : "1d6",
+      attackSkill: "Luta",
+      weaponType: "Corpo a corpo",
+      critical: "20/x2",
+      element: "Sangue",
+      notes:
+        "Arma simples, leve, de Sangue. Não precisa ser empunhada. O dano base recebe FOR como nos demais ataques corpo a corpo.",
+    };
+    const attack: CombatOption = {
+      id: bloodWeapon.id,
+      name: "Atacar com Arma de Sangue",
+      item: bloodWeapon,
+      action: "standard",
+      pe: 0,
+      effect: "attack",
+      target: "any",
+      description: bloodWeapon.notes,
+    };
+    options.push(attack, {
+      ...attack,
+      id: "blood-weapon-extra",
+      name: "Arma de Sangue · ataque adicional",
+      action: "free",
+      pe: 1,
+      limit: "turn",
+      bloodAttack: true,
+      description:
+        "Uma vez por turno, após usar agredir: ataque adicional exclusivamente com sua Arma de Sangue, por 1 PE.",
+    });
+  }
   options.push({
     id: "investigate",
     name: "Investigar",

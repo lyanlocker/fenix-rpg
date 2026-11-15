@@ -27,6 +27,7 @@ export type AppliedPower = {
   injuredOnly?: boolean;
   enemyId?: string;
   duration: PowerDuration;
+  manifestation?: "bloodWeapon";
   expires?: "nextTurnEnd";
   modifiers: PowerModifier[];
 };

@@ -70,6 +70,7 @@ export type PowerRule = {
     | "eclectic"
     | "moshPit"
     | "criticalPhrase";
+  manifestation?: "bloodWeapon";
   warning?: string;
   manual?: boolean;
   blocked?: string;
@@ -306,15 +307,24 @@ export function powerRule(stored: Item, agent?: Agent): PowerRule {
       })),
     };
   if (name === "arma de sangue")
-    return {
-      ...rule,
-      action: "move",
-      pe: 2,
-      duration: "scene",
-      manual: true,
-      warning:
-        "Cria uma arma leve de Sangue (1d6; 1d10 com afinidade). A criação não concede o ataque adicional de 1 PE; use a regra específica do mestre para esse ataque.",
-    };
+    return useAffinity
+      ? {
+          ...rule,
+          pe: 0,
+          action: "free",
+          passive: true,
+          warning:
+            "Sua arma permanente de Sangue aparece nas ações de ataque, com 1d10 de dano. O ataque adicional custa 1 PE, uma vez por turno, após agredir.",
+        }
+      : {
+          ...rule,
+          action: "move",
+          pe: 2,
+          duration: "scene",
+          manifestation: "bloodWeapon",
+          warning:
+            "A arma leve de Sangue fica disponível nas ações de ataque até o fim da cena. Após agredir, o ataque adicional com ela custa 1 PE, uma vez por turno.",
+        };
   if (name === "arma favorita")
     return {
       ...rule,
