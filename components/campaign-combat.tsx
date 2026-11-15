@@ -1,4 +1,6 @@
 "use client";
+import { combatDefense } from "@/lib/power-effects";
+import { combatFace } from "@/lib/combat-actions";
 import { useEffect, useRef, useState } from "react";
 import {
   Eye,
@@ -682,6 +684,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
             <ol className="combat-participants">
               {encounter.participants.map((p, index) => {
                 const t = threats.find((t) => t.id === p.threatId);
+                const sheet = agents.find((a) => a.id === p.agentId);
                 const artId = t ? threatArtId(t, artOverrides) : p.threatId;
                 const conditions = p.conditions
                   .split(",")
@@ -812,7 +815,12 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                         />
                       </div>
                       <span>
-                        Defesa <b>{p.defense ?? "—"}</b>
+                        Defesa{" "}
+                        <b>
+                          {sheet
+                            ? combatDefense(combatFace(sheet, p), encounter, p)
+                            : (p.defense ?? "—")}
+                        </b>
                       </span>
                       {t && (
                         <button onClick={() => setDetails(t)}>Ver ficha</button>

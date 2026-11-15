@@ -511,3 +511,29 @@ button.arena-delay-button:not(:disabled):hover {
     animation: none;
   }
 }
+
+.arena-power-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+.arena-power-controls {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0;
+}
+.arena-power-controls ul,
+.arena-active-effects ul {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.arena-power-controls li,
+.arena-active-effects li {
+  margin: 5px 0;
+}
+@media (max-width: 640px) {
+  .arena-power-filters {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,6 @@
 "use client";
+import PowerModifierEditor from "./power-modifier-editor";
+import { configuredPowerRule } from "@/lib/power-rules";
 import { useState } from "react";
 import { Swords, SlidersHorizontal } from "lucide-react";
 import { useGame } from "./game-shell";
@@ -204,7 +206,16 @@ function CombatRuleEditor({
             name: source.item.name,
             action: source.option?.action || "standard",
             pe: source.option?.pe ?? source.item.cost ?? 0,
-            effect: source.option?.effect === "grant" ? "grant" : "heal",
+            effect:
+              source.item.kind === "Poder"
+                ? "power"
+                : source.option?.effect === "grant"
+                  ? "grant"
+                  : "heal",
+            modifiers: source.option?.power?.modifiers || [],
+            duration: source.option?.power?.duration || "attack",
+            condition: source.option?.power?.condition || "",
+            passive: false,
             formula: source.option?.formula || "1d6",
             grant: source.option?.grant || "standard",
             target:
@@ -239,6 +250,14 @@ function CombatRuleEditor({
     ) {
       setError("Use uma fórmula de 1 a 100 dados, como 2d8+2.");
       return;
+    }
+    if (!remove && rule.effect === "power") {
+      try {
+        configuredPowerRule(rule);
+      } catch (e) {
+        setError((e as Error).message);
+        return;
+      }
     }
     const rules = { ...encounter.combatRules };
     if (remove) delete rules[id];
@@ -294,6 +313,7 @@ function CombatRuleEditor({
               >
                 <option value="heal">Curar PV</option>
                 <option value="grant">Conceder ação</option>
+                <option value="power">Bônus de habilidade / poder</option>
               </select>
             </label>
             <label>
@@ -334,7 +354,9 @@ function CombatRuleEditor({
                 <option value="any">Qualquer participante visível</option>
               </select>
             </label>
-            {rule.effect === "heal" ? (
+            {rule.effect === "power" ? (
+              <PowerModifierEditor rule={rule} onChange={update} />
+            ) : rule.effect === "heal" ? (
               <label>
                 Rolagem de cura
                 <input

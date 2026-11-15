@@ -879,7 +879,7 @@ test("unconditional explicit extra-action text works for custom powers, items an
     a.inventory.push(source);
     assert.equal(
       combatOptions(a).find((x) => x.id === source.id)?.effect,
-      "grant",
+      kind === "Poder" ? "power" : "grant",
     );
     apply(c, { kind: "use", optionId: source.id });
     assert.equal(c.encounter.combat!.budgets[pa.id].standard, 2);

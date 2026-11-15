@@ -83,6 +83,8 @@ const firearms = new Set([
 
 export function weaponType(item: Item): WeaponType {
   if (item.weaponType) return item.weaponType;
+  if (/^instrumento\s+el[eé]trico\s+de\s+combate/i.test(item.name))
+    return "Disparo";
   if (firearms.has(item.name)) return "Arma de fogo";
   if (item.attackSkill === "Pontaria") return "Disparo";
   return "Corpo a corpo";

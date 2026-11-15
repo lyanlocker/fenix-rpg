@@ -1,6 +1,6 @@
 {
   "name": "fenix-rpg",
-  "version": "2.9.0",
+  "version": "2.9.5",
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
@@ -9,7 +9,8 @@
     "build:next": "next build",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "audit:powers": "node --import tsx scripts/audit-combat-powers.ts"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

@@ -1,5 +1,19 @@
 "use client";
+import { weaponType } from "@/lib/weapon-modifications";
+import { combatRuleName, combatSkillAttribute } from "@/lib/combat-metadata";
 import ItemArtwork from "./item-artwork";
+import CombatPowerControls from "./combat-power-controls";
+import {
+  modifierLabel,
+  resolvePower,
+  type PowerSelection,
+} from "@/lib/power-rules";
+import {
+  powerContributions,
+  powerEffectActive,
+  fixedBonus,
+  combatDefense,
+} from "@/lib/power-effects";
 import { useState } from "react";
 import Image from "next/image";
 import {
@@ -9,7 +23,12 @@ import {
   Swords,
   UserRound,
 } from "lucide-react";
-import { effectiveAttributes, skillBonus } from "@/lib/rules";
+import {
+  effectiveAttributes,
+  skillBonus,
+  accessoryDefenseBonus,
+  skillAttributes,
+} from "@/lib/rules";
 import { weaponRollSuggestion, type AttackMode } from "@/lib/combat-dice";
 import type { Agent } from "@/lib/rules";
 import type { Encounter } from "@/lib/model";
@@ -163,7 +182,14 @@ export default function CombatArena({
   onCommand: (c: CombatCommand) => void;
   master?: boolean;
 }) {
-  const [category, setCategory] = useState<ActionCost>("standard"),
+  const [category, setCategory] = useState<ActionCost | "powers">("standard"),
+    [powerGroup, setPowerGroup] = useState("all"),
+    [powerSearch, setPowerSearch] = useState(""),
+    [customSkill, setCustomSkill] = useState(""),
+    [powerSelection, setPowerSelection] = useState<PowerSelection>({
+      steps: 1,
+      attackSteps: 1,
+    }),
     [optionId, setOptionId] = useState(""),
     [targets, setTargets] = useState<string[]>([]),
     [variant, setVariant] = useState<"base" | "discente">("base"),
@@ -184,15 +210,61 @@ export default function CombatArena({
     canAct = myTurn && !!agent && agent.resources.pv > 0 && !busy;
   const options = agent ? combatOptions(agent, combat.rules) : [],
     selected = options.find((o) => o.id === optionId),
-    name = normalizeCombatName(selected?.name || ""),
+    name = normalizeCombatName(
+      selected?.item ? combatRuleName(selected.item) : selected?.name || "",
+    ),
     multi = !!selected && !!agent && maxTargets(selected, agent) > 1,
     effectiveAction = accelerate || extraAttack ? "free" : selected?.action;
-  const cost =
-      (selected?.pe || 0) +
+  let powerCost = selected?.pe || 0;
+  if (selected?.power && selected.item && agent) {
+    try {
+      powerCost = resolvePower(
+        selected.item,
+        agent,
+        {
+          ...powerSelection,
+          ...(selected.power.special === "moshPit"
+            ? { steps: Math.max(1, Math.min(5, targets.length)) }
+            : {}),
+          confirmed: true,
+        },
+        selected.power,
+      ).pe;
+    } catch {}
+  }
+  const contributions = agent && p ? powerContributions(agent, e, p) : [];
+  const visibleOptions = options.filter((o) =>
+    category === "powers"
+      ? o.item?.kind === "Poder" &&
+        (powerGroup === "all" ||
+          (o.item.subtype?.includes("Habilidade") ? "abilities" : "powers") ===
+            powerGroup) &&
+        normalizeCombatName(`${o.name} ${o.item.subtype || ""}`).includes(
+          normalizeCombatName(powerSearch),
+        )
+      : o.action === category && o.item?.kind !== "Poder",
+  );
+  const baseCost =
+      powerCost +
       (name === "paramedico" ? boost : 0) +
       (variant === "discente" ? (name === "cicatrizacao" ? 2 : 3) : 0) +
       (accelerate ? 4 : 0) +
       (extraAttack ? 2 : 0),
+    ritualDiscount =
+      agent && selected?.item?.kind === "Ritual"
+        ? fixedBonus(
+            contributions.filter(
+              (m) =>
+                !m.personalOnly ||
+                (targets.length === 1 && targets[0] === mine?.id) ||
+                selected.target === "self",
+            ),
+            "ritualCost",
+            agent,
+            selected.item,
+          )
+        : 0,
+    cost = Math.max(baseCost > 0 ? 1 : 0, baseCost + ritualDiscount),
     costTotal = name === "estrategista" ? cost * targets.length : cost,
     targetList = selected?.target === "self" && mine ? [mine.id] : targets;
   const upkeep = (combat.effects || []).filter(
@@ -223,8 +295,10 @@ export default function CombatArena({
     .at(-1);
   function choose(id: string) {
     setOptionId(id);
+    setCustomSkill("");
     setTargets([]);
     setBoost(0);
+    setPowerSelection({ steps: 1, attackSteps: 1 });
     setVariant("base");
     setExtraAttack(false);
     setAccelerate(false);
@@ -363,6 +437,11 @@ export default function CombatArena({
               <span>
                 <b>{budget.attack}</b> ataques extras
               </span>
+              {!!budget?.meleeAttack && (
+                <span>
+                  <b>{budget.meleeAttack}</b> ataques corpo a corpo extras
+                </span>
+              )}
               <span>Livre · sem cota fixa</span>
             </div>
           )}
@@ -396,40 +475,74 @@ export default function CombatArena({
               ))}
             </div>
           )}
+          {!!contributions.length && agent && (
+            <div
+              className="hint arena-active-effects"
+              aria-label="Bônus de combate"
+            >
+              <strong>Bônus da ficha e efeitos ativos</strong>
+              <ul>
+                {contributions.map((m, i) => (
+                  <li key={`${m.source}:${i}`}>
+                    {m.source}: {modifierLabel(m)}
+                  </li>
+                ))}
+              </ul>
+              <p>
+                Defesa: {p ? combatDefense(agent, e, p) : "—"} · deslocamento
+                adicional: {fixedBonus(contributions, "speed", agent)} m
+              </p>
+              <small>
+                Os bônus de ataque, dano e cura são acrescentados pelo servidor.
+                Não os repita nos dados digitados.
+              </small>
+            </div>
+          )}
           {(combat.effects || []).some(
             (x) => x.targetId === mine?.id || x.sourceId === mine?.id,
           ) && (
             <div
               className="hint arena-active-effects"
-              aria-label="Ações extras ativas"
+              aria-label="Efeitos ativos"
             >
-              <strong>Ações extras ativas</strong>
+              <strong>Efeitos ativos</strong>
               {(combat.effects || [])
                 .filter(
-                  (x) => x.targetId === mine?.id || x.sourceId === mine?.id,
+                  (x) =>
+                    (x.targetId === mine?.id || x.sourceId === mine?.id) &&
+                    powerEffectActive(x, e),
                 )
                 .map((x) => (
                   <div key={x.id}>
                     <span>
-                      {x.name} · +1{" "}
-                      {x.grant === "standard"
-                        ? "padrão"
-                        : x.grant === "move"
-                          ? "movimento"
-                          : x.grant === "attack"
-                            ? "ataque"
-                            : "livre"}
+                      {x.name}
+                      {x.power
+                        ? ` · ${x.power.modifiers.map(modifierLabel).join("; ")}`
+                        : " · +1 "}
+                      {x.power
+                        ? ""
+                        : x.grant === "standard"
+                          ? "padrão"
+                          : x.grant === "move"
+                            ? "movimento"
+                            : x.grant === "meleeAttack"
+                              ? "ataque corpo a corpo"
+                              : x.grant === "attack"
+                                ? "ataque"
+                                : "livre"}
                       {x.targetId !== mine?.id
                         ? ` para ${combat.participants.find((p) => p.id === x.targetId)?.name || "aliado"}`
                         : ""}
                       {x.noRitual && x.grant !== "standard"
                         ? " · sem ritual"
                         : ""}
-                      {x.timing === "sustained"
-                        ? " · sustentada"
-                        : x.timing === "scene"
-                          ? " · até encerrar"
-                          : " · próximo turno do alvo"}
+                      {x.power
+                        ? ""
+                        : x.timing === "sustained"
+                          ? " · sustentada"
+                          : x.timing === "scene"
+                            ? " · até encerrar"
+                            : " · próximo turno do alvo"}
                     </span>
                     {x.sourceId === mine?.id &&
                       ["sustained", "scene"].includes(x.timing) &&
@@ -470,6 +583,16 @@ export default function CombatArena({
             />
           ))}
           <div className="arena-tabs" role="tablist" aria-label="Tipo de ação">
+            <button
+              role="tab"
+              aria-selected={category === "powers"}
+              onClick={() => {
+                setCategory("powers");
+                choose("");
+              }}
+            >
+              Habilidades e poderes
+            </button>
             {(Object.keys(actionLabels) as ActionCost[]).map((c) => (
               <button
                 key={c}
@@ -488,26 +611,56 @@ export default function CombatArena({
             disabled={!canAct || upkeep.length > 0}
             className="combat-controls"
           >
-            <div className="arena-option-grid">
-              {options
-                .filter((o) => o.action === category)
-                .map((o) => (
-                  <button
-                    key={o.id}
-                    className={optionId === o.id ? "selected" : ""}
-                    onClick={() => choose(o.id)}
+            {category === "powers" && (
+              <div className="arena-power-filters">
+                <label>
+                  Buscar habilidade ou poder
+                  <input
+                    value={powerSearch}
+                    onChange={(ev) => setPowerSearch(ev.target.value)}
+                    placeholder="Nome da habilidade"
+                  />
+                </label>
+                <label>
+                  Mostrar
+                  <select
+                    value={powerGroup}
+                    onChange={(ev) => {
+                      setPowerGroup(ev.target.value);
+                      choose("");
+                    }}
                   >
-                    <strong>{o.name}</strong>
-                    <small>
-                      {o.pe
-                        ? `${o.pe} ${agent?.determination ? "PD" : "PE"}`
-                        : actionLabels[o.action]}
-                      {o.consume ? " · consome 1 item" : ""}
-                    </small>
-                  </button>
-                ))}
+                    <option value="all">Todos</option>
+                    <option value="abilities">Habilidades de trilha</option>
+                    <option value="powers">
+                      Poderes e habilidades de classe/origem
+                    </option>
+                  </select>
+                </label>
+              </div>
+            )}
+            <div className="arena-option-grid">
+              {visibleOptions.map((o) => (
+                <button
+                  key={o.id}
+                  className={optionId === o.id ? "selected" : ""}
+                  onClick={() => choose(o.id)}
+                >
+                  <strong>{o.name}</strong>
+                  <small>
+                    {o.power?.passive
+                      ? "Passivo · automático"
+                      : o.power?.blocked
+                        ? "Conferir regra"
+                        : o.pe
+                          ? `${o.pe} ${agent?.determination ? "PD" : "PE"}`
+                          : actionLabels[o.action]}
+                    {o.consume ? " · consome 1 item" : ""}
+                  </small>
+                </button>
+              ))}
             </div>
-            {!options.some((o) => o.action === category) && (
+            {!visibleOptions.length && (
               <p className="muted">
                 Nenhuma ação deste tipo disponível na ficha.
               </p>
@@ -520,6 +673,47 @@ export default function CombatArena({
                   <summary>Regra e alcance</summary>
                   <p className="preserve">{selected.description}</p>
                 </details>
+                {selected.power && selected.item && agent && (
+                  <CombatPowerControls
+                    rule={selected.power}
+                    item={selected.item}
+                    agent={agent}
+                    value={
+                      selected.power.special === "moshPit"
+                        ? {
+                            ...powerSelection,
+                            steps: Math.max(1, Math.min(5, targets.length)),
+                          }
+                        : powerSelection
+                    }
+                    onChange={setPowerSelection}
+                  />
+                )}
+                {selected.power?.enemyChoice && (
+                  <label>
+                    Inimigo cercado
+                    <select
+                      value={powerSelection.enemyId || ""}
+                      onChange={(ev) =>
+                        setPowerSelection({
+                          ...powerSelection,
+                          enemyId: ev.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Selecione o inimigo</option>
+                      {combat.participants
+                        .filter(
+                          (t) => t.id !== mine?.id && !targets.includes(t.id),
+                        )
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
                 {selected.rule && (
                   <small>Efeito configurado pelo mestre.</small>
                 )}
@@ -634,7 +828,35 @@ export default function CombatArena({
                       Acelerar Ritual · ação livre, +4 pontos
                     </label>
                   )}
+                {selected.effect === "custom" && agent && (
+                  <label>
+                    Teste de perícia (opcional)
+                    <select
+                      value={customSkill}
+                      onChange={(ev) => {
+                        const skill = ev.target.value;
+                        setCustomSkill(skill);
+                        if (skill) {
+                          const count =
+                            effectiveAttributes(agent)[
+                              combatSkillAttribute(agent, skill)
+                            ];
+                          setAttackDice(
+                            `${count || 2}d20+${skillBonus(agent, skill).total}`,
+                          );
+                          setAttackMode(count ? "highest" : "lowest");
+                        }
+                      }}
+                    >
+                      <option value="">Sem teste</option>
+                      {Object.keys(skillAttributes).map((skill) => (
+                        <option key={skill}>{skill}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {(selected.effect === "attack" ||
+                  (selected.effect === "custom" && !!customSkill) ||
                   selected.effect === "investigate") && (
                   <div className="arena-dice-inputs">
                     <label>
@@ -661,9 +883,8 @@ export default function CombatArena({
                       </select>
                     </label>
                     <p className="hint">
-                      Confira os dados e bônus antes de rolar. O dano é uma
-                      etapa separada; crítico e bônus podem ser ajustados na
-                      expressão de dano.
+                      Informe os dados base. Os bônus de habilidades são somados
+                      automaticamente e o dano é uma etapa separada.
                     </p>
                   </div>
                 )}
@@ -688,6 +909,19 @@ export default function CombatArena({
                 <button
                   className="primary"
                   disabled={
+                    (!!selected.power?.enemyChoice &&
+                      !powerSelection.enemyId) ||
+                    !!selected.power?.passive ||
+                    !!selected.power?.blocked ||
+                    ((!!selected.power?.weaponChoice ||
+                      !!selected.power?.ritualChoice) &&
+                      !powerSelection.weaponId) ||
+                    (!!selected.power?.condition &&
+                      !powerSelection.confirmed) ||
+                    (!!selected.power?.choices?.length &&
+                      (selected.power.multiChoice
+                        ? !powerSelection.choices?.length
+                        : !powerSelection.choice)) ||
                     !budget ||
                     !effectiveAction ||
                     !actionAvailable(
@@ -695,6 +929,8 @@ export default function CombatArena({
                       effectiveAction,
                       selected.item?.kind === "Ritual",
                       selected.effect === "attack",
+                      !!selected.item &&
+                        weaponType(selected.item) === "Corpo a corpo",
                     ) ||
                     (selected.target !== "none" && !targetList.length) ||
                     (selected.effect === "custom" && !note.trim()) ||
@@ -712,8 +948,18 @@ export default function CombatArena({
                       accelerate,
                       ...(name === "surto de adrenalina" ? { grant } : {}),
                       note,
-                      ...(["attack", "investigate"].includes(selected.effect)
-                        ? { attackDice, attackMode }
+                      ...(selected.power && !selected.power.passive
+                        ? { power: powerSelection }
+                        : {}),
+                      ...(["attack", "investigate"].includes(selected.effect) ||
+                      (selected.effect === "custom" && customSkill)
+                        ? {
+                            attackDice,
+                            attackMode,
+                            ...(selected.effect === "custom"
+                              ? { skill: customSkill }
+                              : {}),
+                          }
                         : {}),
                     })
                   }
@@ -835,8 +1081,29 @@ function DamageRollForm({
         Ataque/execução já registrado. Ajuste a expressão e role quando estiver
         pronto.
       </p>
+      {event.damageRoll?.maximum && (
+        <p className="hint">
+          Atirar para Matar: o dano deste crítico usa o resultado máximo dos
+          dados.
+        </p>
+      )}
+      {!!event.damageRoll?.bonuses?.length && (
+        <div className="hint">
+          <strong>Bônus garantidos nesta rolagem</strong>
+          <ul>
+            {event.damageRoll.bonuses.map((b, i) => (
+              <li key={i}>
+                {b.source}: +{b.formula}
+              </li>
+            ))}
+          </ul>
+          <p>
+            São adicionados automaticamente. Digite abaixo apenas os dados base.
+          </p>
+        </div>
+      )}
       <label>
-        Dados de dano
+        Dados de dano base
         <input
           aria-label={`Dados de dano de ${event.label}`}
           value={dice}
