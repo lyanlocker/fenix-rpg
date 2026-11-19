@@ -29,17 +29,26 @@ Há regras específicas para Ataque Especial, Ataque Furtivo, Ataque Extra, Comb
 - Ação avulsa: teste opcional de qualquer perícia; bônus de poderes são somados ao teste correspondente.
 - Defesa temporária aparece para jogador e mestre; a ficha permanente não recebe alterações transitórias nos atributos/Defesa.
 
+## Continuação de 19 de novembro
+
+- **Segurar o Gatilho** aparece junto ao ataque da arma a partir de NEX 60%. Depois de rolar o dano, selecione a mesma arma e o mesmo alvo e confirme o acerto. Cada repetição custa 2 PE ou PD por ataque já efetuado no turno. O histórico vincula a confirmação ao último ataque e o servidor verifica o limite de esforço. **Ninja Urbano** acrescenta 2 ao dano corpo a corpo e de disparo. As duas descrições foram recuperadas a partir das páginas impressas 25–26 e 29–30 do Livro de Regras. Na sala, cópias antigas com o texto truncado exato exibem a correção.
+- **Disparada** acrescenta 4,5 m por 1 PE ou PD até o fim da rodada. **Velocidade do Caos** considera a afinidade no deslocamento e reserva o movimento extra do primeiro turno para se deslocar. Interagir com o ambiente usa sua própria opção de movimento. **Correria Desesperada** mantém o deslocamento passivo enquanto o dado de fuga vale para um só teste.
+- **Precisão** vincula a mira ao alvo e à arma durante a rodada. **Grudar o Cano** modifica o multiplicador de crítico contra o alvo indicado. **Conjuração Corporal** e **Letrado no Oculto** ajustam a DT conforme a resistência declarada no ritual. A descrição indica as cláusulas adicionais que exigem o mestre.
+- Quinze poderes de treinamento de *Sobrevivendo ao Horror*, entre eles **Atlético** e **Observador**, permitem registrar em combate a parcela de treinamento ou bônus ainda ausente da ficha. A escolha depende do treinamento do personagem quando adquiriu o poder. Quem já registrou esse benefício na ficha usa os valores que ela já tem.
+- A aba identifica 43 entradas destinadas à progressão, preparação ou interlúdio. A descrição permanece acessível e a sala impede uma ativação ou cobrança indevida. A classificação abrange somente as entradas conferidas.
+
 ## Cobertura real
 
 O inventário contém **933 poderes**. O relatório reproduzível `AUDITORIA-PODERES-2.9.5.json` classifica cada entrada. No snapshot desta implementação:
 
 | Classificação | Entradas |
 |---|---:|
-| Algum efeito estruturado | 72 |
-| Integração com ações já existentes | 5 |
+| Algum efeito estruturado | 118 |
+| Integração com ações já existentes | 7 |
 | Integração passiva sem modificador separado | 13 |
-| Conferir fonte ou execução prolongada | 39 |
-| Resolução/configuração do mestre | 804 |
+| Fora do combate (progressão, preparação ou interlúdio) | 43 |
+| Conferir fonte ou execução | 38 |
+| Resolução/configuração do mestre | 714 |
 
 Essas categorias não significam que todos os poderes restantes sejam ações de combate: há benefícios permanentes, preparação em interlúdio, alterações de treinamento, narrativas e regras complexas. Mesmo um poder com efeito estruturado pode ter cláusulas narrativas ou efeitos secundários resolvidos pelo mestre. **Não anunciar que os 933 poderes estão automatizados.**
 
@@ -61,7 +70,7 @@ Poderes renomeados com NEX ou escolhas são reconhecidos pelo identificador e co
 
 ## Verificação
 
-Snapshot validado: **186 testes aprovados**, TypeScript sem erros e compilação de produção concluída. A interface ainda não passou por inspeção visual em navegador nesta etapa.
+A revisão passou em **197 testes**, na checagem TypeScript e na compilação de produção. A interação da arena também foi verificada em DOM simulado com fichas fictícias, desde a seleção do poder até a cobrança do segundo ataque. A inspeção visual em navegador continua pendente.
 
 - Testes do motor: custos, escolhas, escopo de arma/alvo, crítico, consumo, duração, ações extras, impossibilidade de repetir dano, comandos fora do turno e ausência de mutação após erro.
 - Regressões: dados editáveis, sustentação de Velocidade Mortal, criação livre de fichas, backups, imagens, proteção de dados ocultos e salvamento concorrente.

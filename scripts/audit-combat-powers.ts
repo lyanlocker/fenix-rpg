@@ -22,19 +22,22 @@ const records = bookCatalog
     const rule = powerRule(item, agent);
     const option = combatOptions(agent).find((option) => option.id === item.id);
     const status =
-      option && option.effect !== "power"
+      (option && option.effect !== "power") || rule.viaAction
         ? "integrado"
-        : rule.blocked
-          ? "conferir_fonte_ou_execucao"
-          : rule.modifiers.length ||
-              rule.choices?.length ||
-              rule.special ||
-              rule.manifestation ||
-              rule.grants.length
-            ? "efeito_estruturado"
-            : rule.passive
-              ? "integrado_passivo"
-              : "resolucao_do_mestre";
+        : rule.outsideCombat
+          ? "fora_do_combate"
+          : rule.blocked
+            ? "conferir_fonte_ou_execucao"
+            : rule.modifiers.length ||
+                rule.always?.length ||
+                rule.choices?.length ||
+                rule.special ||
+                rule.manifestation ||
+                rule.grants.length
+              ? "efeito_estruturado"
+              : rule.passive
+                ? "integrado_passivo"
+                : "resolucao_do_mestre";
     return {
       id: item.id,
       nome: item.name,
@@ -42,7 +45,7 @@ const records = bookCatalog
       status,
       acao: option?.action || rule.action,
       peBase: option?.pe ?? rule.pe,
-      aviso: rule.blocked || rule.warning || null,
+      aviso: rule.blocked || rule.viaAction || rule.warning || null,
     };
   });
 const counts = Object.fromEntries(

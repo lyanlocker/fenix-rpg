@@ -1117,3 +1117,282 @@ test("a free attack credit alone does not satisfy the agredir trigger of Arma de
     /agredir/,
   );
 });
+
+test("Segurar o Gatilho exige o acerto anterior, a mesma arma e o mesmo alvo, e cobra 2, 4 e 6", () => {
+  const { a, p, target, weapon, use, equip, c, attack } = setup();
+  equip("Segurar o Gatilho");
+  weapon.weaponType = "Arma de fogo";
+  const other = equip("Outra arma", { ...weapon, id: crypto.randomUUID() });
+  const target2 = { ...target, id: crypto.randomUUID() };
+  c.encounter.participants.push(target2);
+  const first = attack();
+  const fire = (id: string, optionId = weapon.id, targetId = target.id) =>
+    use({
+      kind: "use",
+      optionId,
+      targetIds: [targetId],
+      followUpHitId: id,
+    });
+  assert.throws(() => fire(first.id), /último acerto/);
+  use({ kind: "damage", eventId: first.id, damageDice: "1" });
+  assert.throws(() => fire(first.id, other.id), /mesma arma/);
+  assert.throws(() => fire(first.id, weapon.id, target2.id), /mesmo alvo/);
+  let previous = first;
+  for (const cost of [2, 4, 6]) {
+    const before = a.resources.pe;
+    const next = fire(previous.id);
+    assert.equal(next.action, "free");
+    assert.equal(a.resources.pe, before - cost);
+    assert.equal(c.encounter.combat!.budgets[p.id].standard, 0);
+    assert.throws(() => fire(previous.id), /último acerto/);
+    use({ kind: "damage", eventId: next.id, damageDice: "1" });
+    previous = next;
+  }
+  assert.throws(() => fire(previous.id), /Limite/);
+  assert.equal(a.resources.pe, 88);
+});
+
+test("Segurar o Gatilho respeita NEX, PD, arma de fogo e ataque sem dano", () => {
+  const { a, weapon, attack, use, equip, target } = setup();
+  equip("Segurar o Gatilho");
+  a.determination = true;
+  weapon.weaponType = "Arma de fogo";
+  const first = attack();
+  use({ kind: "damage", eventId: first.id, damageDice: "1" });
+  const follow = {
+    kind: "use" as const,
+    optionId: weapon.id,
+    targetIds: [target.id],
+    followUpHitId: first.id,
+  };
+  a.nex = 55;
+  assert.throws(() => use(follow), /Segurar/);
+  a.nex = 60;
+  a.inventory.find((i) => i.id === weapon.id)!.weaponType = "Disparo";
+  assert.throws(() => use(follow), /Segurar/);
+  a.inventory.find((i) => i.id === weapon.id)!.weaponType = "Arma de fogo";
+  const next = use(follow);
+  assert.equal(a.resources.pd, 98);
+  assert.equal(a.resources.pe, 100);
+  use({ kind: "damage", eventId: next.id, skipDamage: true });
+  assert.throws(
+    () => use({ ...follow, followUpHitId: next.id }),
+    /último acerto/,
+  );
+});
+
+test("Ninja Urbano aplica dano só a corpo a corpo e disparo", () => {
+  for (const type of ["Corpo a corpo", "Disparo", "Arma de fogo"] as const) {
+    const { weapon, equip, attack } = setup();
+    equip("Ninja Urbano");
+    weapon.weaponType = type;
+    assert.deepEqual(
+      attack().damageRoll!.bonuses!.map((b) => b.formula),
+      type === "Arma de fogo" ? [] : ["2"],
+    );
+  }
+});
+
+test("Disparada aumenta o deslocamento durante a rodada e expira mesmo ao pular turnos", () => {
+  const { a, c, p, use, equip } = setup();
+  const power = equip("Disparada", { bookId: "05" });
+  const speed = () =>
+    fixedBonus(powerContributions(a, c.encounter, p), "speed", a);
+  use({ kind: "use", optionId: power.id });
+  assert.equal(a.resources.pe, 99);
+  assert.equal(c.encounter.combat!.budgets[p.id].move, 1);
+  assert.equal(speed(), 4.5);
+  c.encounter = advanceTurn(c.encounter);
+  assert.equal(speed(), 4.5);
+  c.encounter = advanceTurn(c.encounter, 3);
+  assert.equal(speed(), 0);
+});
+
+test("Correria Desesperada mantém o deslocamento ao consumir apenas o dado do teste de fuga", () => {
+  const { a, c, p, equip, use } = setup();
+  const power = equip("Correria Desesperada");
+  const bonus = (stat: "speed" | "testDice") =>
+    fixedBonus(
+      powerContributions(a, c.encounter, p),
+      stat,
+      a,
+      undefined,
+      "Atletismo",
+    );
+  assert.equal(bonus("speed"), 3);
+  assert.equal(bonus("testDice"), 0);
+  use({ kind: "use", optionId: power.id, power: { confirmed: true } });
+  assert.equal(bonus("testDice"), 1);
+  use({
+    kind: "use",
+    optionId: "custom:free",
+    skill: "Atletismo",
+    note: "Fugir",
+  });
+  assert.equal(bonus("testDice"), 0);
+  assert.equal(bonus("speed"), 3);
+});
+test("Velocidade do Caos só concede o movimento adicional com afinidade e apenas para deslocar", () => {
+  const { a, c, p, equip, use } = setup();
+  const power = equip("Velocidade do Caos", { bookId: "05" });
+  assert.equal(budgetFor(c.encounter, p, a).movementOnly, undefined);
+  power.attuned = true;
+  assert.equal(
+    fixedBonus(powerContributions(a, c.encounter, p), "speed", a),
+    9,
+  );
+  use({ kind: "use", optionId: "custom:full", note: "Trabalho demorado" });
+  assert.throws(
+    () => use({ kind: "use", optionId: "custom:move", note: "Outra ação" }),
+    /gasta/,
+  );
+  use({ kind: "use", optionId: "move" });
+  assert.throws(() => use({ kind: "use", optionId: "move" }), /gasta/);
+  c.encounter = advanceTurn(c.encounter, 2);
+  assert.equal(budgetFor(c.encounter, p, a).movementOnly, undefined);
+});
+test("Minha Dor me Impulsiona valida os PV e consome 1d6 no teste compatível", () => {
+  const { a, c, p, equip, use } = setup();
+  const power = equip("Minha Dor me Impulsiona");
+  a.resources.pv = maximums(a).pv - 4;
+  const activate = () =>
+    use({ kind: "use", optionId: power.id, power: { confirmed: true } });
+  assert.throws(activate, /5 PV/);
+  assert.equal(a.resources.pe, 100);
+  a.resources.pv--;
+  activate();
+  use({
+    kind: "use",
+    optionId: "custom:free",
+    skill: "Vontade",
+    note: "Resistir",
+  });
+  assert.ok(
+    powerContributions(a, c.encounter, p).some((m) => m.amount === "1d6"),
+  );
+  const result = use({
+    kind: "use",
+    optionId: "custom:free",
+    skill: "Acrobacia",
+    note: "Saltar",
+  });
+  assert.ok(result.rolls[0].expression.includes("1d6"));
+  assert.equal(a.resources.pe, 99);
+  assert.equal(powerContributions(a, c.encounter, p).length, 0);
+});
+test("DT depende da resistência declarada pelo ritual", () => {
+  const { a, p, c, equip } = setup();
+  equip("Conjuração Corporal", { bookId: "05" });
+  equip("Letrado no Oculto", { bookId: "05" });
+  const spell = item("Teste", { kind: "Ritual" });
+  for (const [resistance, expected] of [
+    ["Fortitude reduz à metade", 2],
+    ["Reflexos anula", 2],
+    ["Vontade parcial", 2],
+    ["Nenhuma", 0],
+  ] as const) {
+    spell.resistance = resistance;
+    assert.equal(
+      fixedBonus(powerContributions(a, c.encounter, p), "ritualDC", a, spell),
+      expected,
+    );
+  }
+});
+test("Atlético preserva o grau da ficha e distingue treinamento adquirido de bônus prévio", () => {
+  const { a, c, p, equip, use } = setup();
+  const atletico = equip("Atlético", { bookId: "07" });
+  a.skills.Atletismo = 0;
+  const select = (choice: string) =>
+    use({
+      kind: "use",
+      optionId: atletico.id,
+      power: { choice, confirmed: true },
+    });
+  assert.throws(() => select("prior"), /Escolha/);
+  assert.equal(
+    fixedBonus(powerContributions(a, c.encounter, p), "speed", a),
+    3,
+  );
+  select("training");
+  assert.equal(
+    fixedBonus(
+      powerContributions(a, c.encounter, p),
+      "skill",
+      a,
+      undefined,
+      "Atletismo",
+    ),
+    5,
+  );
+  assert.equal(a.skills.Atletismo, 0);
+  a.skills.Atletismo = 10;
+  assert.deepEqual(
+    powerRule(atletico, a).choices?.map((choice) => choice.id),
+    ["prior"],
+  );
+  assert.equal(
+    resolvePower(atletico, a, { choice: "prior", confirmed: true }).modifiers[0]
+      .amount,
+    "2",
+  );
+});
+
+test("benefícios de progressão e interlúdio continuam consultáveis sem gasto em combate", () => {
+  const { a, c, use } = setup();
+  for (const name of [
+    "Aumento de Atributo",
+    "Criar Selo",
+    "Ingrediente Secreto",
+  ]) {
+    const ability = bookCatalog.find(
+      (i) => i.name === name && i.bookId === "01",
+    )!;
+    a.inventory.push({ ...ability });
+    assert.equal(
+      combatOptions(a).find((o) => o.id === ability.id)?.power?.outsideCombat,
+      true,
+    );
+    const before = structuredClone(c);
+    assert.throws(
+      () => use({ kind: "use", optionId: ability.id }),
+      /interlúdio|progressão/,
+    );
+    assert.deepEqual(c, before);
+  }
+});
+
+test("Precisão exige a arma e o alvo escolhidos e o dado adicional não multiplica no crítico", () => {
+  const { a, c, p, target, weapon, equip, use } = setup();
+  weapon.weaponType = "Arma de fogo";
+  const second = equip("Arma secundária", {
+    kind: "Arma",
+    weaponType: "Arma de fogo",
+    damage: "1d6",
+  });
+  const otherTarget = { ...target, id: crypto.randomUUID() };
+  c.encounter.participants.push(otherTarget);
+  const power = equip("Precisão", { bookId: "05" });
+  const select = { confirmed: true, weaponId: weapon.id, enemyId: target.id };
+  use({ kind: "use", optionId: power.id, power: select });
+  const effects = powerContributions(a, c.encounter, p);
+  assert.equal(fixedBonus(effects, "critical", a, second), 0);
+  assert.equal(
+    effects.find((x) => x.source === power.name)?.enemyId,
+    target.id,
+  );
+  const hit = use(
+    {
+      kind: "use",
+      optionId: weapon.id,
+      targetIds: [target.id],
+      attackDice: "1d20+0",
+    },
+    () => 19,
+  );
+  assert.equal(hit.damageRoll?.critical, 2);
+  assert.deepEqual(
+    hit.damageRoll?.bonuses?.map((x) => x.formula),
+    ["1d6"],
+  );
+  assert.equal(a.resources.pe, 100);
+});

@@ -20,6 +20,14 @@ for (const item of bookCatalog) {
   byName.set(key, [...(byName.get(key) || []), item]);
 }
 
+// Old sheets can still contain these two exact, truncated catalogue extracts.
+const legacyNotes: Record<string, string> = {
+  "book-b8c3ddeb91ec6278":
+    "Segurar o Gatilho. Sempre que acerta um ataque com uma arma de fogo, pode fazer outro ataque CARACTERÍSTICAS",
+  "book-90fbee19586de3fd":
+    "Ninja Urbano. Você recebe proficiência com armas táticas de ataque corpo a corpo e de disparo CARACTERÍSTICAS",
+};
+
 /** Fill missing execution metadata, never overwrite an edited sheet or invent a source. */
 export function combatItem(item: Item): Item {
   const explicit = item.catalogId
@@ -40,6 +48,7 @@ export function combatItem(item: Item): Item {
   if (source) {
     result.catalogId ||= source.id;
     result.bookId ||= source.bookId;
+    if (legacyNotes[source.id] === item.notes) result.notes = source.notes;
   }
   if (!result.execution?.trim()) {
     const notes = item.notes;

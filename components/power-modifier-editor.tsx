@@ -29,6 +29,7 @@ export default function PowerModifierEditor({
           <option value="attack">Próximo ataque compatível</option>
           <option value="ritual">Próximo ritual compatível</option>
           <option value="test">Próximo teste compatível</option>
+          <option value="round">Até o fim da rodada</option>
           <option value="turn">Até o fim deste turno</option>
           <option value="nextTurn">
             Até o início do próximo turno do usuário

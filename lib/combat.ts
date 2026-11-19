@@ -86,6 +86,12 @@ export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
             ...encounter.combat,
             effects: encounter.combat.effects.filter((x) => {
               const actor = encounter.participants[encounter.turn]?.id;
+              if (
+                x.power?.duration === "round" &&
+                x.createdKey.split(":")[0] !==
+                  String(Math.floor(next / size) + 1)
+              )
+                return false;
               if (x.power?.duration === "turn") return false;
               if (x.power?.duration === "nextTurn" && crossedStart(x.sourceId))
                 return false;

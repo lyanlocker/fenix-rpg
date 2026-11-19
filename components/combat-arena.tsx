@@ -35,6 +35,7 @@ import type { Encounter } from "@/lib/model";
 import type { PlayerCombat } from "@/lib/shared-combat";
 import {
   actionAvailable,
+  firearmFollowUp,
   retainCombatEvents,
   actionLabels,
   budgetFor,
@@ -194,6 +195,7 @@ export default function CombatArena({
     [targets, setTargets] = useState<string[]>([]),
     [variant, setVariant] = useState<"base" | "discente">("base"),
     [boost, setBoost] = useState(0),
+    [confirmedHit, setConfirmedHit] = useState(""),
     [extraAttack, setExtraAttack] = useState(false),
     [accelerate, setAccelerate] = useState(false),
     [grant, setGrant] = useState<"standard" | "move">("standard"),
@@ -220,7 +222,25 @@ export default function CombatArena({
       selected?.item ? combatRuleName(selected.item) : selected?.name || "",
     ),
     multi = !!selected && !!agent && maxTargets(selected, agent) > 1,
-    effectiveAction = accelerate || extraAttack ? "free" : selected?.action;
+    followUp =
+      agent &&
+      mine &&
+      budget &&
+      selected?.effect === "attack" &&
+      selected.item &&
+      weaponType(selected.item) === "Arma de fogo" &&
+      hasPower(agent, "Segurar o Gatilho", combat.rules)
+        ? firearmFollowUp(
+            combat.events || [],
+            budget,
+            mine.id,
+            selected.item.id,
+            targets[0],
+          )
+        : undefined,
+    following = !!followUp && confirmedHit === followUp.hitId,
+    effectiveAction =
+      accelerate || extraAttack || following ? "free" : selected?.action;
   let powerCost = selected?.pe || 0;
   if (selected?.power && selected.item && agent) {
     try {
@@ -255,7 +275,8 @@ export default function CombatArena({
       (name === "paramedico" ? boost : 0) +
       (variant === "discente" ? (name === "cicatrizacao" ? 2 : 3) : 0) +
       (accelerate ? 4 : 0) +
-      (extraAttack ? 2 : 0),
+      (extraAttack ? 2 : 0) +
+      (following ? followUp.cost : 0),
     ritualDiscount =
       agent && selected?.item?.kind === "Ritual"
         ? fixedBonus(
@@ -307,6 +328,7 @@ export default function CombatArena({
     setPowerSelection({ steps: 1, attackSteps: 1 });
     setVariant("base");
     setExtraAttack(false);
+    setConfirmedHit("");
     setAccelerate(false);
     setNote("");
     const next = options.find((o) => o.id === id);
@@ -443,6 +465,11 @@ export default function CombatArena({
               <span>
                 <b>{budget.attack}</b> ataques extras
               </span>
+              {!!budget.movementOnly && (
+                <span>
+                  <b>{budget.movementOnly}</b> movimento só para se deslocar
+                </span>
+              )}
               {!!budget?.meleeAttack && (
                 <span>
                   <b>{budget.meleeAttack}</b> ataques corpo a corpo extras
@@ -654,13 +681,17 @@ export default function CombatArena({
                 >
                   <strong>{o.name}</strong>
                   <small>
-                    {o.power?.passive
-                      ? "Passivo · automático"
-                      : o.power?.blocked
-                        ? "Conferir regra"
-                        : o.pe
-                          ? `${o.pe} ${agent?.determination ? "PD" : "PE"}`
-                          : actionLabels[o.action]}
+                    {o.power?.outsideCombat
+                      ? "Fora do combate"
+                      : o.power?.viaAction
+                        ? "Usar junto à ação"
+                        : o.power?.passive
+                          ? "Passivo · automático"
+                          : o.power?.blocked
+                            ? "Conferir regra"
+                            : o.pe
+                              ? `${o.pe} ${agent?.determination ? "PD" : "PE"}`
+                              : actionLabels[o.action]}
                     {o.consume ? " · consome 1 item" : ""}
                   </small>
                 </button>
@@ -697,7 +728,9 @@ export default function CombatArena({
                 )}
                 {selected.power?.enemyChoice && (
                   <label>
-                    Inimigo cercado
+                    {selected.power.special === "moshPit"
+                      ? "Inimigo cercado"
+                      : "Alvo da habilidade"}
                     <select
                       value={powerSelection.enemyId || ""}
                       onChange={(ev) =>
@@ -817,14 +850,34 @@ export default function CombatArena({
                       <input
                         type="checkbox"
                         checked={extraAttack}
-                        onChange={(ev) => setExtraAttack(ev.target.checked)}
+                        onChange={(ev) => {
+                          setExtraAttack(ev.target.checked);
+                          setConfirmedHit("");
+                        }}
                       />{" "}
                       Ataque Extra · +2 pontos, uma vez por rodada após atacar
                     </label>
                   )}
+                {followUp && agent && (
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={following}
+                      onChange={(ev) => {
+                        setConfirmedHit(
+                          ev.target.checked ? followUp.hitId : "",
+                        );
+                        setExtraAttack(false);
+                      }}
+                    />
+                    Segurar o Gatilho · confirmo que acertei o ataque anterior.
+                    Atacar o mesmo alvo por {followUp.cost}{" "}
+                    {agent.determination ? "PD" : "PE"}.
+                  </label>
+                )}
                 {agent &&
                   selected.item?.kind === "Ritual" &&
-                  hasPower(agent, "Acelerar Ritual") && (
+                  hasPower(agent, "Acelerar Ritual", combat.rules) && (
                     <label className="check">
                       <input
                         type="checkbox"
@@ -917,6 +970,7 @@ export default function CombatArena({
                   disabled={
                     (!!selected.power?.enemyChoice &&
                       !powerSelection.enemyId) ||
+                    !!selected.power?.viaAction ||
                     !!selected.power?.passive ||
                     !!selected.power?.blocked ||
                     ((!!selected.power?.weaponChoice ||
@@ -937,6 +991,7 @@ export default function CombatArena({
                       selected.effect === "attack",
                       !!selected.item &&
                         weaponType(selected.item) === "Corpo a corpo",
+                      selected.effect === "move",
                     ) ||
                     (selected.target !== "none" && !targetList.length) ||
                     (selected.effect === "custom" && !note.trim()) ||
@@ -951,6 +1006,7 @@ export default function CombatArena({
                       variant,
                       boost,
                       extraAttack,
+                      ...(following ? { followUpHitId: followUp.hitId } : {}),
                       accelerate,
                       ...(name === "surto de adrenalina" ? { grant } : {}),
                       note,

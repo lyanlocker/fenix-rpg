@@ -48,10 +48,13 @@ export type Budget = {
   move: number;
   restricted: number;
   restrictedMove?: number;
+  movementOnly?: number;
   attack: number;
   meleeAttack?: number;
   spentPe: number;
   attacked: boolean;
+  attackCount?: number;
+  latestAttackId?: string;
   ended: boolean;
 };
 export type CombatEffect = {
@@ -123,6 +126,7 @@ export type CombatCommand = {
   variant?: "base" | "discente";
   boost?: number;
   extraAttack?: boolean;
+  followUpHitId?: string;
   accelerate?: boolean;
   grant?: GrantKind;
   eventId?: string;
@@ -173,6 +177,7 @@ const minimumNex: Record<string, number> = {
   estrategista: 40,
   "oficial comandante": 99,
   "ataque extra": 40,
+  "segurar o gatilho": 60,
   "acelerar ritual": 40,
   "iniciativa aprimorada": 10,
   "sempre alerta": 99,
@@ -181,6 +186,7 @@ const minimumNex: Record<string, number> = {
 function eligible(a: Agent, i: Item) {
   return (
     i.quantity > 0 &&
+    !(a.className === "Sobrevivente" && (i.stage || 1) > a.stage) &&
     Math.max(
       i.nex || 0,
       i.kind === "Poder"
@@ -189,10 +195,15 @@ function eligible(a: Agent, i: Item) {
     ) <= a.nex
   );
 }
-export function hasPower(a: Agent, name: string) {
+export function hasPower(
+  a: Agent,
+  name: string,
+  overrides?: Record<string, CombatRule>,
+) {
   return a.inventory.some(
     (i) =>
       i.kind === "Poder" &&
+      !overrides?.[i.id] &&
       normalizeCombatName(combatRuleName(i)) === normalizeCombatName(name) &&
       eligible(a, i),
   );
@@ -243,6 +254,18 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
   if (old?.key !== key && a && e.round === 1) {
     if (hasPower(a, "Iniciativa Aprimorada")) b.move++;
     if (hasPower(a, "Sempre Alerta")) b.standard++;
+    if (
+      a.nex >= 50 &&
+      a.inventory.some(
+        (i) =>
+          i.attuned &&
+          i.kind === "Poder" &&
+          eligible(a, i) &&
+          !e.combatRules?.[i.id] &&
+          normalizeCombatName(combatRuleName(i)) === "velocidade do caos",
+      )
+    )
+      b.movementOnly = 1;
   }
   for (const effect of e.combat?.effects || []) {
     if (
@@ -262,12 +285,53 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
   }
   return b;
 }
+/** Only a rolled attack whose hit the player confirms can continue the sequence. */
+export function firearmFollowUp(
+  events: CombatEvent[],
+  budget: Budget,
+  actorId: string,
+  weaponId: string,
+  targetId?: string,
+) {
+  const last = events.findLast(
+    (x) =>
+      x.turnKey === budget.key &&
+      x.actorId === actorId &&
+      x.itemKind === "Arma" &&
+      x.damageRoll,
+  );
+  if (
+    !last ||
+    (budget.latestAttackId && budget.latestAttackId !== last.id) ||
+    last.sourceItemId !== weaponId ||
+    last.targetIds[0] !== targetId ||
+    !last.rolls.some((roll) => roll.label === "Dano")
+  )
+    return;
+  const count =
+    budget.attackCount ?? countTurnAttacks(events, budget.key, actorId);
+  return { hitId: last.id, cost: 2 * count };
+}
+export function countTurnAttacks(
+  events: CombatEvent[],
+  key: string,
+  actorId: string,
+) {
+  return events.filter(
+    (x) =>
+      x.turnKey === key &&
+      x.actorId === actorId &&
+      x.itemKind === "Arma" &&
+      x.damageRoll,
+  ).length;
+}
 export function actionAvailable(
   b: Budget,
   cost: ActionCost,
   ritual = false,
   attack = false,
   melee = false,
+  moving = false,
 ) {
   if (b.ended) return false;
   const s = b.standard + b.restricted;
@@ -275,7 +339,7 @@ export function actionAvailable(
   return (
     cost === "free" ||
     (cost === "move"
-      ? m + s > 0
+      ? m + s + (moving ? b.movementOnly || 0 : 0) > 0
       : cost === "full"
         ? s > 0 && m + s >= 2
         : s > 0 ||
@@ -332,13 +396,23 @@ export function combatOptions(
     },
     {
       id: "move",
-      name: "Deslocar / interagir",
+      name: "Deslocar-se",
       action: "move",
       pe: 0,
       effect: "move",
       target: "none",
       description:
         "Uma ação de movimento. O mestre acompanha distância e posicionamento.",
+    },
+    {
+      id: "interact",
+      name: "Interagir",
+      action: "move",
+      pe: 0,
+      effect: "generic",
+      target: "none",
+      description:
+        "Interaja com um objeto ou com o ambiente usando uma ação de movimento.",
     },
     {
       id: "free",

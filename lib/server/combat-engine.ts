@@ -40,6 +40,8 @@ import { maxRitualCircle } from "../alternate";
 import { advanceTurn, delayTurn } from "../combat";
 import {
   actionAvailable,
+  firearmFollowUp,
+  countTurnAttacks,
   retainCombatEvents,
   budgetFor,
   combatFace,
@@ -320,8 +322,9 @@ export function executeCombatCommand(
         ritual = false,
         attack = false,
         melee = false,
+        moving = false,
       ) {
-        if (!actionAvailable(budget, cost, ritual, attack, melee))
+        if (!actionAvailable(budget, cost, ritual, attack, melee, moving))
           fail("Esta ação já foi gasta neste turno.");
         const standard = () => {
           if (budget.restricted > 0) budget.restricted--;
@@ -339,7 +342,10 @@ export function executeCombatCommand(
           else if (budget.move > 0) budget.move--;
           else standard();
         };
-        if (cost === "move") movement();
+        if (cost === "move") {
+          if (moving && (budget.movementOnly || 0) > 0) budget.movementOnly!--;
+          else movement();
+        }
         if (cost === "full") {
           standard();
           movement();
@@ -595,11 +601,34 @@ export function executeCombatCommand(
           )
             fail("Ritual indisponível neste NEX.");
           if (command.accelerate) {
-            if (!ritual || !hasPower(face, "Acelerar Ritual"))
+            if (!ritual || !hasPower(face, "Acelerar Ritual", e.combatRules))
               fail("Acelerar Ritual não está disponível.");
             once("Acelerar Ritual", "round");
             action = "free";
             cost += 4;
+          }
+          if (command.followUpHitId) {
+            const follow = firearmFollowUp(
+              ledger.events,
+              budget,
+              p.id,
+              option.item?.id || "",
+              targets[0]?.id,
+            );
+            if (
+              command.extraAttack ||
+              option.effect !== "attack" ||
+              !option.item ||
+              weaponType(option.item) !== "Arma de fogo" ||
+              !hasPower(face, "Segurar o Gatilho", e.combatRules) ||
+              !follow ||
+              follow.hitId !== command.followUpHitId
+            )
+              fail(
+                "Segurar o Gatilho exige o último acerto do turno, com a mesma arma de fogo e o mesmo alvo.",
+              );
+            action = "free";
+            cost += follow.cost;
           }
           if (command.extraAttack) {
             if (
@@ -715,6 +744,7 @@ export function executeCombatCommand(
             !!ritual,
             option.effect === "attack",
             !!option.item && weaponType(option.item) === "Corpo a corpo",
+            option.effect === "move",
           );
           pay(
             cost,
@@ -730,6 +760,8 @@ export function executeCombatCommand(
           event.targetIds = targets.map((t) => t.id);
           event.secret ||= targets.some((t) => t.hidden);
           event.text = `${option.name}${targets.length ? ` → ${targets.map((t) => t.name).join(", ")}` : ""}.`;
+          if (command.followUpHitId)
+            event.text += ` Segurar o Gatilho: acerto anterior confirmado, custo de ${cost} ${face.determination ? "PD" : "PE"}.`;
           if (ritual) {
             const dc =
               10 +
@@ -1098,6 +1130,10 @@ export function executeCombatCommand(
             ledger.effects = e.combat!.effects;
             event.pending = "damage";
             event.text += ` Ataque ${result.total}. Escolha os dados e clique em Rolar dano; o mestre confirma acerto, reações e resistências.`;
+            budget.attackCount =
+              (budget.attackCount ??
+                countTurnAttacks(ledger.events, key, p.id)) + 1;
+            budget.latestAttackId = event.id;
             budget.attacked = true;
           } else if (option.effect === "investigate") {
             let result;

@@ -46,6 +46,8 @@ export type Contribution = PowerModifier & {
 export function powerEffectActive(effect: CombatEffect, e: Encounter) {
   if (!effect.power) return true;
   const key = turnKey(e);
+  if (effect.power.duration === "round")
+    return effect.createdKey.split(":")[0] === String(e.round);
   if (effect.power.duration === "turn") return effect.createdKey === key;
   if (effect.power.duration === "nextTurn")
     return (
@@ -80,8 +82,9 @@ export function passivePowerContributions(
       config?.effect === "power"
         ? configuredPowerRule(config)
         : powerRule(item, a);
-    if (rule.passive && !rule.blocked)
-      result.push(...rule.modifiers.map((m) => ({ ...m, source: item.name })));
+    const permanent = rule.passive ? rule.modifiers : rule.always || [];
+    if (!rule.blocked || !rule.passive)
+      result.push(...permanent.map((m) => ({ ...m, source: item.name })));
   }
   return result;
 }
@@ -123,6 +126,11 @@ export function appliesTo(
     return false;
   if (m.personalOnly && normalizePower(item?.range || "") !== "pessoal")
     return false;
+  if (m.saves) {
+    const resistance = normalizePower(item?.resistance || "").split(/[^a-z]+/);
+    if (!m.saves.some((s) => resistance.includes(normalizePower(s))))
+      return false;
+  }
   if (m.scope === "all") return true;
   if (m.scope === "ritual") return item?.kind === "Ritual";
   if (item?.kind !== "Arma") return false;

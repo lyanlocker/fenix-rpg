@@ -54,6 +54,7 @@ const schema = z
         variant: z.enum(["base", "discente"]).optional(),
         boost: z.number().int().min(0).max(3).optional(),
         extraAttack: z.boolean().optional(),
+        followUpHitId: z.string().min(1).max(100).optional(),
         accelerate: z.boolean().optional(),
         grant: z.enum(["standard", "move", "attack", "free"]).optional(),
         eventId: z.string().max(100).optional(),

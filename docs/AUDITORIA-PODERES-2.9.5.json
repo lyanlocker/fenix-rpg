@@ -1,11 +1,12 @@
 {
   "total": 933,
   "counts": {
-    "efeito_estruturado": 72,
-    "resolucao_do_mestre": 804,
+    "efeito_estruturado": 118,
+    "fora_do_combate": 43,
     "integrado_passivo": 13,
-    "conferir_fonte_ou_execucao": 39,
-    "integrado": 5
+    "resolucao_do_mestre": 714,
+    "integrado": 7,
+    "conferir_fonte_ou_execucao": 38
   },
   "observacao": "Efeito estruturado não significa automação integral de todas as cláusulas. Conferir a documentação e testes. Não é uma revisão semântica completa dos 933 textos.",
   "records": [
@@ -22,10 +23,10 @@
       "id": "book-b745f60c48f74b73",
       "nome": "Armamento Pesado",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-b27b52dded382194",
@@ -103,10 +104,10 @@
       "id": "book-a88351a778d9f7fa",
       "nome": "Proteção Pesada",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-023cce5fb65d1642",
@@ -130,10 +131,10 @@
       "id": "book-b8c3ddeb91ec6278",
       "nome": "Segurar o Gatilho",
       "livro": "01",
-      "status": "conferir_fonte_ou_execucao",
+      "status": "integrado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "A descrição de Segurar o Gatilho está incompleta. Confira o custo progressivo e a sequência de ataques na fonte."
+      "aviso": "Role o dano do ataque que acertou. Selecione a mesma arma de fogo e o mesmo alvo. Confirme o acerto para usar Segurar o Gatilho. O custo é 2 PE ou PD por ataque já feito no turno."
     },
     {
       "id": "book-e5efc41ec246d730",
@@ -175,55 +176,55 @@
       "id": "book-526fc2bc4cb48086",
       "nome": "Transcender",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-7afa220e89626d99",
       "nome": "Treinamento em Perícia",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-8fb9bc2fb4b37ec0",
       "nome": "Aumento de Atributo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-f594dff47b0a9b80",
       "nome": "Grau de Treinamento",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-35f6559723c21554",
       "nome": "Versatilidade",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-60578b55c6632afb",
       "nome": "A Favorita",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-fc45d30b7312da49",
@@ -463,10 +464,10 @@
       "id": "book-799594be0abe3c72",
       "nome": "Mochila de Utilidades",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-8d538cbdafb5f4a8",
@@ -499,10 +500,10 @@
       "id": "book-90fbee19586de3fd",
       "nome": "Ninja Urbano",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-c1f6ed6713915d40",
@@ -535,37 +536,37 @@
       "id": "book-334ea1c460adce72",
       "nome": "Transcender",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-103a3f88533fe1d1",
       "nome": "Treinamento em Perícia",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-ede57b0500f13576",
       "nome": "Aumento de Atributo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-e133d4b8a5cbdfb4",
       "nome": "Grau de Treinamento",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-9cdc29508555acc3",
@@ -580,10 +581,10 @@
       "id": "book-5f72507f801760f7",
       "nome": "Versatilidade",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-fa0184f02063c3b1",
@@ -733,10 +734,10 @@
       "id": "book-99381f18ba23edb0",
       "nome": "Inventário Otimizado",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-76c2e484b96fd55b",
@@ -769,10 +770,10 @@
       "id": "book-0c70df49b74a5d3d",
       "nome": "Escolhido pelo Outro Lado",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-c5cd288775571230",
@@ -787,10 +788,10 @@
       "id": "book-bba8a5402c9b1131",
       "nome": "Criar Selo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-24af2af8d72952ba",
@@ -904,46 +905,46 @@
       "id": "book-736e44a91b1eab43",
       "nome": "Transcender",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-c64238886b6037ed",
       "nome": "Treinamento em Perícia",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-47783402760d787b",
       "nome": "Aumento de Atributo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-97411b8afd1d02c9",
       "nome": "Grau de Treinamento",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-bdbb21063ae6a4f3",
       "nome": "Versatilidade",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-dd80aabc86100db2",
@@ -958,10 +959,10 @@
       "id": "book-2f3ea216eab278d9",
       "nome": "Acelerar Ritual",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "integrado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Na ação de conjurar o ritual, marque Acelerar Ritual para gastar mais 4 PE ou PD e usar uma ação livre, uma vez por rodada."
     },
     {
       "id": "book-2befc8f727050272",
@@ -976,10 +977,10 @@
       "id": "book-b2ddd467092cbde5",
       "nome": "Canalizar o Medo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-a05f125bf6e9d5c9",
@@ -1012,19 +1013,19 @@
       "id": "book-c7f46159bb892019",
       "nome": "Medo Tangível",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-e63e5821c6c185d8",
       "nome": "Saber Ampliado",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-026280406c5d39ef",
@@ -1048,10 +1049,10 @@
       "id": "book-d73a597067e970d6",
       "nome": "Conhecendo o Medo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-78b76e69d9f9ceae",
@@ -1084,10 +1085,10 @@
       "id": "book-55d2ccb6a597bb43",
       "nome": "Presença do Medo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-fec1e05b3a358323",
@@ -1120,19 +1121,19 @@
       "id": "book-eac2fa74cff0f15a",
       "nome": "Lâmina do Medo",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-2a26495c0efb0904",
       "nome": "Aprender Ritual",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-38390ab3c4672097",
@@ -1147,10 +1148,10 @@
       "id": "book-3299dd7126e02cfb",
       "nome": "Expansão de Conhecimento",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-6c4e17334c6331f7",
@@ -1408,10 +1409,10 @@
       "id": "book-67c8f2e425827323",
       "nome": "Agente de Saúde",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-e0170f105b73cd45",
@@ -1480,10 +1481,10 @@
       "id": "book-9650d928e828be48",
       "nome": "Chef",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-589bec64cb4d4c9e",
@@ -1633,10 +1634,10 @@
       "id": "book-bfb9c125c8eedff6",
       "nome": "Gaudério Abutre",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-69340a9c61a5c59f",
@@ -1705,19 +1706,19 @@
       "id": "book-4e0b29c96c32f90a",
       "nome": "Magnata",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-b8df2fd664e76a2e",
       "nome": "Mateiro",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-e69335d40cb0c91c",
@@ -1795,10 +1796,10 @@
       "id": "book-424bd126c8930865",
       "nome": "Professor",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-17f60033bcd8e1a5",
@@ -1867,10 +1868,10 @@
       "id": "book-50227920a9109b2d",
       "nome": "T.I.",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-77c326e462a6a285",
@@ -1894,10 +1895,10 @@
       "id": "book-7b8cf2ea6dbf63d5",
       "nome": "Universitário",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-83245df5d9cd6a63",
@@ -2038,10 +2039,10 @@
       "id": "book-f01c38f5d7105685",
       "nome": "Disparada",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 1,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Na investida, substitua o bônus habitual de +1d20 por +5 no teste."
     },
     {
       "id": "book-ad71d6c46ec25c44",
@@ -2263,10 +2264,10 @@
       "id": "book-d59fc9d75c4ec274",
       "nome": "Precisão",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-a388f6c8ab69332f",
@@ -2398,10 +2399,10 @@
       "id": "book-6cdbe37988fe31b5",
       "nome": "Finalização Brutal",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-a17b3fc42cb5959a",
@@ -3127,10 +3128,10 @@
       "id": "book-7026522d1ea83540",
       "nome": "Percepção Holística",
       "livro": "05",
-      "status": "resolucao_do_mestre",
-      "acao": "move",
+      "status": "efeito_estruturado",
+      "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Use uma ação de movimento para examinar a Membrana. O mestre informa o resultado."
     },
     {
       "id": "book-8390957d0c9ead28",
@@ -3235,19 +3236,19 @@
       "id": "book-7c4e7c7a795b3814",
       "nome": "Fugindo Para Viver",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-8bf71a69b730d1c0",
       "nome": "Tá Tudo Bem",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-be612adccc1ba854",
@@ -4630,10 +4631,10 @@
       "id": "book-bc828971ad4b9066",
       "nome": "Arma Amada",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Some +5 ao resistir a uma tentativa de separar você dessa arma."
     },
     {
       "id": "book-d58a143e73cba4ce",
@@ -4720,10 +4721,10 @@
       "id": "book-6aba5fd25aaa960d",
       "nome": "Grudar o Cano",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-8b0a5330d62ccd2b",
@@ -4756,10 +4757,10 @@
       "id": "book-b77c01e2ac0f43f9",
       "nome": "Lutador Marcial",
       "livro": "05",
-      "status": "resolucao_do_mestre",
-      "acao": "full",
+      "status": "efeito_estruturado",
+      "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Resolva a imobilização com uma ação completa e o teste oposto indicado na descrição."
     },
     {
       "id": "book-17b680ab6123ecea",
@@ -4783,19 +4784,19 @@
       "id": "book-fac74dc578a7289a",
       "nome": "Tanque Camuflado",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-c91e39da09f8f537",
       "nome": "Velocidade Super-humana",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "O mestre verifica o trajeto e aplica Desprevenido ao próximo alvo quando cabível."
     },
     {
       "id": "book-60cc2154215c0d46",
@@ -5017,10 +5018,10 @@
       "id": "book-a097b375aacb936d",
       "nome": "Conjuração Corporal",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
-      "peBase": 2,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "peBase": 0,
+      "aviso": "A substituição opcional do atributo por PRE no teste de resistência ainda depende do mestre."
     },
     {
       "id": "book-df8b319898d48792",
@@ -5116,10 +5117,10 @@
       "id": "book-c6b049550b63ef6a",
       "nome": "Letrado No Oculto",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
-      "peBase": 1,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "peBase": 0,
+      "aviso": "A rolagem adicional depois de ver o resultado do teste ainda depende do mestre."
     },
     {
       "id": "book-4cc1cadca2f0c706",
@@ -5422,10 +5423,10 @@
       "id": "book-3f22cecb9097341b",
       "nome": "Palavras do Bem",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-4bfceca928e8cc4d",
@@ -5512,10 +5513,10 @@
       "id": "book-7fdc3f2f8414988e",
       "nome": "Bênção Luminosa",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-418c4996fa2d28fd",
@@ -5674,10 +5675,10 @@
       "id": "book-788bdd38e398ccf8",
       "nome": "Treinamento Caótico",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-7b4b3d761ed80ccf",
@@ -5701,10 +5702,10 @@
       "id": "book-87eb93f146110419",
       "nome": "Velocidade do Caos",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Confira na ficha o acréscimo de AGI aos PE totais. Com afinidade, use Deslocar-se para gastar seu deslocamento extra no primeiro turno."
     },
     {
       "id": "book-fe020271b11cdca0",
@@ -5755,10 +5756,10 @@
       "id": "book-d30f0101f122db8e",
       "nome": "Conforto Obscuro",
       "livro": "05",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-5ff8411064b3eb9f",
@@ -6160,10 +6161,10 @@
       "id": "book-954ed999132c2ef6",
       "nome": "Correria Desesperada",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-562450c4b1ab53e6",
@@ -6313,10 +6314,10 @@
       "id": "book-b0d3bd2642e90f62",
       "nome": "Contatos Oportunos",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-72835fcb4b148d39",
@@ -6421,10 +6422,10 @@
       "id": "book-8206f76e7574639c",
       "nome": "Fuga Obstinada",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Em perseguição, a presa pode acumular até quatro falhas."
     },
     {
       "id": "book-aef72d8d0b8401fe",
@@ -6511,10 +6512,10 @@
       "id": "book-dad22efefba7a791",
       "nome": "Minha Dor me Impulsiona",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 1,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-9bc589f2067bf61f",
@@ -6718,10 +6719,10 @@
       "id": "book-315d91aea887f09d",
       "nome": "Acrobático",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-b8cddfc704314380",
@@ -6736,10 +6737,10 @@
       "id": "book-a753938acbb36500",
       "nome": "Atlético",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-d4bf7d145bd28810",
@@ -6754,19 +6755,19 @@
       "id": "book-ce3b203207d1821c",
       "nome": "Dedos Ágeis",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-391ce6bbb7c4fd16",
       "nome": "Detector de Mentiras",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-fa777a374d351587",
@@ -6808,37 +6809,37 @@
       "id": "book-9ba19e31ec4adc47",
       "nome": "Informado",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-c579ab4da8b50b09",
       "nome": "Interrogador",
       "livro": "07",
-      "status": "resolucao_do_mestre",
-      "acao": "standard",
+      "status": "efeito_estruturado",
+      "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-7c604ec76882d493",
       "nome": "Mentiroso Nato",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-6947d2e37a40c5d3",
       "nome": "Observador",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-a54a7f57299f6213",
@@ -6880,28 +6881,28 @@
       "id": "book-c3f3f5bc4908a0a4",
       "nome": "Personalidade Esotérica",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-e60eadc6ab4a46ef",
       "nome": "Persuasivo",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-6f21821ead3a65a5",
       "nome": "Pesquisador Científico",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-fd78392c129727ac",
@@ -6952,19 +6953,19 @@
       "id": "book-4bc6801363c81426",
       "nome": "Talentoso",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-071b5365b7f2a9f8",
       "nome": "Teimosia Obstinada",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 2,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-ae1d7119a2d88fb2",
@@ -6979,28 +6980,28 @@
       "id": "book-5d55eb7ebdc25b92",
       "nome": "Sentidos Aguçados",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-149add1bbd3efefd",
       "nome": "Sobrevivencialista",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-0727a023c7866135",
       "nome": "Sorrateiro",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este ajuste vale na sala de combate. Consulte a descrição para os outros usos do poder."
     },
     {
       "id": "book-04a006dc48406203",
@@ -7141,28 +7142,28 @@
       "id": "book-91e0312045a10131-power",
       "nome": "Ingrediente Secreto",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "A preparação desta habilidade exige um interlúdio. Confira na descrição os custos e a duração do benefício já preparado."
     },
     {
       "id": "book-f352cb2d6157b76f-power",
       "nome": "O Crime Compensa",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-664208eda940b5df-power",
       "nome": "Traços do Outro Lado",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-f9d0e3bf3dea8676-power",
@@ -7177,10 +7178,10 @@
       "id": "book-90b0cfad32185b5a-power",
       "nome": "Ferramenta Favorita",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-5459edb68fee926c-power",
@@ -7213,10 +7214,10 @@
       "id": "book-e2ef137a1438159f-power",
       "nome": "Patrocinador da Ordem",
       "livro": "01",
-      "status": "resolucao_do_mestre",
+      "status": "fora_do_combate",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Este benefício é escolhido ou registrado na ficha durante a progressão ou a preparação da missão."
     },
     {
       "id": "book-5ec59adbd6048a89-power",
@@ -8212,10 +8213,10 @@
       "id": "book-a31fc54135ca6d15-power",
       "nome": "Técnicas de Contenção",
       "livro": "06",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 2,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-401a8621c39451fb-power",
@@ -8230,10 +8231,10 @@
       "id": "book-6ff01c7b95ad8c84-power",
       "nome": "Companheiro Animal",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "Os demais benefícios do aliado e os efeitos da perda dele dependem do mestre."
     },
     {
       "id": "book-09223618fad6cf79-power",
@@ -8257,10 +8258,10 @@
       "id": "book-3ce9d84167c53e45-power",
       "nome": "Poder da Amizade",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-2770742a6d42336a-power",
@@ -8293,10 +8294,10 @@
       "id": "book-8d586d865e39bfdf-power",
       "nome": "Mutação",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "O mestre considera RD 2 ao confirmar o dano."
     },
     {
       "id": "book-6d212bea05fb1877-power",
@@ -8338,10 +8339,10 @@
       "id": "book-9cb31a738fbcceea-power",
       "nome": "Luto Habitual",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 2,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     },
     {
       "id": "book-131757dd1ff0137f-power",
@@ -8392,19 +8393,19 @@
       "id": "book-12350a5d503e51f1-power",
       "nome": "Luta ou Fuga",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 0,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": "O mestre acompanha os 2 PE temporários quando surge a referência à premonição."
     },
     {
       "id": "book-3a90b6c307aa08a2-power",
       "nome": "Encontrar a Verdade",
       "livro": "07",
-      "status": "resolucao_do_mestre",
+      "status": "efeito_estruturado",
       "acao": "free",
       "peBase": 2,
-      "aviso": "Esta habilidade precisa de uma regra específica do mestre para seus efeitos. O texto e os custos ficam registrados; configure os bônus em Efeitos de itens e habilidades antes de automatizá-los."
+      "aviso": null
     }
   ]
 }

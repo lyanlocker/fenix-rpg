@@ -37,6 +37,7 @@ export type PowerModifier = {
   skill?: string;
   element?: string;
   personalOnly?: boolean;
+  saves?: string[];
 };
 export type PowerDuration =
   | "attack"
@@ -44,6 +45,7 @@ export type PowerDuration =
   | "test"
   | "turn"
   | "nextTurn"
+  | "round"
   | "scene";
 export type PowerChoice = {
   id: string;
@@ -54,6 +56,9 @@ export type PowerRule = {
   action: ActionCost;
   pe: number;
   passive: boolean;
+  always?: PowerModifier[];
+  viaAction?: string;
+  outsideCombat?: boolean;
   target: "self" | "ally" | "any";
   duration: PowerDuration;
   expires?: "nextTurnEnd";
@@ -130,15 +135,13 @@ export function modifierLabel(m: PowerModifier) {
     unarmed: " desarmado",
     ritual: " de ritual",
   };
-  return `${m.amount.startsWith("-") ? "" : "+"}${m.amount} ${m.skill || m.attribute || statNames[m.stat]}${scope[m.scope]}${m.element ? ` (${m.element})` : ""}${m.personalOnly ? " · alcance pessoal, alvo você" : ""}`;
+  return `${m.amount.startsWith("-") ? "" : "+"}${m.amount} ${m.skill || m.attribute || statNames[m.stat]}${scope[m.scope]}${m.element ? ` (${m.element})` : ""}${m.saves ? " · resistência: " + m.saves.join(" ou ") : ""}${m.personalOnly ? " · alcance pessoal, alvo você" : ""}`;
 }
 const badSources: Record<string, string> = {
   "book-097072eee969e547":
     "A descrição de Ser Expurgado mistura colunas de elementos. O mestre precisa conferir a fonte antes de definir o efeito.",
   "book-11d1a0dddcaf9ec5":
     "A descrição de Ser Mutilado mistura colunas. O mestre precisa conferir a fonte antes de definir o efeito.",
-  "book-b8c3ddeb91ec6278":
-    "A descrição de Segurar o Gatilho está incompleta. Confira o custo progressivo e a sequência de ataques na fonte.",
 };
 function scopeFor(text: string): PowerScope {
   return /ritua/.test(text)
@@ -976,6 +979,7 @@ export function resolvePower(
 ): ResolvedPower {
   const rule = configured || powerRule(item, a);
   if (rule.blocked) throw Error(rule.blocked);
+  if (rule.viaAction) throw Error(rule.viaAction);
   if (rule.passive)
     throw Error(
       "Este poder é passivo e já está aplicado; não precisa ativá-lo novamente.",
@@ -1166,9 +1170,15 @@ export function configuredPowerRule(config: {
       throw Error("Dados e crítico exigem um inteiro positivo de até 99.");
   }
   if (
-    !["attack", "ritual", "test", "turn", "nextTurn", "scene"].includes(
-      config.duration || "",
-    )
+    ![
+      "attack",
+      "ritual",
+      "test",
+      "turn",
+      "nextTurn",
+      "round",
+      "scene",
+    ].includes(config.duration || "")
   )
     throw Error("Escolha a duração do efeito.");
   if (!["self", "ally", "any"].includes(config.target))

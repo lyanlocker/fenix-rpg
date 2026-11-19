@@ -35,7 +35,13 @@ export default function CombatPowerControls({
   } catch {}
   return (
     <div className="arena-power-controls">
-      {rule.passive && (
+      {rule.viaAction && <p className="hint">{rule.viaAction}</p>}
+      {!!rule.always?.length && (
+        <p className="hint">
+          Sempre aplicado: {rule.always.map(modifierLabel).join(", ")}.
+        </p>
+      )}
+      {rule.passive && !rule.viaAction && (
         <p className="hint">
           Passivo: já é considerado automaticamente quando se aplica. Não
           consome ação nem PE.
@@ -246,6 +252,7 @@ export default function CombatPowerControls({
                 ritual: "No próximo ritual compatível",
                 test: "No próximo teste compatível",
                 turn: "Até terminar este turno",
+                round: "Até o fim da rodada atual",
                 nextTurn: "Até o início do seu próximo turno",
                 scene: "Até encerrar o efeito ou o combate",
               }[rule.duration]
@@ -268,8 +275,7 @@ export default function CombatPowerControls({
               onChange({ ...value, confirmed: e.target.checked })
             }
           />
-          Confirmo que os requisitos e o gatilho descritos na habilidade foram
-          atendidos.
+          {rule.condition} Confirmo que o requisito foi atendido.
         </label>
       )}
       {rule.warning && <p className="hint">{rule.warning}</p>}
