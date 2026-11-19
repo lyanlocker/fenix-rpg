@@ -1,6 +1,6 @@
 # Fênix 2.9.5 — Habilidades e poderes no combate
 
-Estado: implementação em revisão. A versão não deve ser descrita como automação integral do catálogo.
+Esta versão inclui automação parcial do catálogo. A tabela de cobertura identifica as entradas que ainda exigem conferência.
 
 ## O que foi implementado
 
@@ -62,6 +62,12 @@ Essas regras ficam no encontro, usam a ficha real do personagem e são validadas
 
 Ainda dependem de resolução específica: reações fora do turno, substituições complexas de dados (como Destino Selado), muitos estilos do Arsenal, efeitos com testes opostos, resistências condicionais, mudanças permanentes da ficha e descrições incompletas. O botão de registro de uma regra não estruturada registra seus custos e uma pendência para o mestre; não concede bônus numéricos inventados.
 
+## Cadastro de habilidades na ficha do jogador
+
+Na aba **Poderes**, use **Biblioteca** para selecionar um poder ou **Adicionar** para escrever uma habilidade própria. Dentro da biblioteca da ficha, **Criar e adicionar à ficha** também guarda o conteúdo na biblioteca local. A janela aguarda o salvamento e exibe a mensagem do servidor se houver um conflito.
+
+Fichas existentes podem conter as perícias e a descrição original do benefício de origem. A sincronização preserva esses campos ao comparar o inventário com a versão salva. O teste de regressão cobre o cadastro de poderes de catálogo e próprios em sequência e a reabertura pelo jogador. Uma transação com ficha fictícia no banco confirmou a rejeição do inventário truncado e o salvamento com os campos completos.
+
 ## Compatibilidade e dados
 
 Os efeitos usam campos opcionais no registro do combate. Não há migração destrutiva de fichas, inventário ou backups. A única alteração de banco é `database/combat-powers.sql`, que impede enviar aos jogadores referências de inimigos ocultos em efeitos específicos de alvo. Ela mantém os tokens, permissões e controles de revisão existentes.
@@ -70,7 +76,7 @@ Poderes renomeados com NEX ou escolhas são reconhecidos pelo identificador e co
 
 ## Verificação
 
-A revisão passou em **197 testes**, na checagem TypeScript e na compilação de produção. A interação da arena também foi verificada em DOM simulado com fichas fictícias, desde a seleção do poder até a cobrança do segundo ataque. A inspeção visual em navegador continua pendente.
+A revisão passou em **199 testes**, na checagem TypeScript e na compilação de produção. A interação da arena também foi verificada em DOM simulado com fichas fictícias, desde a seleção do poder até a cobrança do segundo ataque. A inspeção visual em navegador continua pendente.
 
 - Testes do motor: custos, escolhas, escopo de arma/alvo, crítico, consumo, duração, ações extras, impossibilidade de repetir dano, comandos fora do turno e ausência de mutação após erro.
 - Regressões: dados editáveis, sustentação de Velocidade Mortal, criação livre de fichas, backups, imagens, proteção de dados ocultos e salvamento concorrente.

@@ -21,6 +21,10 @@ export type ItemEnhancement = {
 };
 export type Item = {
   image?: string;
+  skillsText?: string;
+  grantName?: string;
+  grantNotes?: string;
+  version?: number;
   id: string;
   name: string;
   kind: "Item" | "Arma" | "Ritual" | "Poder";

@@ -2,7 +2,7 @@
 
 Aplicação Next.js/React para fichas de Ordem Paranormal. O jogo e as fichas não exigem conta. O envio de ameaças, imagens e backups ao GitHub tem conexão administrativa exclusiva do proprietário.
 
-Em preparação: **2.9.5 — Habilidades e poderes no combate**. Seleção de poderes, efeitos numéricos com custos e durações, e regras configuráveis pelo mestre. A automação do catálogo ainda é parcial: consulte o [estado e os limites desta implementação](docs/FENIX-2.9.5.md).
+Atualização **2.9.5 — Habilidades e poderes no combate**. A ficha compartilhada preserva os dados de origem ao adicionar um poder. A sala de combate aplica os custos, durações e efeitos das habilidades implementadas. A automação do catálogo ainda é parcial: consulte o [estado e os limites desta implementação](docs/FENIX-2.9.5.md).
 
 Atualização **2.9 — Arquivo de fichas e símbolos**: exclusão pelo mestre, backups criptografados e restauráveis no GitHub, símbolos em 769 registros de rituais e imagens personalizadas para rituais, armas e equipamentos. As imagens somam 29,04 MB. Veja o [guia de uso e validação](docs/FENIX-2.9.md) e a [cobertura das fontes](docs/RITUAIS-ILUSTRADOS.md).
 
