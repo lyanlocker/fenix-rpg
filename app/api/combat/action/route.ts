@@ -22,6 +22,18 @@ const schema = z
     actorId: z.string().uuid().optional(),
     command: z
       .object({
+        power: z
+          .object({
+            choice: z.string().max(100).optional(),
+            choices: z.array(z.string().max(100)).max(5).optional(),
+            steps: z.number().int().min(1).max(20).optional(),
+            attackSteps: z.number().int().min(0).max(20).optional(),
+            confirmed: z.boolean().optional(),
+            weaponId: z.string().max(100).optional(),
+            enemyId: z.string().uuid().optional(),
+          })
+          .strict()
+          .optional(),
         kind: z.enum([
           "use",
           "end",
@@ -37,10 +49,12 @@ const schema = z
         damageDice: z.string().trim().min(1).max(80).optional(),
         skipDamage: z.boolean().optional(),
         optionId: z.string().max(200).optional(),
+        skill: z.string().max(100).optional(),
         targetIds: z.array(z.string().uuid()).max(100).optional(),
         variant: z.enum(["base", "discente"]).optional(),
         boost: z.number().int().min(0).max(3).optional(),
         extraAttack: z.boolean().optional(),
+        followUpHitId: z.string().min(1).max(100).optional(),
         accelerate: z.boolean().optional(),
         grant: z.enum(["standard", "move", "attack", "free"]).optional(),
         eventId: z.string().max(100).optional(),

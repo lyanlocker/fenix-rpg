@@ -1,8 +1,10 @@
+import { combatSkillAttribute, combatRuleName } from "./combat-metadata";
 import {
   check,
   die,
   effectiveAttributes,
   skillBonus,
+  skillAttributes,
   type Agent,
   type Item,
 } from "./rules";
@@ -82,7 +84,10 @@ export function weaponRollSuggestion(a: Agent, item: Item) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
   const martial = a.inventory.some(
-    (i) => i.kind === "Poder" && i.quantity > 0 && i.name === "Artista Marcial",
+    (i) =>
+      i.kind === "Poder" &&
+      i.quantity > 0 &&
+      combatRuleName(i) === "Artista Marcial",
   );
   const agile =
     melee &&
@@ -92,9 +97,11 @@ export function weaponRollSuggestion(a: Agent, item: Item) {
       (item.id === "unarmed" && martial));
   const skill = item.attackSkill || (melee ? "Luta" : "Pontaria");
   const attr =
-    skill === "Pontaria" || (agile && attributes.AGI > attributes.FOR)
-      ? "AGI"
-      : "FOR";
+    skill !== "Luta" && skill !== "Pontaria" && skillAttributes[skill]
+      ? combatSkillAttribute(a, skill)
+      : skill === "Pontaria" || (agile && attributes.AGI > attributes.FOR)
+        ? "AGI"
+        : "FOR";
   const bonus = skillBonus(a, skill).total + weaponAttackBonus(item);
   let damage = weaponDamage(item);
   if (melee) {
@@ -108,5 +115,23 @@ export function weaponRollSuggestion(a: Agent, item: Item) {
     mode: (attributes[attr] === 0 ? "lowest" : "highest") as AttackMode,
     damage,
     skill,
+  };
+}
+
+/** Bonus d20 adjust the pool, including the zero-attribute lowest-die rule. */
+export function adjustedAttackPool(
+  expression: string,
+  mode: AttackMode,
+  delta: number,
+) {
+  const input = parseAttackDice(expression);
+  if (!delta) return { expression, mode };
+  const value = (mode === "lowest" ? 2 - input.count : input.count) + delta;
+  const count = value > 0 ? value : 2 - value;
+  const result = `${count}d20${input.bonus >= 0 ? "+" : ""}${input.bonus}`;
+  parseAttackDice(result);
+  return {
+    expression: result,
+    mode: (value > 0 ? "highest" : "lowest") as AttackMode,
   };
 }

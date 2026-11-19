@@ -2,8 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { newAgent } from "../lib/rules";
 import { agentPatch, replaceInventoryItem } from "../lib/agent-patch";
-import { publishSharedAgent, saveSharedAgent } from "../lib/share";
+import {
+  createSharedAgentSync,
+  publishSharedAgent,
+  saveSharedAgent,
+} from "../lib/share";
 import { reconcileMasterEncounters } from "../lib/shared-combat";
+import { addBenefits, bookCatalog, characterOptions } from "../lib/books";
+import { validateAgentImport } from "../lib/validation";
 import type { Encounter } from "../lib/model";
 
 test("sheet patches include only changed fields, including removed optional values", () => {
@@ -195,4 +201,78 @@ test("an item editor preserves other changes and rejects changed or consumed ite
   );
   assert.throws(() => replaceInventoryItem([], edited, original), /removido/);
   assert.throws(() => replaceInventoryItem([original], original), /mudou/);
+});
+
+test("player can add a catalog power and a homebrew to a shared sheet with an origin grant, then reload", async () => {
+  const base = newAgent("Agente de teste");
+  const origin = characterOptions.find(
+    (o) =>
+      o.subtype === "Origem" && o.grantName && o.grantNotes && o.skillsText,
+  )!;
+  base.originId = origin.id;
+  const published = addBenefits(base);
+  let saved = structuredClone(published);
+  const power = bookCatalog.find(
+    (i) => i.kind === "Poder" && i.name === "Golpe Pesado",
+  )!;
+  const token = "b".repeat(64);
+  const previous = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const args = JSON.parse(String(init?.body));
+    assert.equal(args.share_token, token);
+    if (String(url).endsWith("/fenix_sync_shared_agent"))
+      return Response.json({
+        versions: {},
+        unchanged: false,
+        agent: saved,
+        portraits: { main: "" },
+      });
+    assert.ok(String(url).endsWith("/fenix_patch_shared_agent"));
+    // Same JSON equality check as fenix_patch_shared_agent.
+    assert.deepEqual(args.expected_data.inventory, saved.inventory);
+    saved = { ...saved, ...args.changed_data };
+    return Response.json({ agent: saved });
+  };
+  try {
+    const load = async () =>
+      (await createSharedAgentSync(base.id, token)())!.agent!;
+    let sheet = await load();
+    for (const item of [
+      { ...power, catalogId: power.id, id: crypto.randomUUID() },
+      {
+        ...power,
+        id: crypto.randomUUID(),
+        name: "Habilidade da mesa",
+        source: "Conteúdo próprio",
+        version: 1,
+      },
+    ]) {
+      await saveSharedAgent(
+        { ...sheet, inventory: [...sheet.inventory, item] },
+        token,
+        sheet,
+      );
+      sheet = await load();
+      assert.deepEqual(sheet.inventory.at(-1), item);
+    }
+    assert.deepEqual(
+      sheet.inventory.slice(0, published.inventory.length),
+      published.inventory,
+    );
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
+test("all catalog powers retain their metadata through shared sheet validation", () => {
+  const base = newAgent();
+  const powers = bookCatalog.filter((i) => i.kind === "Poder");
+  for (let offset = 0; offset < powers.length; offset += 500) {
+    const inventory = powers.slice(offset, offset + 500);
+    const parsed = validateAgentImport({
+      version: 1,
+      agent: { ...base, inventory },
+    });
+    assert.deepEqual(parsed.inventory, inventory);
+  }
 });

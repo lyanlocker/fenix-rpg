@@ -1087,47 +1087,46 @@ export default function CharacterSheet({ id }: { id: string }) {
         <CatalogPicker
           kind={catalog}
           onClose={() => setCatalog(null)}
-          onChoose={(i) =>
-            void run(async () => {
-              if (
-                otherFace &&
-                faceAvailable &&
-                i.kind === "Ritual" &&
-                !i.circle
-              ) {
-                setCatalog(null);
-                openItem(i);
-                game.setNotice(
-                  "Defina o círculo deste ritual antes de adicioná-lo à face NEX 35%.",
-                );
-                return;
-              }
-              if (
-                otherFace &&
-                faceAvailable &&
-                !isAllowedAtNex(i, a.className, 35)
-              )
-                throw Error(
-                  "Este ritual ou poder não está disponível no NEX 35%.",
-                );
-              const type = accessoryType(i);
-              const worn = activeAccessories(a).filter(
-                (entry) => accessoryType(entry) === "Vestimenta",
-              ).length;
-              const added = type
-                ? {
-                    ...i,
-                    accessoryType: type,
-                    equipped: type !== "Vestimenta" || worn < 2,
-                  }
-                : i;
-              await save({ inventory: [...agent.inventory, added] });
-              if (type)
-                game.setNotice(
-                  `Acessório adicionado. Edite ${added.name} para escolher a perícia e o bônus.`,
-                );
-            })
-          }
+          onChoose={async (i) => {
+            if (
+              otherFace &&
+              faceAvailable &&
+              i.kind === "Ritual" &&
+              !i.circle
+            ) {
+              setCatalog(null);
+              openItem(i);
+              game.setNotice(
+                "Defina o círculo deste ritual antes de adicioná-lo à face NEX 35%.",
+              );
+              return;
+            }
+            if (
+              otherFace &&
+              faceAvailable &&
+              !isAllowedAtNex(i, a.className, 35)
+            )
+              throw Error(
+                "Este ritual ou poder não está disponível no NEX 35%.",
+              );
+            const type = accessoryType(i);
+            const worn = activeAccessories(a).filter(
+              (entry) => accessoryType(entry) === "Vestimenta",
+            ).length;
+            const added = type
+              ? {
+                  ...i,
+                  accessoryType: type,
+                  equipped: type !== "Vestimenta" || worn < 2,
+                }
+              : i;
+            await save({ inventory: [...agent.inventory, added] });
+            game.setNotice(
+              type
+                ? `Acessório adicionado. Edite ${added.name} para escolher a perícia e o bônus.`
+                : `${added.name} adicionado à ficha.`,
+            );
+          }}
         />
       )}
       {curseTarget && (

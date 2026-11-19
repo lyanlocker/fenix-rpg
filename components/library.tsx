@@ -13,7 +13,7 @@ export function LibraryContent({
   onChoose,
 }: {
   kind?: Item["kind"];
-  onChoose?: (i: Item) => void;
+  onChoose?: (i: Item) => Promise<void>;
 }) {
   const game = useGame(),
     [q, setQ] = useState(""),
@@ -167,7 +167,7 @@ export function LibraryContent({
           }
         >
           <Plus size={16} />
-          Criar conteúdo
+          {onChoose ? "Criar e adicionar à ficha" : "Criar conteúdo"}
         </button>
         <button onClick={() => input.current?.click()}>
           <Upload size={16} />
@@ -209,10 +209,12 @@ export function LibraryContent({
                 <button
                   className="primary"
                   onClick={() =>
-                    onChoose({
+                    void onChoose({
                       ...i,
                       catalogId: i.catalogId || i.id,
                       id: crypto.randomUUID(),
+                    }).catch(() => {
+                      /* The picker displays the save error. */
                     })
                   }
                 >
@@ -267,13 +269,20 @@ export function LibraryContent({
         <ItemForm
           item={editing}
           onClose={() => setEditing(null)}
-          onSave={async (i) =>
-            game.save("brews", {
+          onSave={async (i) => {
+            const brew = {
               ...i,
               source: i.source || "Conteúdo próprio",
               version: 1,
-            })
-          }
+            };
+            if (onChoose)
+              await onChoose({
+                ...brew,
+                id: crypto.randomUUID(),
+                catalogId: brew.id,
+              });
+            await game.save("brews", brew);
+          }}
         />
       )}
     </>
@@ -285,18 +294,49 @@ export function CatalogPicker({
   onClose,
 }: {
   kind: Item["kind"];
-  onChoose: (i: Item) => void;
+  onChoose: (i: Item) => Promise<void>;
   onClose: () => void;
 }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const pending = useRef(false);
+  async function choose(i: Item) {
+    if (pending.current) throw Error("Aguarde o salvamento em andamento.");
+    pending.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      await onChoose(i);
+      onClose();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível salvar na ficha.",
+      );
+      throw reason;
+    } finally {
+      pending.current = false;
+      setSaving(false);
+    }
+  }
   return (
-    <Modal wide title="Biblioteca" onClose={onClose}>
-      <LibraryContent
-        kind={kind}
-        onChoose={(i) => {
-          onChoose(i);
-          onClose();
-        }}
-      />
+    <Modal
+      wide
+      title="Biblioteca"
+      onClose={() => {
+        if (!pending.current) onClose();
+      }}
+    >
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {saving && <p role="status">Salvando na ficha…</p>}
+      <fieldset disabled={saving}>
+        <LibraryContent kind={kind} onChoose={choose} />
+      </fieldset>
     </Modal>
   );
 }

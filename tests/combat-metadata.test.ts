@@ -95,9 +95,8 @@ test("described execution maps to categories while reactions and multi-turn cast
   );
   assert.equal(options.find((o) => o.name === "Passo")?.action, "move");
   assert.equal(options.find((o) => o.name === "Dispositivo")?.action, "free");
-  assert.ok(
-    !options.some((o) => ["Passivo", "Longo", "Reagir"].includes(o.name)),
-  );
+  assert.equal(options.find((o) => o.name === "Passivo")?.power?.passive, true);
+  assert.ok(!options.some((o) => ["Longo", "Reagir"].includes(o.name)));
 });
 test("attack dice respect highest/lowest selection and strict bounds", () => {
   assert.equal(rollAttackDice("3D20 + 5", "highest", () => 7).total, 12);

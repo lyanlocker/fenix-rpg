@@ -1,3 +1,16 @@
+import { combatRuleName, combatSkillAttribute } from "../combat-metadata";
+import { resolvePower, modifierLabel, powerAmount } from "../power-rules";
+import {
+  powerContributions,
+  powerEffectActive,
+  fixedBonus,
+  bonusRolls,
+  consumePowerEffects,
+  validatePowerCondition,
+  attributeForAttack,
+  type BonusRoll,
+} from "../power-effects";
+import { adjustedAttackPool } from "../combat-dice";
 import { ALTERNATE_FACE_ENABLED } from "../features";
 import {
   rollAttackDice,
@@ -10,6 +23,8 @@ import {
   die,
   effectiveAttributes,
   skillBonus,
+  skillAttributes,
+  type Attribute,
   maximums,
   type Agent,
   type Item,
@@ -25,6 +40,8 @@ import { maxRitualCircle } from "../alternate";
 import { advanceTurn, delayTurn } from "../combat";
 import {
   actionAvailable,
+  firearmFollowUp,
+  countTurnAttacks,
   retainCombatEvents,
   budgetFor,
   combatFace,
@@ -122,6 +139,8 @@ export function executeCombatCommand(
     }
     return target.pv - current;
   }
+  ledger.effects = ledger.effects.filter((x) => powerEffectActive(x, e));
+  const contributions = face ? powerContributions(face, e, p) : [];
   const event: CombatEvent = {
     id: eventId,
     actorId: p.id,
@@ -139,22 +158,56 @@ export function executeCombatCommand(
     event.rolls.push({ label, ...r });
     return r;
   }
-  function test(
-    a: Agent,
-    skill: string,
-    attr: "INT" | "FOR" | "AGI" | "PRE",
-    bonus = 0,
+  function augmented(
+    base: ReturnType<typeof check>,
+    bonuses: BonusRoll[],
+    maximize = false,
   ) {
-    return addRoll(
-      skill,
-      safeDice(() =>
-        check(
-          effectiveAttributes(a)[attr],
-          skillBonus(a, skill).total + bonus,
-          roll,
-        ),
+    const result = { ...base, dice: [...base.dice] };
+    for (const bonus of bonuses) {
+      const value = /^-?\d+$/.test(bonus.formula)
+        ? {
+            expression: bonus.formula,
+            dice: [] as number[],
+            total: Number(bonus.formula),
+          }
+        : safeDice(() =>
+            rollDamageDice(bonus.formula, maximize ? (s) => s : roll),
+          );
+      if (!Number.isFinite(value.total) || Math.abs(value.total) > 100000)
+        fail("Bônus fora do limite de rolagem.");
+      result.total += value.total;
+      result.dice.push(...value.dice);
+      result.expression += ` ${value.total >= 0 ? "+" : ""}${value.total} (${bonus.source}: ${bonus.formula})`;
+    }
+    return result;
+  }
+  function test(a: Agent, skill: string, attr: Attribute, bonus = 0) {
+    attr = combatSkillAttribute(a, skill, attr);
+    const count = Math.max(
+      0,
+      effectiveAttributes(a)[attr] +
+        fixedBonus(contributions, "attribute", a, undefined, attr),
+    );
+    const pool = safeDice(() =>
+      adjustedAttackPool(
+        `${count || 2}d20+0`,
+        count ? "highest" : "lowest",
+        fixedBonus(contributions, "testDice", a, undefined, skill),
       ),
     );
+    const base = safeDice(() =>
+      rollAttackDice(pool.expression, pool.mode, roll),
+    );
+    base.total += skillBonus(a, skill).total + bonus;
+    base.expression += ` +${skillBonus(a, skill).total + bonus}`;
+    const result = addRoll(
+      skill,
+      augmented(base, bonusRolls(contributions, "skill", a, undefined, skill)),
+    );
+    consumePowerEffects(e, p!, "test", contributions, undefined, skill, attr);
+    ledger.effects = e.combat!.effects;
+    return result;
   }
   function safeDice<T>(action: () => T): T {
     try {
@@ -247,13 +300,13 @@ export function executeCombatCommand(
           x.createdKey !== key &&
           x.upkeepKey !== key,
       );
-      function pay(cost: number, minimum = cost) {
+      function pay(cost: number, minimum = cost, ritual = false) {
         if (!Number.isInteger(cost) || cost < 0 || cost > 999)
           fail("Custo inválido.");
         const resource = face!.determination ? "pd" : "pe";
         if (face!.resources[resource] < cost)
           fail("Pontos de esforço/determinação insuficientes.");
-        const limit = effortLimit(face!);
+        const limit = effortLimit(face!, ritual);
         if (
           cost > 0 &&
           budget.spentPe + cost > limit &&
@@ -264,15 +317,23 @@ export function executeCombatCommand(
         budget.spentPe += cost;
         saveFace(p!, face!);
       }
-      function spend(cost: ActionCost, ritual = false, attack = false) {
-        if (!actionAvailable(budget, cost, ritual, attack))
+      function spend(
+        cost: ActionCost,
+        ritual = false,
+        attack = false,
+        melee = false,
+        moving = false,
+      ) {
+        if (!actionAvailable(budget, cost, ritual, attack, melee, moving))
           fail("Esta ação já foi gasta neste turno.");
         const standard = () => {
           if (budget.restricted > 0) budget.restricted--;
           else budget.standard--;
         };
         if (cost === "standard") {
-          if (attack && budget.attack > 0) budget.attack--;
+          if (attack && melee && (budget.meleeAttack || 0) > 0)
+            budget.meleeAttack!--;
+          else if (attack && budget.attack > 0) budget.attack--;
           else standard();
         }
         const movement = () => {
@@ -281,7 +342,10 @@ export function executeCombatCommand(
           else if (budget.move > 0) budget.move--;
           else standard();
         };
-        if (cost === "move") movement();
+        if (cost === "move") {
+          if (moving && (budget.movementOnly || 0) > 0) budget.movementOnly!--;
+          else movement();
+        }
         if (cost === "full") {
           standard();
           movement();
@@ -326,7 +390,16 @@ export function executeCombatCommand(
             fail("Informe os dados de dano antes de rolar.");
           const result = addRoll(
             "Dano",
-            safeDice(() => rollDamageDice(command.damageDice!, roll)),
+            augmented(
+              safeDice(() =>
+                rollDamageDice(
+                  command.damageDice!,
+                  pending.damageRoll!.maximum ? (s) => s : roll,
+                ),
+              ),
+              pending.damageRoll!.bonuses || [],
+              pending.damageRoll!.maximum,
+            ),
           );
           pending.proposedDamage = Math.max(0, result.total);
           pending.rolls.push({ label: "Dano", ...result });
@@ -362,6 +435,8 @@ export function executeCombatCommand(
               const k = effect.noRitual ? "restrictedMove" : "move";
               b[k] = Math.max(0, (b[k] || 0) - 1);
             }
+            if (effect.grant === "meleeAttack")
+              b.meleeAttack = Math.max(0, (b.meleeAttack || 0) - 1);
             if (effect.grant === "attack") b.attack = Math.max(0, b.attack - 1);
             if (effect.grant === "standard") {
               b.standard = Math.max(0, b.standard - 1);
@@ -397,9 +472,11 @@ export function executeCombatCommand(
           event.text = `${p.name} concluiu o turno.`;
           e = advanceTurn(e);
         } else {
-          const option = combatOptions(face, e.combatRules).find(
-            (o) => o.id === command.optionId,
-          );
+          const option = combatOptions(
+            face,
+            e.combatRules,
+            ledger.effects.filter((x) => x.targetId === p.id),
+          ).find((o) => o.id === command.optionId);
           if (!option) fail("Esta ação não está disponível na ficha.");
           const targets = [...new Set(command.targetIds || [])].map((id) => {
             const t = e.participants.find((t) => t.id === id);
@@ -425,9 +502,57 @@ export function executeCombatCommand(
             fail("Escolha outro participante para atacar.");
           if (option.effect === "custom" && !command.note?.trim())
             fail("Descreva a ação avulsa.");
-          const name = normalizeCombatName(option.name),
+          const name = normalizeCombatName(
+              option.item ? combatRuleName(option.item) : option.name,
+            ),
             ritual = option.item?.kind === "Ritual";
-          let cost = option.pe,
+          if (command.skill && option.effect !== "custom")
+            fail("Este teste só pode ser escolhido na ação avulsa.");
+          let resolvedPower;
+          if (option.effect === "power") {
+            safeDice(() => validatePowerCondition(option.item!, face));
+            resolvedPower = safeDice(() =>
+              resolvePower(
+                option.item!,
+                face,
+                option.power?.special === "moshPit"
+                  ? { ...command.power, steps: Math.min(5, targets.length) }
+                  : command.power,
+                option.power,
+              ),
+            );
+            if (resolvedPower.enemyChoice) {
+              const enemy = e.participants.find(
+                (x) => x.id === command.power?.enemyId,
+              );
+              if (
+                !enemy ||
+                targets.some((t) => t.id === enemy.id) ||
+                (context.role === "player" && enemy.hidden)
+              )
+                fail("Inimigo indisponível para este efeito.");
+            }
+            if (
+              name !== "combater com duas armas" &&
+              ledger.effects.some(
+                (x) =>
+                  x.sourceId === p.id &&
+                  x.power &&
+                  (x.power.itemId === option.item!.id ||
+                    (x.power?.ruleName || normalizeCombatName(x.name)) ===
+                      name ||
+                    (["tecnica secreta", "tecnica sublime"].includes(name) &&
+                      ["tecnica secreta", "tecnica sublime"].includes(
+                        x.power.ruleName || "",
+                      ))),
+              )
+            )
+              fail(
+                "Esta habilidade já está ativa. Use ou encerre o efeito antes de ativá-la novamente.",
+              );
+          } else if (command.power)
+            fail("Estas escolhas são exclusivas de habilidades e poderes.");
+          let cost = resolvedPower?.pe ?? option.pe,
             formula = option.formula,
             grant = option.grant,
             action = option.action;
@@ -476,14 +601,38 @@ export function executeCombatCommand(
           )
             fail("Ritual indisponível neste NEX.");
           if (command.accelerate) {
-            if (!ritual || !hasPower(face, "Acelerar Ritual"))
+            if (!ritual || !hasPower(face, "Acelerar Ritual", e.combatRules))
               fail("Acelerar Ritual não está disponível.");
             once("Acelerar Ritual", "round");
             action = "free";
             cost += 4;
           }
+          if (command.followUpHitId) {
+            const follow = firearmFollowUp(
+              ledger.events,
+              budget,
+              p.id,
+              option.item?.id || "",
+              targets[0]?.id,
+            );
+            if (
+              command.extraAttack ||
+              option.effect !== "attack" ||
+              !option.item ||
+              weaponType(option.item) !== "Arma de fogo" ||
+              !hasPower(face, "Segurar o Gatilho", e.combatRules) ||
+              !follow ||
+              follow.hitId !== command.followUpHitId
+            )
+              fail(
+                "Segurar o Gatilho exige o último acerto do turno, com a mesma arma de fogo e o mesmo alvo.",
+              );
+            action = "free";
+            cost += follow.cost;
+          }
           if (command.extraAttack) {
             if (
+              option.bloodAttack ||
               option.effect !== "attack" ||
               !hasPower(face, "Ataque Extra") ||
               !budget.attacked
@@ -495,13 +644,137 @@ export function executeCombatCommand(
             action = "free";
             cost += 2;
           }
-          once(option.id, option.limit);
-          spend(action, !!ritual, option.effect === "attack");
-          pay(cost, option.pe);
+          if (
+            option.bloodAttack &&
+            !ledger.events.some(
+              (x) =>
+                x.actorId === p.id &&
+                x.turnKey === key &&
+                x.itemKind === "Arma" &&
+                x.action === "standard",
+            )
+          )
+            fail(
+              "O ataque adicional de Arma de Sangue exige usar agredir neste turno.",
+            );
+          if (
+            name === "primeira impressao" &&
+            ledger.events.some(
+              (x) =>
+                x.actorId === p.id &&
+                x.rolls.some((r) =>
+                  [
+                    "diplomacia",
+                    "enganacao",
+                    "intimidacao",
+                    "intuicao",
+                  ].includes(normalizeCombatName(r.label)),
+                ),
+            )
+          )
+            fail("O primeiro teste dessas perícias na cena já ocorreu.");
+          if (name === "posicao de combate" && e.round !== 1)
+            fail(
+              "Posição de Combate só está disponível no primeiro turno da cena.",
+            );
+          if (
+            name === "conjuracao marcial" &&
+            !ledger.events.some(
+              (x) =>
+                x.actorId === p.id &&
+                x.turnKey === key &&
+                x.itemKind === "Ritual" &&
+                x.action === "standard",
+            )
+          )
+            fail(
+              "Conjuração Marcial exige um ritual de ação padrão neste turno.",
+            );
+          if (name === "combater com duas armas") {
+            const copies = new Set(
+              face.inventory
+                .filter((i) => normalizeCombatName(combatRuleName(i)) === name)
+                .map((i) => i.id),
+            );
+            const last = ledger.events.findLastIndex(
+              (x) =>
+                x.actorId === p.id &&
+                x.turnKey === key &&
+                copies.has(x.sourceItemId || ""),
+            );
+            const completed =
+              last < 0 ||
+              ledger.events
+                .slice(last + 1)
+                .filter((x) => x.actorId === p.id && x.itemKind === "Arma")
+                .length >= 2;
+            if (
+              budget.standard + budget.restricted < 1 ||
+              budget.attack > 0 ||
+              !completed
+            )
+              fail(
+                "Use os dois ataques do par anterior e tenha uma ação padrão disponível para iniciar outro par.",
+              );
+          }
+          if (name === "ataque extra" && !budget.attacked)
+            fail("Ataque Extra exige um ataque anterior neste turno.");
+          once(
+            name === "ataque extra" ? "Ataque Extra" : option.id,
+            resolvedPower?.limit || option.limit,
+          );
+          const ritualModifiers = contributions.filter(
+            (m) =>
+              !m.personalOnly ||
+              (targets.length === 1 && targets[0].id === p.id),
+          );
+          const ritualDiscount = ritual
+            ? fixedBonus(ritualModifiers, "ritualCost", face, option.item)
+            : 0;
+          if (ritual) cost = Math.max(cost > 0 ? 1 : 0, cost + ritualDiscount);
+          const usesAttackCredit =
+            option.effect === "attack" &&
+            action === "standard" &&
+            (budget.attack > 0 ||
+              ((budget.meleeAttack || 0) > 0 &&
+                !!option.item &&
+                weaponType(option.item) === "Corpo a corpo"));
+          spend(
+            action,
+            !!ritual,
+            option.effect === "attack",
+            !!option.item && weaponType(option.item) === "Corpo a corpo",
+            option.effect === "move",
+          );
+          pay(
+            cost,
+            ritual
+              ? Math.max(option.pe > 0 ? 1 : 0, option.pe + ritualDiscount)
+              : option.pe,
+            !!ritual,
+          );
           event.label = option.name;
+          event.sourceItemId = option.item?.id;
+          event.itemKind = option.item?.kind;
+          event.action = usesAttackCredit ? "free" : action;
           event.targetIds = targets.map((t) => t.id);
           event.secret ||= targets.some((t) => t.hidden);
           event.text = `${option.name}${targets.length ? ` → ${targets.map((t) => t.name).join(", ")}` : ""}.`;
+          if (command.followUpHitId)
+            event.text += ` Segurar o Gatilho: acerto anterior confirmado, custo de ${cost} ${face.determination ? "PD" : "PE"}.`;
+          if (ritual) {
+            const dc =
+              10 +
+              (face.className === "Sobrevivente"
+                ? face.stage
+                : face.nex === 99
+                  ? 20
+                  : Math.max(1, Math.floor(face.nex / 5))) +
+              effectiveAttributes(face).PRE +
+              fixedBonus(contributions, "attribute", face, option.item, "PRE") +
+              fixedBonus(contributions, "ritualDC", face, option.item);
+            event.text += ` DT do ritual: ${dc}. Custo: ${cost} ${face.determination ? "PD" : "PE"}${ritualDiscount ? ` (ajuste de ${ritualDiscount})` : ""}.`;
+          }
           if (
             ritual &&
             normalizeCombatName(option.item!.element || "") !== "medo"
@@ -538,7 +811,187 @@ export function executeCombatCommand(
                   );
             saveFace(p, face);
           }
-          if (option.effect === "attack") {
+          if (option.effect === "power" && resolvedPower) {
+            const resolved = resolvedPower;
+            const modifiers = resolved.modifiers.map((m) => ({
+              ...m,
+              amount: /^[+-]?\d+$|^\d+d\d+$/.test(m.amount)
+                ? m.amount
+                : String(powerAmount(m.amount, face)),
+            }));
+            let attached = false;
+            if (resolved.special === "criticalPhrase") {
+              const pending = [...ledger.events]
+                .reverse()
+                .find(
+                  (x) =>
+                    x.actorId === p.id &&
+                    x.turnKey === key &&
+                    (x.damageRoll?.critical || 1) > 1 &&
+                    !x.damageRoll!.done &&
+                    !x.resolved,
+                );
+              if (!pending?.damageRoll)
+                fail(
+                  "Confirme seu acerto crítico e ative Frase de Efeito antes de rolar o dano.",
+                );
+              once(`criticalPhrase:${pending.id}`, "scene");
+              const weapon = combatOptions(
+                face,
+                e.combatRules,
+                ledger.effects.filter((x) => x.targetId === p.id),
+              ).find((x) => x.id === pending.damageRoll!.sourceItemId)?.item;
+              if (!weapon) fail("Arma indisponível.");
+              const delta =
+                pending.damageRoll.critical! < effectiveAttributes(face).PRE
+                  ? 2
+                  : 1;
+              const base = /^(\d+)d(\d+)/.exec(weaponDamage(weapon));
+              if (!base)
+                fail(
+                  "O dano da arma precisa ter dados para ampliar o crítico.",
+                );
+              const additions: BonusRoll[] = [
+                {
+                  source: "Frase de Efeito",
+                  formula: `${+base[1] * delta}d${base[2]}`,
+                },
+              ];
+              for (const b of pending.damageRoll.bonuses || [])
+                if (b.criticalBase && b.sides)
+                  additions.push({
+                    source: `Frase de Efeito · ${b.source}`,
+                    formula: `${b.criticalBase * delta}d${b.sides}`,
+                  });
+              pending.damageRoll.bonuses = [
+                ...(pending.damageRoll.bonuses || []),
+                ...additions,
+              ];
+              pending.damageRoll.critical! += delta;
+              event.text += ` Multiplicador crítico aumentado em +${delta}; dados adicionais anexados ao dano.`;
+              attached = true;
+            }
+            if (resolved.special === "sneakAttack") {
+              const pending = [...ledger.events]
+                .reverse()
+                .find(
+                  (x) =>
+                    x.actorId === p.id &&
+                    x.turnKey === key &&
+                    x.damageRoll?.sourceItemId &&
+                    !x.damageRoll.done &&
+                    !x.resolved,
+                );
+              if (!pending?.damageRoll)
+                fail(
+                  "Faça o ataque, confirme que acertou o alvo elegível e ative Ataque Furtivo antes de rolar o dano.",
+                );
+              const weapon = combatOptions(
+                face,
+                e.combatRules,
+                ledger.effects.filter((x) => x.targetId === p.id),
+              ).find((x) => x.id === pending.damageRoll!.sourceItemId)?.item;
+              if (!weapon)
+                fail("A arma deste ataque não está mais disponível.");
+              pending.damageRoll.bonuses = [
+                ...(pending.damageRoll.bonuses || []),
+                ...bonusRolls(
+                  modifiers.map((m) => ({ ...m, source: option.name })),
+                  "damage",
+                  face,
+                  weapon,
+                ),
+              ];
+              attached = true;
+              event.targetIds = pending.targetIds;
+              event.text +=
+                " Bônus anexado ao dano do ataque já realizado, sem nova rolagem de ataque.";
+            }
+            for (const target of targets) {
+              if (
+                (modifiers.length || resolved.manifestation) &&
+                !attached &&
+                !(
+                  name === "combater com duas armas" &&
+                  ledger.effects.some(
+                    (x) => x.sourceId === p.id && x.power?.ruleName === name,
+                  )
+                )
+              )
+                ledger.effects.push({
+                  id: `${eventId}:power:${target.id}`,
+                  sourceId: p.id,
+                  targetId: target.id,
+                  name: option.name,
+                  grant: "free",
+                  noRitual: false,
+                  timing: "scene",
+                  createdKey: key,
+                  power: {
+                    itemId: option.item!.id,
+                    ruleName: name,
+                    duration: resolved.duration,
+                    ...(resolved.manifestation
+                      ? { manifestation: resolved.manifestation }
+                      : {}),
+                    ...(resolved.expires ? { expires: resolved.expires } : {}),
+                    modifiers,
+                    ...(resolved.weaponChoice || resolved.ritualChoice
+                      ? { weaponId: command.power?.weaponId }
+                      : {}),
+                    ...(resolved.enemyChoice
+                      ? { enemyId: command.power?.enemyId }
+                      : {}),
+                    ...(name === "sangue fervente"
+                      ? { injuredOnly: true }
+                      : {}),
+                  },
+                });
+              for (const [index, extra] of resolved.grants.entries())
+                ledger.effects.push({
+                  id: `${eventId}:grant:${index}:${target.id}`,
+                  sourceId: p.id,
+                  targetId: target.id,
+                  name: option.name,
+                  grant: extra,
+                  noRitual: false,
+                  timing: "now",
+                  createdKey: key,
+                });
+            }
+            budget = settleBudget();
+            if (resolved.manifestation)
+              event.text +=
+                " Arma de Sangue manifestada; selecione-a nas ações de ataque.";
+            event.text += modifiers.length
+              ? ` Efeito aplicado: ${modifiers.map(modifierLabel).join("; ")}.`
+              : "";
+            event.text += resolved.grants.length
+              ? ` Ações adicionais concedidas: ${resolved.grants.join(", ")}.`
+              : "";
+            if (resolved.condition)
+              event.text += " Gatilho e requisitos confirmados pelo jogador.";
+            if (resolved.warning) {
+              if (resolved.manual) event.pending = "interpretation";
+              event.text += ` ${resolved.warning}`;
+            }
+          } else if (option.effect === "attack") {
+            const attackContributions = contributions.filter(
+              (m) => !m.enemyId || m.enemyId === targets[0].id,
+            );
+            if (
+              hasPower(face, "Potência Máxima") &&
+              weaponType(option.item!) === "Corpo a corpo"
+            ) {
+              for (const m of attackContributions) {
+                const source = ledger.effects.find((x) => x.id === m.effectId);
+                if (
+                  source?.power?.ruleName === "ataque especial" &&
+                  ["attack", "damage"].includes(m.stat)
+                )
+                  m.amount = String(Number(m.amount) * 2);
+              }
+            }
             const item = option.item!,
               skill =
                 item.attackSkill ||
@@ -555,44 +1008,69 @@ export function executeCombatCommand(
                   "katana",
                 ].includes(normalizeCombatName(item.name)) ||
                   (item.id === "unarmed" && hasPower(face, "Artista Marcial")));
-            const attr =
-                skill === "Pontaria" ||
-                (agile &&
-                  effectiveAttributes(face).AGI > effectiveAttributes(face).FOR)
-                  ? "AGI"
-                  : "FOR",
-              suggestion = weaponRollSuggestion(face, item),
-              result = addRoll(
-                skill,
-                safeDice(() =>
-                  rollAttackDice(
-                    command.attackDice || suggestion.attack,
-                    command.attackMode || suggestion.mode,
-                    roll,
-                  ),
-                ),
-              );
+            const attr = attributeForAttack(face, item, attackContributions),
+              baseAttr = attributeForAttack(face, item);
+            const suggestion = weaponRollSuggestion(face, item);
+            const attributeBonus = fixedBonus(
+              attackContributions,
+              "attribute",
+              face,
+              item,
+              attr,
+            );
+            const poolDelta =
+              effectiveAttributes(face)[attr] -
+              effectiveAttributes(face)[baseAttr] +
+              attributeBonus +
+              fixedBonus(attackContributions, "attackDice", face, item) +
+              fixedBonus(attackContributions, "testDice", face, item, skill);
+            const attackPool = safeDice(() =>
+              adjustedAttackPool(
+                command.attackDice || suggestion.attack,
+                command.attackMode || suggestion.mode,
+                poolDelta,
+              ),
+            );
+            const baseAttack = safeDice(() =>
+              rollAttackDice(attackPool.expression, attackPool.mode, roll),
+            );
+            const result = addRoll(
+              skill,
+              augmented(baseAttack, [
+                ...bonusRolls(attackContributions, "attack", face, item),
+                ...bonusRolls(attackContributions, "skill", face, item, skill),
+              ]),
+            );
             let expr = weaponDamage(item);
-            if (
-              melee &&
-              item.id !== "unarmed" &&
-              hasPower(face, "Golpe Pesado")
-            )
-              expr = expr.replace(
-                /^(\d+)d/,
-                (_, n: string) => `${Math.min(100, +n + 1)}d`,
-              );
+
             const critical = /^(?:(\d+)\s*\/\s*)?x(\d+)$/i.exec(
                 weaponCritical(item) || "20/x2",
               ),
               natural =
-                (command.attackMode || suggestion.mode) === "lowest"
-                  ? Math.min(...result.dice)
-                  : Math.max(...result.dice);
-            if (critical && natural >= Number(critical[1] || 20)) {
+                attackPool.mode === "lowest"
+                  ? Math.min(...baseAttack.dice)
+                  : Math.max(...baseAttack.dice);
+            let criticalMultiplier = 1;
+            if (
+              critical &&
+              natural >=
+                Math.max(
+                  1,
+                  Number(critical[1] || 20) -
+                    fixedBonus(attackContributions, "critical", face, item),
+                )
+            ) {
+              criticalMultiplier =
+                +critical[2] +
+                fixedBonus(
+                  attackContributions,
+                  "criticalMultiplier",
+                  face,
+                  item,
+                );
               expr = expr.replace(
                 /^(\d+)d/,
-                (_, n: string) => `${Math.min(100, +n * +critical[2])}d`,
+                (_, n: string) => `${Math.min(100, +n * criticalMultiplier)}d`,
               );
               event.text += " Ameaça de crítico: confirme o acerto.";
             }
@@ -605,23 +1083,107 @@ export function executeCombatCommand(
                 (fixed >= 0 ? "+" : "") +
                 fixed;
             }
-            event.damageRoll = { formula: expr, turn: key, done: false };
+            const damageBonuses = bonusRolls(
+              attackContributions,
+              "damage",
+              face,
+              item,
+              undefined,
+              criticalMultiplier,
+            );
+            if (melee) {
+              const damageAttributeBonus = fixedBonus(
+                attackContributions,
+                "attribute",
+                face,
+                item,
+                agile ? attr : "FOR",
+              );
+              if (damageAttributeBonus)
+                damageBonuses.push({
+                  source: "Atributo de combate",
+                  formula: String(damageAttributeBonus),
+                });
+            }
+            event.damageRoll = {
+              formula: expr,
+              turn: key,
+              done: false,
+              sourceItemId: item.id,
+              critical: criticalMultiplier,
+              maximum:
+                criticalMultiplier > 1 &&
+                weaponType(item) === "Arma de fogo" &&
+                hasPower(face, "Atirar para Matar"),
+              bonuses: damageBonuses,
+            };
+            consumePowerEffects(e, p, "attack", attackContributions, item);
+            consumePowerEffects(
+              e,
+              p,
+              "test",
+              attackContributions,
+              item,
+              skill,
+              attr,
+            );
+            ledger.effects = e.combat!.effects;
             event.pending = "damage";
             event.text += ` Ataque ${result.total}. Escolha os dados e clique em Rolar dano; o mestre confirma acerto, reações e resistências.`;
+            budget.attackCount =
+              (budget.attackCount ??
+                countTurnAttacks(ledger.events, key, p.id)) + 1;
+            budget.latestAttackId = event.id;
             budget.attacked = true;
           } else if (option.effect === "investigate") {
-            const result = command.attackDice
-              ? addRoll(
-                  "Investigação",
-                  safeDice(() =>
-                    rollAttackDice(
-                      command.attackDice!,
-                      command.attackMode || "highest",
-                      roll,
+            let result;
+            if (command.attackDice) {
+              const pool = safeDice(() =>
+                adjustedAttackPool(
+                  command.attackDice!,
+                  command.attackMode || "highest",
+                  fixedBonus(
+                    contributions,
+                    "attribute",
+                    face,
+                    undefined,
+                    "INT",
+                  ) +
+                    fixedBonus(
+                      contributions,
+                      "testDice",
+                      face,
+                      undefined,
+                      "Investigação",
                     ),
+                ),
+              );
+              result = addRoll(
+                "Investigação",
+                augmented(
+                  safeDice(() =>
+                    rollAttackDice(pool.expression, pool.mode, roll),
                   ),
-                )
-              : test(face, "Investigação", "INT");
+                  bonusRolls(
+                    contributions,
+                    "skill",
+                    face,
+                    undefined,
+                    "Investigação",
+                  ),
+                ),
+              );
+              consumePowerEffects(
+                e,
+                p,
+                "test",
+                contributions,
+                undefined,
+                "Investigação",
+                "INT",
+              );
+              ledger.effects = e.combat!.effects;
+            } else result = test(face, "Investigação", "INT");
             event.pending = "interpretation";
             event.text += ` Investigação (INT): ${result.total}. O mestre define a DT e o que pode ser descoberto neste tempo.`;
           } else if (option.effect === "firstAid") {
@@ -683,13 +1245,19 @@ export function executeCombatCommand(
               event.text += ` Medicina ${r.total}/DT ${option.difficulty || 20}.`;
             }
             if (success && formula) {
-              const r = addRoll("Cura", damage(formula, roll)),
-                bonus =
-                  ritual && hasPower(face, "Ritual Potente")
-                    ? effectiveAttributes(face).INT
-                    : 0,
-                actual = hp(targets[0], Math.max(0, r.total + bonus));
-              event.text += ` Recuperou ${actual} PV (rolagem ${r.total}${bonus ? ` + ${bonus}` : ""}, limitada ao máximo).`;
+              const r = addRoll(
+                  "Cura",
+                  augmented(
+                    safeDice(() => rollDamageDice(formula!, roll)),
+                    bonusRolls(contributions, "healing", face, option.item),
+                  ),
+                ),
+                actual = hp(targets[0], Math.max(0, r.total));
+              event.text += ` Recuperou ${actual} PV (rolagem ${r.total}, limitada ao máximo).`;
+              if (ritual) {
+                consumePowerEffects(e, p, "ritual", contributions, option.item);
+                ledger.effects = e.combat!.effects;
+              }
               if (name === "cicatrizacao")
                 event.text += " O alvo envelhece 1 ano.";
             }
@@ -699,7 +1267,8 @@ export function executeCombatCommand(
                 (option.timing === "sustained" || option.timing === "scene") &&
                 ledger.effects.some(
                   (x) =>
-                    x.targetId === t.id && normalizeCombatName(x.name) === name,
+                    x.targetId === t.id &&
+                    (x.power?.ruleName || normalizeCombatName(x.name)) === name,
                 )
               )
                 fail(
@@ -746,10 +1315,64 @@ export function executeCombatCommand(
               formula: option.formula,
               turn: key,
               done: false,
+              bonuses: bonusRolls(contributions, "damage", face, option.item),
             };
+            consumePowerEffects(e, p, "ritual", contributions, option.item);
+            ledger.effects = e.combat!.effects;
             event.pending = "damage";
             event.text +=
               " Execução e custo registrados. Escolha os dados e role o dano; o mestre confere resistência e demais efeitos.";
+          } else if (option.effect === "custom" && command.skill) {
+            const skill = command.skill,
+              attr = combatSkillAttribute(face, skill);
+            if (!skillAttributes[skill]) fail("Perícia inválida.");
+            let r;
+            if (command.attackDice) {
+              const pool = safeDice(() =>
+                adjustedAttackPool(
+                  command.attackDice!,
+                  command.attackMode || "highest",
+                  fixedBonus(
+                    contributions,
+                    "attribute",
+                    face,
+                    undefined,
+                    attr,
+                  ) +
+                    fixedBonus(
+                      contributions,
+                      "testDice",
+                      face,
+                      undefined,
+                      skill,
+                    ),
+                ),
+              );
+              r = addRoll(
+                skill,
+                augmented(
+                  safeDice(() =>
+                    rollAttackDice(pool.expression, pool.mode, roll),
+                  ),
+                  bonusRolls(contributions, "skill", face, undefined, skill),
+                ),
+              );
+              consumePowerEffects(
+                e,
+                p,
+                "test",
+                contributions,
+                undefined,
+                skill,
+                attr,
+              );
+              ledger.effects = e.combat!.effects;
+            } else r = test(face, skill, attr);
+            event.pending = "interpretation";
+            event.text += ` ${skill}: ${r.total}. O mestre define a DT e o resultado narrativo.`;
+          } else if (option.effect === "move") {
+            const extra = fixedBonus(contributions, "speed", face);
+            event.text += ` Deslocamento disponível: ${Math.max(0, 9 + extra)} m${extra ? ` (${extra > 0 ? "+" : ""}${extra} m de efeitos)` : ""}. O mestre confere terreno e posicionamento.`;
           } else if (
             option.effect === "custom" ||
             option.effect === "generic" ||
@@ -773,7 +1396,16 @@ export function executeCombatCommand(
   e.combat = { ...ledger, effects: e.combat?.effects || ledger.effects };
   const present = new Set(e.participants.map((p) => p.id));
   e.combat.effects = e.combat.effects.filter(
-    (x) => present.has(x.sourceId) && present.has(x.targetId),
+    (x) =>
+      present.has(x.sourceId) &&
+      present.has(x.targetId) &&
+      powerEffectActive(x, e) &&
+      (!x.power?.injuredOnly ||
+        (() => {
+          const target = e.participants.find((t) => t.id === x.targetId);
+          const a = target && faceOf(target);
+          return !!a && a.resources.pv <= maximums(a).pv / 2;
+        })()),
   );
   if (e.combat.effects.length > 300)
     fail("Encerre efeitos antigos antes de adicionar outros.");

@@ -1,3 +1,4 @@
+import { passivePowerContributions, fixedBonus } from "./power-effects";
 import { ALTERNATE_FACE_ENABLED } from "./features";
 import type { Encounter, Participant } from "./model";
 import { turnKey } from "./combat-actions";
@@ -63,6 +64,17 @@ export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
   const size = encounter.participants.length;
   const position = Math.max(0, encounter.round - 1) * size + encounter.turn;
   const next = Math.max(0, position + direction);
+  const crossedStart = (id: string) => {
+    const index = encounter.participants.findIndex((p) => p.id === id);
+    const distance = (index - encounter.turn + size) % size || size;
+    return index >= 0 && next - position >= distance;
+  };
+  const crossedEnd = (id: string, skipCurrent = false) => {
+    const index = encounter.participants.findIndex((p) => p.id === id);
+    let offset = (index - encounter.turn + size) % size;
+    if (offset === 0 && skipCurrent) offset = size;
+    return index >= 0 && next - position > offset;
+  };
   return {
     ...encounter,
     round: Math.floor(next / size) + 1,
@@ -74,18 +86,36 @@ export function advanceTurn(encounter: Encounter, direction = 1): Encounter {
             ...encounter.combat,
             effects: encounter.combat.effects.filter((x) => {
               const actor = encounter.participants[encounter.turn]?.id;
-              if (x.timing === "sustained")
-                return (
-                  x.sourceId !== actor ||
+              if (
+                x.power?.duration === "round" &&
+                x.createdKey.split(":")[0] !==
+                  String(Math.floor(next / size) + 1)
+              )
+                return false;
+              if (x.power?.duration === "turn") return false;
+              if (x.power?.duration === "nextTurn" && crossedStart(x.sourceId))
+                return false;
+              if (
+                x.power?.expires === "nextTurnEnd" &&
+                crossedEnd(x.sourceId, x.createdKey === turnKey(encounter))
+              )
+                return false;
+              if (x.timing === "sustained") {
+                const paid =
                   x.createdKey === turnKey(encounter) ||
-                  x.upkeepKey === turnKey(encounter)
-                );
+                  x.upkeepKey === turnKey(encounter);
+                return direction > 0
+                  ? !crossedEnd(x.sourceId, paid && x.sourceId === actor)
+                  : x.sourceId !== actor || paid;
+              }
               if (x.timing === "scene") return true;
               // A one-off credit expires with the eligible target turn, including GM skips.
-              return (
-                x.targetId !== actor ||
-                (x.timing === "next" && x.createdKey === turnKey(encounter))
-              );
+              return direction < 0
+                ? x.targetId !== actor
+                : !crossedEnd(
+                    x.targetId,
+                    x.timing === "next" && x.createdKey === turnKey(encounter),
+                  );
             }),
           },
         }
@@ -163,7 +193,15 @@ export function participantFromAgent(
       face.defenseBonus +
       accessoryDefenseBonus(face),
     initiativeAttribute: effectiveAttributes(face).AGI,
-    initiativeBonus: skillBonus(face, "Iniciativa").total,
+    initiativeBonus:
+      skillBonus(face, "Iniciativa").total +
+      fixedBonus(
+        passivePowerContributions(face),
+        "skill",
+        face,
+        undefined,
+        "Iniciativa",
+      ),
   };
 }
 
@@ -215,7 +253,11 @@ function retireCombatParticipants(
   if (combat) {
     for (const id of retired) delete combat.budgets[id];
     combat.effects = combat.effects.filter((effect) => {
-      if (!retired.has(effect.sourceId) && !retired.has(effect.targetId))
+      if (
+        !retired.has(effect.sourceId) &&
+        !retired.has(effect.targetId) &&
+        !retired.has(effect.power?.enemyId || "")
+      )
         return true;
       const budget = combat.budgets[effect.targetId];
       if (budget && budget.key === effect.appliedKey) {
@@ -228,7 +270,9 @@ function retireCombatParticipants(
         } else if (effect.grant === "move") {
           const key = effect.noRitual ? "restrictedMove" : "move";
           budget[key] = Math.max(0, (budget[key] || 0) - 1);
-        } else if (effect.grant === "attack")
+        } else if (effect.grant === "meleeAttack")
+          budget.meleeAttack = Math.max(0, (budget.meleeAttack || 0) - 1);
+        else if (effect.grant === "attack")
           budget.attack = Math.max(0, budget.attack - 1);
       }
       return false;

@@ -234,7 +234,7 @@
     "quantity": 1,
     "spaces": 0,
     "damage": "",
-    "notes": "Segurar o Gatilho. Sempre que acerta um ataque com uma arma de fogo, pode fazer outro ataque CARACTERÍSTICAS",
+    "notes": "Segurar o Gatilho. Após acertar com uma arma de fogo, você pode atacar novamente o mesmo alvo com a mesma arma. Cada ataque adicional custa 2 PE por ataque já realizado no turno. A sequência termina ao errar ou atingir o limite de PE. Pré-requisito: NEX 60%.",
     "requirements": "",
     "cost": 0
   },
@@ -951,7 +951,7 @@
     "quantity": 1,
     "spaces": 0,
     "damage": "",
-    "notes": "Ninja Urbano. Você recebe proficiência com armas táticas de ataque corpo a corpo e de disparo CARACTERÍSTICAS",
+    "notes": "Ninja Urbano. Você recebe proficiência com armas táticas corpo a corpo e de disparo (exceto armas de fogo). Seus ataques com armas corpo a corpo e de disparo recebem +2 no dano.",
     "requirements": "",
     "cost": 0
   },

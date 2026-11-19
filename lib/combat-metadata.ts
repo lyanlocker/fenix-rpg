@@ -1,5 +1,11 @@
 import { bookCatalog } from "./books";
-import type { Item } from "./rules";
+import {
+  effectiveAttributes,
+  skillAttributes,
+  type Agent,
+  type Attribute,
+  type Item,
+} from "./rules";
 
 const norm = (s: string) =>
   s
@@ -13,6 +19,14 @@ for (const item of bookCatalog) {
   const key = `${item.kind}:${norm(item.name)}`;
   byName.set(key, [...(byName.get(key) || []), item]);
 }
+
+// Old sheets can still contain these two exact, truncated catalogue extracts.
+const legacyNotes: Record<string, string> = {
+  "book-b8c3ddeb91ec6278":
+    "Segurar o Gatilho. Sempre que acerta um ataque com uma arma de fogo, pode fazer outro ataque CARACTERÍSTICAS",
+  "book-90fbee19586de3fd":
+    "Ninja Urbano. Você recebe proficiência com armas táticas de ataque corpo a corpo e de disparo CARACTERÍSTICAS",
+};
 
 /** Fill missing execution metadata, never overwrite an edited sheet or invent a source. */
 export function combatItem(item: Item): Item {
@@ -31,6 +45,11 @@ export function combatItem(item: Item): Item {
       ? matches[0]
       : undefined;
   const result = { ...item };
+  if (source) {
+    result.catalogId ||= source.id;
+    result.bookId ||= source.bookId;
+    if (legacyNotes[source.id] === item.notes) result.notes = source.notes;
+  }
   if (!result.execution?.trim()) {
     const notes = item.notes;
     const declared = notes.match(
@@ -76,4 +95,57 @@ export function ritualDamage(item: Item): string {
       ?.replace(/\s/g, "") ||
     ""
   );
+}
+
+/** Resolve cosmetic suffixes by stable ID without mistaking a repurposed catalog
+ * entry for the old ability. Players can rename and replace its description. */
+export function combatRuleName(item: Item): string {
+  const source = byId.get(item.catalogId || item.id);
+  const name = norm(item.name),
+    base = source && norm(source.name);
+  if (
+    source &&
+    base &&
+    (name === base ||
+      (name.startsWith(base) &&
+        /^(?:\s*\(|\s*[-–]\s*(?:nex\s*)?\d+%|\s+nex\s+\d+%)/.test(
+          name.slice(base.length),
+        )) ||
+      !item.notes.trim() ||
+      norm(item.notes) === norm(source.notes))
+  )
+    return source.name;
+  return item.name
+    .replace(/^(?:NEX\s*)?\d+%\s*[-–]\s*/i, "")
+    .replace(/\s*[-–]\s*(?:NEX\s*)?\d+%.*$/i, "")
+    .replace(/\.$/, "")
+    .trim();
+}
+
+/** Optional replacements use the stronger available attribute as the suggestion;
+ * the player can still edit the dice before submitting a manual roll. */
+export function combatSkillAttribute(
+  a: Agent,
+  skill: string,
+  fallback?: Attribute,
+): Attribute {
+  const original = fallback || skillAttributes[skill] || "INT";
+  const alternative =
+    skill === "Vontade"
+      ? { name: "racionalidade inflexivel", attr: "INT" as const }
+      : skill === "Ocultismo"
+        ? { name: "olhar sinistro", attr: "PRE" as const }
+        : undefined;
+  const values = effectiveAttributes(a);
+  return alternative &&
+    values[alternative.attr] > values[original] &&
+    a.inventory.some(
+      (i) =>
+        i.kind === "Poder" &&
+        i.quantity > 0 &&
+        (i.nex || 0) <= a.nex &&
+        norm(combatRuleName(i)) === alternative.name,
+    )
+    ? alternative.attr
+    : original;
 }

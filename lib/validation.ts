@@ -57,6 +57,12 @@ const schema = z.object({
         spaces: num.min(0),
         damage: z.string().max(100),
         notes: z.string().max(50000),
+        // Shared edits compare the full inventory with its stored JSON. Keep
+        // origin grants and homebrew metadata when loading older sheets.
+        skillsText: z.string().max(50000).optional(),
+        grantName: z.string().max(150).optional(),
+        grantNotes: z.string().max(50000).optional(),
+        version: num.int().nonnegative().optional(),
         catalogId: z.string().optional(),
         subtype: z.string().max(100).optional(),
         bookId: z.string().max(100).optional(),

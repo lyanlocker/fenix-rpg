@@ -151,17 +151,20 @@ export default function ItemForm({
               </select>
             </label>
           )}
-          {i.kind === "Poder" && i.name === "Surto Temporal" && (
-            <label className="check span-all">
-              <input
-                type="checkbox"
-                checked={!!i.attuned}
-                onChange={(e) => setI({ ...i, attuned: e.target.checked })}
-              />{" "}
-              Afinidade com Morte ativa (requer NEX 50%): Surto Temporal uma vez
-              por turno.
-            </label>
-          )}
+          {i.kind === "Poder" &&
+            (i.subtype === "Poder paranormal" ||
+              /Afinidade:/i.test(i.notes) ||
+              i.name === "Surto Temporal") && (
+              <label className="check span-all">
+                <input
+                  type="checkbox"
+                  checked={!!i.attuned}
+                  onChange={(e) => setI({ ...i, attuned: e.target.checked })}
+                />{" "}
+                Afinidade paranormal ativa (requer NEX 50%): aplicar a versão de
+                afinidade descrita neste poder.
+              </label>
+            )}
           {i.kind === "Item" &&
             text(
               "execution",

@@ -1,11 +1,20 @@
+import {
+  powerRule,
+  configuredPowerRule,
+  type PowerRule,
+  type PowerSelection,
+  type PowerModifier,
+  type PowerDuration,
+} from "./power-rules";
+import type { AppliedPower, BonusRoll } from "./power-effects";
 import { ALTERNATE_FACE_ENABLED } from "./features";
-import { combatItem, ritualDamage } from "./combat-metadata";
+import { combatItem, combatRuleName, ritualDamage } from "./combat-metadata";
 import type { AttackMode } from "./combat-dice";
 import type { Agent, Item } from "./rules";
 import type { Encounter, Participant } from "./model";
 import { effectiveAttributes } from "./rules";
 export type ActionCost = "standard" | "move" | "free" | "full";
-export type GrantKind = "standard" | "move" | "attack" | "free";
+export type GrantKind = "standard" | "move" | "attack" | "meleeAttack" | "free";
 export const actionLabels: Record<ActionCost, string> = {
   standard: "Padrão",
   move: "Movimento",
@@ -17,7 +26,11 @@ export type CombatRule = {
   name: string;
   action: ActionCost;
   pe: number;
-  effect: "heal" | "grant";
+  effect: "heal" | "grant" | "power";
+  modifiers?: PowerModifier[];
+  duration?: PowerDuration;
+  condition?: string;
+  passive?: boolean;
   formula?: string;
   grant?: GrantKind;
   target: "self" | "ally" | "any";
@@ -35,12 +48,17 @@ export type Budget = {
   move: number;
   restricted: number;
   restrictedMove?: number;
+  movementOnly?: number;
   attack: number;
+  meleeAttack?: number;
   spentPe: number;
   attacked: boolean;
+  attackCount?: number;
+  latestAttackId?: string;
   ended: boolean;
 };
 export type CombatEffect = {
+  power?: AppliedPower;
   id: string;
   sourceId: string;
   targetId: string;
@@ -53,6 +71,9 @@ export type CombatEffect = {
   upkeepKey?: string;
 };
 export type CombatEvent = {
+  sourceItemId?: string;
+  itemKind?: Item["kind"];
+  action?: ActionCost;
   id: string;
   actorId: string;
   actor: string;
@@ -65,7 +86,15 @@ export type CombatEvent = {
   rolls: { label: string; expression: string; dice: number[]; total: number }[];
   pending?: "damage" | "interpretation";
   proposedDamage?: number;
-  damageRoll?: { formula: string; turn: string; done: boolean };
+  damageRoll?: {
+    formula: string;
+    turn: string;
+    done: boolean;
+    sourceItemId?: string;
+    critical?: number;
+    maximum?: boolean;
+    bonuses?: BonusRoll[];
+  };
   turnKey?: string;
   resolved?: boolean;
 };
@@ -77,6 +106,8 @@ export type CombatLedger = {
   stabilized: Record<string, number>;
 };
 export type CombatCommand = {
+  skill?: string;
+  power?: PowerSelection;
   kind:
     | "use"
     | "end"
@@ -95,6 +126,7 @@ export type CombatCommand = {
   variant?: "base" | "discente";
   boost?: number;
   extraAttack?: boolean;
+  followUpHitId?: string;
   accelerate?: boolean;
   grant?: GrantKind;
   eventId?: string;
@@ -102,6 +134,8 @@ export type CombatCommand = {
   note?: string;
 };
 export type CombatOption = {
+  bloodAttack?: boolean;
+  power?: PowerRule;
   id: string;
   name: string;
   action: ActionCost;
@@ -117,7 +151,8 @@ export type CombatOption = {
     | "move"
     | "free"
     | "investigate"
-    | "custom";
+    | "custom"
+    | "power";
   target: "self" | "ally" | "any" | "none";
   formula?: string;
   grant?: GrantKind;
@@ -142,6 +177,7 @@ const minimumNex: Record<string, number> = {
   estrategista: 40,
   "oficial comandante": 99,
   "ataque extra": 40,
+  "segurar o gatilho": 60,
   "acelerar ritual": 40,
   "iniciativa aprimorada": 10,
   "sempre alerta": 99,
@@ -150,17 +186,25 @@ const minimumNex: Record<string, number> = {
 function eligible(a: Agent, i: Item) {
   return (
     i.quantity > 0 &&
+    !(a.className === "Sobrevivente" && (i.stage || 1) > a.stage) &&
     Math.max(
       i.nex || 0,
-      i.kind === "Poder" ? minimumNex[normalizeCombatName(i.name)] || 0 : 0,
+      i.kind === "Poder"
+        ? minimumNex[normalizeCombatName(combatRuleName(i))] || 0
+        : 0,
     ) <= a.nex
   );
 }
-export function hasPower(a: Agent, name: string) {
+export function hasPower(
+  a: Agent,
+  name: string,
+  overrides?: Record<string, CombatRule>,
+) {
   return a.inventory.some(
     (i) =>
       i.kind === "Poder" &&
-      normalizeCombatName(i.name) === normalizeCombatName(name) &&
+      !overrides?.[i.id] &&
+      normalizeCombatName(combatRuleName(i)) === normalizeCombatName(name) &&
       eligible(a, i),
   );
 }
@@ -169,7 +213,7 @@ export function hasMedicineKit(a: Agent) {
     (i) =>
       i.quantity > 0 &&
       i.kind === "Item" &&
-      /kit/.test(normalizeCombatName(i.name)) &&
+      /kit/.test(normalizeCombatName(combatRuleName(i))) &&
       /medic/.test(normalizeCombatName(i.name + " " + i.notes)),
   );
 }
@@ -210,6 +254,18 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
   if (old?.key !== key && a && e.round === 1) {
     if (hasPower(a, "Iniciativa Aprimorada")) b.move++;
     if (hasPower(a, "Sempre Alerta")) b.standard++;
+    if (
+      a.nex >= 50 &&
+      a.inventory.some(
+        (i) =>
+          i.attuned &&
+          i.kind === "Poder" &&
+          eligible(a, i) &&
+          !e.combatRules?.[i.id] &&
+          normalizeCombatName(combatRuleName(i)) === "velocidade do caos",
+      )
+    )
+      b.movementOnly = 1;
   }
   for (const effect of e.combat?.effects || []) {
     if (
@@ -224,14 +280,58 @@ export function budgetFor(e: Encounter, p: Participant, a?: Agent): Budget {
       else b.move++;
     }
     if (effect.grant === "attack") b.attack++;
+    if (effect.grant === "meleeAttack")
+      b.meleeAttack = (b.meleeAttack || 0) + 1;
   }
   return b;
+}
+/** Only a rolled attack whose hit the player confirms can continue the sequence. */
+export function firearmFollowUp(
+  events: CombatEvent[],
+  budget: Budget,
+  actorId: string,
+  weaponId: string,
+  targetId?: string,
+) {
+  const last = events.findLast(
+    (x) =>
+      x.turnKey === budget.key &&
+      x.actorId === actorId &&
+      x.itemKind === "Arma" &&
+      x.damageRoll,
+  );
+  if (
+    !last ||
+    (budget.latestAttackId && budget.latestAttackId !== last.id) ||
+    last.sourceItemId !== weaponId ||
+    last.targetIds[0] !== targetId ||
+    !last.rolls.some((roll) => roll.label === "Dano")
+  )
+    return;
+  const count =
+    budget.attackCount ?? countTurnAttacks(events, budget.key, actorId);
+  return { hitId: last.id, cost: 2 * count };
+}
+export function countTurnAttacks(
+  events: CombatEvent[],
+  key: string,
+  actorId: string,
+) {
+  return events.filter(
+    (x) =>
+      x.turnKey === key &&
+      x.actorId === actorId &&
+      x.itemKind === "Arma" &&
+      x.damageRoll,
+  ).length;
 }
 export function actionAvailable(
   b: Budget,
   cost: ActionCost,
   ritual = false,
   attack = false,
+  melee = false,
+  moving = false,
 ) {
   if (b.ended) return false;
   const s = b.standard + b.restricted;
@@ -239,10 +339,11 @@ export function actionAvailable(
   return (
     cost === "free" ||
     (cost === "move"
-      ? m + s > 0
+      ? m + s + (moving ? b.movementOnly || 0 : 0) > 0
       : cost === "full"
         ? s > 0 && m + s >= 2
-        : s > 0 || (attack && b.attack > 0))
+        : s > 0 ||
+          (attack && (b.attack > 0 || (melee && (b.meleeAttack || 0) > 0))))
   );
 }
 export function executionCost(text = ""): ActionCost | null {
@@ -261,6 +362,7 @@ export function executionCost(text = ""): ActionCost | null {
 export function combatOptions(
   a: Agent,
   rules: Record<string, CombatRule> = {},
+  actorEffects: CombatEffect[] = [],
 ): CombatOption[] {
   const unarmed: Item = {
     id: "unarmed",
@@ -294,13 +396,23 @@ export function combatOptions(
     },
     {
       id: "move",
-      name: "Deslocar / interagir",
+      name: "Deslocar-se",
       action: "move",
       pe: 0,
       effect: "move",
       target: "none",
       description:
         "Uma ação de movimento. O mestre acompanha distância e posicionamento.",
+    },
+    {
+      id: "interact",
+      name: "Interagir",
+      action: "move",
+      pe: 0,
+      effect: "generic",
+      target: "none",
+      description:
+        "Interaja com um objeto ou com o ambiente usando uma ação de movimento.",
     },
     {
       id: "free",
@@ -322,6 +434,59 @@ export function combatOptions(
       description: `Medicina (INT), DT 20 + 5 por estabilização nesta cena. Retira morrendo e inconsciente e deixa com 1 PV. ${hasMedicineKit(a) ? "Kit de Medicina disponível." : "Sem kit: −5 no teste."}`,
     },
   ];
+  const bloodPowers = a.inventory.filter(
+    (i) =>
+      i.kind === "Poder" &&
+      eligible(a, i) &&
+      normalizeCombatName(combatRuleName(i)) === "arma de sangue" &&
+      !rules[i.id],
+  );
+  const permanentBlood = bloodPowers.some((i) => i.attuned && a.nex >= 50);
+  if (
+    permanentBlood ||
+    bloodPowers.some((i) =>
+      actorEffects.some(
+        (x) =>
+          x.power?.manifestation === "bloodWeapon" && x.power.itemId === i.id,
+      ),
+    )
+  ) {
+    const bloodWeapon: Item = {
+      id: "blood-weapon",
+      name: "Arma de Sangue",
+      kind: "Arma",
+      quantity: 1,
+      spaces: 0,
+      damage: permanentBlood ? "1d10" : "1d6",
+      attackSkill: "Luta",
+      weaponType: "Corpo a corpo",
+      critical: "20/x2",
+      element: "Sangue",
+      notes:
+        "Arma simples, leve, de Sangue. Não precisa ser empunhada. O dano base recebe FOR como nos demais ataques corpo a corpo.",
+    };
+    const attack: CombatOption = {
+      id: bloodWeapon.id,
+      name: "Atacar com Arma de Sangue",
+      item: bloodWeapon,
+      action: "standard",
+      pe: 0,
+      effect: "attack",
+      target: "any",
+      description: bloodWeapon.notes,
+    };
+    options.push(attack, {
+      ...attack,
+      id: "blood-weapon-extra",
+      name: "Arma de Sangue · ataque adicional",
+      action: "free",
+      pe: 1,
+      limit: "turn",
+      bloodAttack: true,
+      description:
+        "Uma vez por turno, após usar agredir: ataque adicional exclusivamente com sua Arma de Sangue, por 1 PE.",
+    });
+  }
   options.push({
     id: "investigate",
     name: "Investigar",
@@ -346,7 +511,7 @@ export function combatOptions(
   for (const stored of a.inventory) {
     const item = combatItem(stored);
     if (!eligible(a, item)) continue;
-    const name = normalizeCombatName(item.name),
+    const name = normalizeCombatName(combatRuleName(item)),
       custom = rules[item.id],
       base = {
         id: item.id,
@@ -361,6 +526,9 @@ export function combatOptions(
         ...custom,
         id: item.id,
         rule: custom,
+        ...(custom.effect === "power"
+          ? { power: configuredPowerRule(custom) }
+          : {}),
         description: custom.note || item.notes,
       });
       continue;
@@ -377,7 +545,9 @@ export function combatOptions(
     if (item.kind === "Item" && name === "cicatrizante") {
       options.push({
         ...base,
-        action: "standard",
+        action: hasPower(a, "Especialista em Emergências")
+          ? "move"
+          : "standard",
         effect: "heal",
         target: "any",
         formula: "2d8+2",
@@ -401,8 +571,21 @@ export function combatOptions(
     if (
       item.kind === "Poder" &&
       ["iniciativa aprimorada", "sempre alerta"].includes(name)
-    )
+    ) {
+      options.push({
+        ...base,
+        action: "free",
+        effect: "power",
+        target: "self",
+        power: {
+          ...powerRule(item, a),
+          passive: true,
+          warning:
+            "A ação adicional já é concedida automaticamente no primeiro turno.",
+        },
+      });
       continue;
+    }
     if (item.kind === "Poder" && name === "surto temporal") {
       options.push({
         ...base,
@@ -458,6 +641,18 @@ export function combatOptions(
       });
       continue;
     }
+    if (item.kind === "Poder") {
+      const power = powerRule(item, a);
+      options.push({
+        ...base,
+        pe: power.pe,
+        action: power.action,
+        effect: "power",
+        target: power.target,
+        power,
+      });
+      continue;
+    }
     const extra =
       name === "velocidade mortal" ? null : extraActionFromText(item);
     if (extra) {
@@ -502,20 +697,34 @@ export function combatOptions(
   }
   return options;
 }
-export function effortLimit(a: Agent) {
+export function effortLimit(a: Agent, ritual = false) {
+  const death = a.inventory.find(
+    (i) =>
+      eligible(a, i) &&
+      normalizeCombatName(combatRuleName(i)) === "encarar a morte",
+  );
   return (
     (a.className === "Sobrevivente"
       ? a.stage
       : a.nex === 99
         ? 20
         : Math.max(1, Math.floor(a.nex / 5))) +
-    (hasPower(a, "Potencial Aprimorado") ? 1 : 0)
+    (death ? (death.attuned && a.nex >= 50 ? 3 : 1) : 0) +
+    (hasPower(a, "Dedicação") ? 1 : 0) +
+    (ritual && hasPower(a, "Presença Poderosa")
+      ? effectiveAttributes(a).PRE
+      : 0)
   );
 }
 export function medicBoostLimit(a: Agent) {
   return [40, 65, 99].filter((n) => a.nex >= n).length;
 }
 export function maxTargets(o: CombatOption, a: Agent) {
+  if (
+    o.item &&
+    ["ensaio", "mosh pit"].includes(normalizeCombatName(combatRuleName(o.item)))
+  )
+    return 100;
   return normalizeCombatName(o.name) === "estrategista"
     ? Math.max(1, effectiveAttributes(a).INT)
     : normalizeCombatName(o.name) === "oficial comandante"
