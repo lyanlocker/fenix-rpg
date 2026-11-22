@@ -27,6 +27,7 @@ export default function CharacterOverview({
   infection,
   infectionBusy = false,
   onInfectionAdjust,
+  reputation,
 }: {
   agent: Agent;
   maximums: Record<Resource, number>;
@@ -38,6 +39,7 @@ export default function CharacterOverview({
   infection?: InfectionStatus;
   infectionBusy?: boolean;
   onInfectionAdjust?: (delta: -1 | 1) => void;
+  reputation?: React.ReactNode;
 }) {
   const [portraitExpanded, setPortraitExpanded] = useState(false);
   const effective = effectiveAttributes(agent);
@@ -163,6 +165,7 @@ export default function CharacterOverview({
           </div>
         </div>
         <div className="overview-resources">
+          {reputation}
           {infection?.enabled && onInfectionAdjust && (
             <InfectionBar
               infection={infection}

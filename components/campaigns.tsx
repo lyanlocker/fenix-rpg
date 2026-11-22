@@ -25,6 +25,8 @@ import {
   type InfectionStatus,
 } from "@/lib/share";
 import { startVisiblePolling } from "@/lib/polling";
+import { campaignBonds, registerBondRoster } from "@/lib/campaign-bonds";
+import { combatMasterKey } from "@/lib/shared-combat";
 export default function Campaigns() {
   const game = useGame(),
     [edit, setEdit] = useState<Campaign | null>(null),
@@ -222,6 +224,62 @@ export default function Campaigns() {
       setBusyId(null);
     }
   }
+  async function finishRelationScene(campaign: Campaign) {
+    if (
+      !window.confirm(
+        "Encerrar as relações ativas dos personagens desta campanha? Os usos consumidos não serão recuperados.",
+      )
+    )
+      return;
+    setBusyId(campaign.id);
+    try {
+      const agents = game.state.agents.filter(
+        (a) => a.campaign_id === campaign.id,
+      );
+      const results = await Promise.allSettled(
+        agents.map(async (a) => {
+          const token = getShareCredentials(a.id)?.masterToken;
+          if (!token) throw Error("Chave de mestre ausente.");
+          await campaignBonds(a.id, token, "finish");
+        }),
+      );
+      game.setNotice(
+        results.some((r) => r.status === "rejected")
+          ? "Não foi possível encerrar todas as relações. Confira os links compartilhados."
+          : "Cena encerrada: relações ativas desativadas.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+  async function syncBondRoster(campaign: Campaign) {
+    setBusyId(campaign.id);
+    try {
+      const agents = game.state.agents.filter(
+        (a) => a.campaign_id === campaign.id,
+      );
+      if (!agents.length)
+        throw Error("Adicione personagens à campanha primeiro.");
+      const keys = [];
+      for (const agent of agents) {
+        const key =
+          getShareCredentials(agent.id) || (await publishSharedAgent(agent));
+        keys.push({ agentId: agent.id, masterToken: key.masterToken });
+      }
+      const count = await registerBondRoster(
+        campaign.id,
+        combatMasterKey(campaign.id, true)!,
+        keys,
+      );
+      game.setNotice(
+        `${count} personagens sincronizados. Relações disponíveis e reputação oculta por padrão.`,
+      );
+    } catch (e) {
+      game.setNotice((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
   if (!game.access.ready || !game.ready) return <p>Carregando campanhas…</p>;
   if (game.access.isPlayer)
     return (
@@ -273,6 +331,18 @@ export default function Campaigns() {
             <h2>{c.name}</h2>
             <p className="prose">{c.description}</p>
             <button onClick={() => setEdit(c)}>Editar campanha</button>
+            <button
+              disabled={busyId === c.id}
+              onClick={() => void syncBondRoster(c)}
+            >
+              Sincronizar elenco para relações
+            </button>
+            <button
+              disabled={busyId === c.id}
+              onClick={() => void finishRelationScene(c)}
+            >
+              Encerrar relações da cena
+            </button>
             <h3>Personagens</h3>
             {game.state.agents
               .filter((a) => a.campaign_id === c.id)

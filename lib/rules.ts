@@ -20,6 +20,7 @@ export type ItemEnhancement = {
   element?: string;
 };
 export type Item = {
+  usesRemaining?: number;
   image?: string;
   skillsText?: string;
   grantName?: string;

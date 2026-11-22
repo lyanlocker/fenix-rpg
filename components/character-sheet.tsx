@@ -82,6 +82,12 @@ import {
   type InfectionStatus,
 } from "@/lib/share";
 import { startVisiblePolling } from "@/lib/polling";
+import { giftDefinition, giftUses } from "@/lib/jianghu-gifts";
+import {
+  RelationsPanel,
+  ReputationPanel,
+  useCampaignBonds,
+} from "./campaign-bonds";
 const sections = [
   "Resumo",
   "Armas",
@@ -130,6 +136,7 @@ export default function CharacterSheet({ id }: { id: string }) {
     faceAvailable = !!stored && alternateIsApproved(stored, campaign),
     a = stored && otherFace && faceAvailable ? alternateAgent(stored) : stored,
     infectionFace = a?.nex === 35;
+  const bonds = useCampaignBonds(id, sharedToken, stored?.campaign_id);
   useEffect(() => {
     if (!game.access.ready) return;
     const token = sharedToken;
@@ -599,6 +606,9 @@ export default function CharacterSheet({ id }: { id: string }) {
                 infectionBusy={busy || !sharedToken}
                 onInfectionAdjust={changeInfection}
                 onDoubleClickFace={faceAvailable ? toggleFace : undefined}
+                reputation={
+                  <ReputationPanel {...bonds} master={!game.access.isPlayer} />
+                }
               />
             ) : section === "Perícias" ? (
               <section className="panel">
@@ -647,6 +657,9 @@ export default function CharacterSheet({ id }: { id: string }) {
               </section>
             ) : section === "Descrição" ? (
               <section className="panel">
+                {a.campaign_id && (
+                  <RelationsPanel {...bonds} master={!game.access.isPlayer} />
+                )}
                 <h2>História e anotações</h2>
                 <textarea
                   aria-label="História e anotações"
@@ -972,7 +985,9 @@ export default function CharacterSheet({ id }: { id: string }) {
                           )}
                         </>
                       )}
-                      {(i.kind === "Ritual" || i.kind === "Poder") && (
+                      {(i.kind === "Ritual" ||
+                        i.kind === "Poder" ||
+                        giftDefinition(i)) && (
                         <>
                           <p className="item-meta">
                             {[i.execution, i.range, i.target, i.duration]
@@ -981,12 +996,17 @@ export default function CharacterSheet({ id }: { id: string }) {
                           </p>
                           <div className="actions">
                             <button
-                              disabled={busy || !i.cost}
+                              disabled={busy || !i.cost || giftUses(i) === 0}
                               onClick={() => setUseItem(i)}
                             >
                               Usar · {i.cost || 0}{" "}
                               {a.determination ? "PD" : "PE"}
                             </button>
+                            {giftDefinition(i) && (
+                              <span className="muted">
+                                {giftUses(i)}/3 usos restantes
+                              </span>
+                            )}
                             {i.damage && (
                               <button
                                 disabled={busy}
@@ -1120,6 +1140,14 @@ export default function CharacterSheet({ id }: { id: string }) {
                   equipped: type !== "Vestimenta" || worn < 2,
                 }
               : i;
+            if (
+              giftDefinition(added) &&
+              agent.inventory.some(
+                (entry) =>
+                  giftDefinition(entry)?.id === giftDefinition(added)?.id,
+              )
+            )
+              throw Error("Este presente único já está no inventário.");
             await save({ inventory: [...agent.inventory, added] });
             game.setNotice(
               type
@@ -1236,9 +1264,30 @@ export default function CharacterSheet({ id }: { id: string }) {
             onClick={() =>
               void run(async () => {
                 const key = agent.determination ? "pd" : "pe";
-                if (agent.resources[key] < (useItem.cost || 0))
+                if (
+                  agent.resources[key] <
+                  (giftDefinition(useItem)?.cost ?? useItem.cost ?? 0)
+                )
                   throw Error("Recurso insuficiente.");
-                await changeResource(key, -(useItem.cost || 0));
+                const gift = giftDefinition(useItem);
+                if (gift) {
+                  const current = agent.inventory.find(
+                    (i) => i.id === useItem.id,
+                  );
+                  if (!current || !giftUses(current))
+                    throw Error("O presente não possui mais utilizações.");
+                  await save({
+                    resources: {
+                      ...agent.resources,
+                      [key]: agent.resources[key] - gift.cost!,
+                    },
+                    inventory: agent.inventory.map((i) =>
+                      i.id === current.id
+                        ? { ...i, usesRemaining: giftUses(current)! - 1 }
+                        : i,
+                    ),
+                  });
+                } else await changeResource(key, -(useItem.cost || 0));
                 setUseItem(null);
               })
             }

@@ -47,7 +47,11 @@ test("HTTP actions carry edited dice and delay intentions through server validat
     const body = JSON.parse(String(init?.body));
     assert.equal(body.server_token, secret);
     const url = String(input);
-    if (url.endsWith("/fenix_combat_context")) return Response.json(context);
+    if (
+      url.endsWith("/fenix_combat_context") ||
+      url.endsWith("/fenix_combat_context_with_bonds")
+    )
+      return Response.json(context);
     assert.ok(url.endsWith("/fenix_commit_combat_action"));
     assert.equal(body.expected_revision, context.revision);
     commits++;
