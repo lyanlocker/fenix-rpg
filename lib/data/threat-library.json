@@ -84,9 +84,114 @@
       "details": "PRESENÇA PERTURBADORA\nDT 21  4d6 mental  NEX 50%+ é imune.   SENTIDOS\nPercepção 3O+10 | Iniciativa 4O+15\nPercepção às cegas, visão no escuro   DEFESA 26\nFortitude 3O+10 | Reflexos 4O+15 | Vontade 2O+8   PONTOS DE VIDA 220 | 110 machucado   RESISTÊNCIAS Balístico, corte e perfuração 10, Sangue 10, Energia 15   VULNERABILIDADES Conhecimento   ATRIBUTOS\nAGI 4 | FOR 3 | INT 1 | PRE 2 | VIG 3   PERÍCIAS\nAcrobacia 4O+12 | Atletismo 3O+12 | Furtividade 4O+15   DESLOCAMENTO 12m | 8, escalada 12m | 8   \n\nCOLUNA DE NÓDULOS (6 CARGAS): As costas abertas da criatura exibem 6 pústulas vertebrais verdes interligadas pelos tubos cor-de-rosa. Ele inicia o combate com 6 cargas e as utiliza para potencializar suas ações. Sempre que o Rastejante sofre um acerto crítico ou 25 ou mais pontos de dano de um único ataque (especialmente de Impacto ou Conhecimento), uma das pústulas da coluna estoura: ele perde 1 carga e espirra fluido cáustico e elétrico, causando 2d6 pontos de dano de Energia a todos os seres adjacentes (Reflexos DT 21 evita). Quando ficar com 0 cargas, perde o acesso às habilidades que exigem gasto de cargas e sua Defesa cai para 23.\n\nLIVRE  PRENDER NO CHÃO\nSe o Rastejante acertar seus dois ataques de Garras Dilaceradoras em um mesmo alvo na mesma rodada, ele usa o peso das mãos gigantescas para imobilizar a vítima no solo, deixando-a agarrada (teste 4O+15). Uma vez por rodada, como ação livre, o Rastejante pode desferir sua Mordida Viral automaticamente contra um ser que esteja mantendo agarrado (Fortitude DT 21 reduz o dano à metade; em caso de falha, o alvo também aumenta sua barra de Infecção em +1 nível/ponto).   \n\nLIVRE  ACELERAÇÃO NEURAL (Gasta 1 Carga da Coluna)\nSempre que um personagem sofre dano das Garras Dilaceradoras, o Rastejante pode descarregar a energia dos cabos magenta presos ao seu pulso para acelerar o sistema nervoso da vítima de forma caótica. No próximo turno do personagem afetado, caso ele realize uma ação de movimento e uma ação padrão (ou uma ação completa), sofrerá 3d10 pontos de dano de Energia pelo curto-circuito biológico (Fortitude DT 21 reduz à metade).  \n\n MOVIMENTO  RECUO PELAS FRESTAS E TETOS\nImpulsionado pelas pernas traseiras flexionadas, o Rastejante salta até metade do seu deslocamento (6m) para uma parede, teto ou cobertura próxima sem provocar ataques de oportunidade.   \n\nCOMPLETA  INVESTIDA DO PREDADOR (Gasta 1 Carga da Coluna)\nSe o Rastejante estiver posicionado em um local acima de um ser (como no teto, parede alta ou sobre escombros) em alcance médio, ele salta na direção da vítima e aterrissa em um espaço adjacente a ela. Isso funciona como uma investida, permitindo que ele faça seus dois ataques de Garras Dilaceradoras (ambos recebendo o bônus de +O da investida) contra o alvo e deixando-o caído se acertar pelo menos um dos golpes.   ",
       "bookId": "custom",
       "page": 0
+    },
+    {
+      "id": "oup-taotie",
+      "name": "Taotie — A Fome Insaciável",
+      "element": "Sangue",
+      "secondaryElements": ["Conhecimento"],
+      "kind": "Criatura · Enorme",
+      "vd": 300,
+      "pv": 680,
+      "defense": 36,
+      "initiative": "3d20+15",
+      "attributes": {
+        "AGI": 3,
+        "FOR": 5,
+        "INT": 4,
+        "PRE": 4,
+        "VIG": 5
+      },
+      "tests": {
+        "Percepção": "4d20+20",
+        "Fortitude": "5d20+20",
+        "Reflexos": "3d20+15",
+        "Vontade": "4d20+20"
+      },
+      "attacks": [
+        {
+          "name": "Garras da Avareza (x2, Sangue)",
+          "test": "5d20+25",
+          "damage": "3d8+15"
+        },
+        {
+          "name": "Mordida Insaciável (Sangue)",
+          "test": "5d20+25",
+          "damage": "5d10+15"
+        }
+      ],
+      "details": "O ÚLTIMO PECADO · BESTIÁRIO DA JIANGHU\nTaotie (饕餮) manifesta a fome insaciável, a avareza e o desejo de possuir aquilo que nunca basta. Seus chifres evocam as antigas máscaras de bronze; olhos dourados se escondem nas patas e sigilos de Conhecimento cobrem suas placas ósseas.\n\nPRESENÇA PERTURBADORA\nVontade DT 30 | 6d8 mental | NEX 90%+ é imune. Sucesso reduz o dano à metade.\n\nSENTIDOS: Percepção às cegas.\nPV: 680 | Machucado: 340.\nRESISTÊNCIAS: Balístico, impacto, perfuração, Conhecimento e Sangue 15.\nVULNERABILIDADE: Morte.\nDESLOCAMENTO: 9m (6 quadrados). Alcance natural: 4,5m.\n\nPADRÃO — AGREDIR\nEscolha Garras da Avareza (dois ataques, cada um com 5d20+25 e 3d8+15 de Sangue) ou Mordida Insaciável (um ataque com 5d20+25 e 5d10+15 de Sangue). Crítico padrão 20/x2.\n\nMOVIMENTO — TENTAÇÃO\nTaotie oferece paranormalmente a um agente em alcance médio aquilo que ele mais deseja. Se aceitar, o agente recebe +1d8 em seu próximo teste e adquire uma Marca da Ganância. Se recusar, nada acontece. Cada personagem pode possuir apenas uma marca simultaneamente. As marcas restantes desaparecem ao fim da cena.\n\nLIVRE — CONSUMIR A GANÂNCIA (1x por rodada)\nAo causar dano a um personagem marcado, Taotie consome sua marca e recupera 20 PV, sem exceder seus PV máximos.\n\nCOMPLETA — BANQUETE PROFANO (2x por cena; nunca em rodadas consecutivas)\nTodos os demais seres em um raio de 6m sofrem 6d8 de dano de Conhecimento. Uma vítima com Marca da Ganância sofre +2d8 de dano. Vontade DT 28 reduz o dano total à metade.\n\nPASSIVA — FOME INCONTROLÁVEL\nAo atingir 340 PV ou menos, Taotie passa a causar +1d6 de Sangue nos ataques corpo a corpo, mas sua Defesa cai para 34 até o fim da cena.\n\nFRAQUEZA — RENÚNCIA\nUm personagem marcado pode gastar uma ação padrão para renunciar à tentação e remover sua marca. Quando três personagens diferentes renunciarem na mesma cena, Taotie perde Consumir a Ganância e suas resistências caem de 15 para 5 pelo restante da cena.\n\nAs ações especiais, as marcas e os efeitos de machucado são resolvidos pelo mestre. No rolador, faça os dois ataques das Garras separadamente.",
+      "bookId": "custom",
+      "page": 0
+    },
+    {
+      "id": "oup-nian",
+      "name": "Nian — A Besta das Montanhas",
+      "element": "Sangue",
+      "secondaryElements": [],
+      "kind": "Criatura · Enorme",
+      "vd": 300,
+      "pv": 640,
+      "defense": 35,
+      "initiative": "4d20+20",
+      "attributes": {
+        "AGI": 4,
+        "FOR": 5,
+        "INT": 1,
+        "PRE": 2,
+        "VIG": 5
+      },
+      "tests": {
+        "Percepção": "3d20+20",
+        "Fortitude": "5d20+25",
+        "Reflexos": "4d20+20",
+        "Vontade": "2d20+10"
+      },
+      "attacks": [
+        {
+          "name": "Garras Dilacerantes (x2, Sangue)",
+          "test": "5d20+25",
+          "damage": "3d10+12"
+        },
+        {
+          "name": "Chifre Ancestral (Perfuração)",
+          "test": "5d20+25",
+          "damage": "5d10+18"
+        },
+        {
+          "name": "Mordida Bestial (Sangue)",
+          "test": "5d20+25",
+          "damage": "4d12+12"
+        }
+      ],
+      "details": "O ÚLTIMO PECADO · BESTIÁRIO DA JIANGHU\nNian (年兽) é uma manifestação do medo ancestral das feras que assombravam vilarejos. Sua juba carmesim e sua máscara óssea lembram um leão cerimonial chinês, distorcido pelo Sangue.\n\nPRESENÇA PERTURBADORA\nVontade DT 28 | 6d6 mental | NEX 90%+ é imune. Sucesso reduz o dano à metade.\n\nSENTIDOS: Percepção às cegas e Faro.\nPV: 640 | Machucado: 320.\nRESISTÊNCIAS: Balístico, corte, impacto, perfuração e Sangue 15.\nVULNERABILIDADE: Morte.\nDESLOCAMENTO: 15m (10 quadrados). Alcance natural: 4,5m.\n\nPADRÃO — AGREDIR\nEscolha Garras Dilacerantes (dois ataques, cada um com 5d20+25 e 3d10+12 de Sangue), Chifre Ancestral (5d20+25 e 5d10+18 de Perfuração) ou Mordida Bestial (5d20+25 e 4d12+12 de Sangue). Crítico padrão 20/x2.\n\nLIVRE — IMPACTO BESTIAL\nAo acertar o Chifre Ancestral, o alvo faz Fortitude DT 28. Se falhar, fica caído e é empurrado 3m.\n\nPADRÃO — RUGIDO DAS MONTANHAS (2x por cena)\nTodos os agentes em um raio de 9m sofrem 3d8 de dano mental e ficam abalados até o fim do próximo turno de cada um. Vontade DT 28 reduz o dano à metade e evita a condição.\n\nCOMPLETA — INVESTIDA ANCESTRAL\nAo final do seu turno, Nian anuncia a direção da próxima investida. No turno seguinte, gasta uma ação completa para percorrer até 15m em linha reta. Os personagens em seu caminho sofrem 6d10+15 de Sangue e ficam caídos. Reflexos DT 28 reduz o dano à metade e evita a condição. Não pode utilizar esta ação em rodadas consecutivas.\n\nPASSIVA — FÚRIA PRIMITIVA\nAo atingir 320 PV ou menos, seu deslocamento aumenta para 18m, recebe +1d20 nos ataques e sofre -3 na Defesa (32) até o fim da cena.\n\nFRAQUEZA — A TRADIÇÃO ESQUECIDA (3x por cena)\nUm agente que combine manifestações simbólicas da cor vermelha com sons intensos pode gastar uma ação padrão para provocar a aversão paranormal de Nian. A criatura faz Vontade DT 25. Se falhar, sofre -5 na Defesa até o final de seu próximo turno, cancela a Investida Ancestral que estiver preparando e não pode usar Rugido das Montanhas durante o próximo turno.\n\nAs ações especiais, as condições e os efeitos de machucado são resolvidos pelo mestre. No rolador, faça os dois ataques das Garras separadamente.",
+      "bookId": "custom",
+      "page": 0
     }
   ],
   "art": {
+    "oup-taotie": {
+      "src": "/art/custom/6e0b0fd5d6ad9d992a8c5444abc997d1cd7d0ee936082ee2b1a52c622afae809.webp",
+      "thumbnail": "/art/custom/a07e1b6cf387d3c4f6f433bbd16664493796ac58943713a49deb90a66f81101a.webp",
+      "width": 1024,
+      "height": 768,
+      "thumbnailWidth": 320,
+      "thumbnailHeight": 240,
+      "bookId": "custom",
+      "page": 0,
+      "pdfPage": 0
+    },
+    "oup-nian": {
+      "src": "/art/custom/b6e09d3262d2a4cef78dd77f0e3154d2092a58bc86cf06837f978c4293fbc2e1.webp",
+      "thumbnail": "/art/custom/40c1a1aeca1d9b28cbe0465019e0fb37812f730f38ff1e2e30752f22a832e6ce.webp",
+      "width": 1024,
+      "height": 683,
+      "thumbnailWidth": 320,
+      "thumbnailHeight": 213,
+      "bookId": "custom",
+      "page": 0,
+      "pdfPage": 0
+    },
     "01-degolificada": {
       "src": "/art/custom/7c645a3b6ecb41ec2993c40d45b3f0d9f6288a9599ca51eedb16c2748bc5314b.webp",
       "thumbnail": "/art/custom/a4586a297159d22570af8368399e44c0407f773c0abd7552d9a09e5a6a9cc44f.webp",
