@@ -1,5 +1,5 @@
 "use client";
-import { combatDefense } from "@/lib/power-effects";
+import { combatDefense, combatThreatDefense } from "@/lib/power-effects";
 import { combatFace } from "@/lib/combat-actions";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -819,7 +819,7 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
                         <b>
                           {sheet
                             ? combatDefense(combatFace(sheet, p), encounter, p)
-                            : (p.defense ?? "—")}
+                            : (combatThreatDefense(encounter, p) ?? "—")}
                         </b>
                       </span>
                       {t && (

@@ -87,9 +87,12 @@ export async function POST(request: Request) {
       requested_campaign_id: input.campaignId || null,
     };
     const context = await rpc<CombatContext>(
-      "fenix_combat_context",
+      "fenix_combat_context_with_bonds",
       credentials,
-    );
+    ).catch((error) => {
+      if ((error as { status?: number }).status !== 404) throw error;
+      return rpc<CombatContext>("fenix_combat_context", credentials);
+    });
     if (
       context.encounter.id !== input.encounterId ||
       context.revision !== input.revision

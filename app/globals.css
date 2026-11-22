@@ -2287,3 +2287,26 @@ summary {
     margin-bottom: 0;
   }
 }
+.campaign-bonds-panel { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #ffffff20; }
+.bond-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:.7rem; margin:1rem 0; }
+.bond-card { display:flex; flex-direction:column; align-items:center; gap:.45rem; text-align:center; padding:.7rem .35rem; background:#ffffff06; border:1px solid #ffffff20; border-radius:8px; min-width:0; }
+.bond-card strong { font-size:.82rem; overflow-wrap:anywhere; }
+.bond-card>button { padding:.35rem; font-size:.72rem; }
+.bond-portrait { width:58px; height:58px; border-radius:50%; overflow:hidden; display:grid; place-items:center; background:#ffffff14; border:1px solid #ffffff30; }
+.bond-portrait img { width:100%;height:100%;object-fit:cover;object-position:50% 22%; }
+.bond-hearts { display:flex;gap:2px; }
+.bond-hearts button { color:#d45c79; background:transparent; border:0; padding:3px; min-width:0; }
+.bond-hearts button[aria-pressed=false] { color:#8c7e88; }
+.bond-dead .bond-portrait { filter:grayscale(1); }
+.bond-active,.bond-master { display:flex;gap:.6rem;align-items:center;justify-content:space-between;flex-wrap:wrap; padding:.6rem; border:1px solid #ffffff20; border-radius:6px; }
+.reputation-panel { padding:.8rem 0; }
+.reputation-track { position:relative;background:#ffffff14;border-radius:4px;height:10px;overflow:hidden; margin:.5rem 0; }
+.reputation-zero {position:absolute;left:50%;height:100%;width:1px;background:#aaa;z-index:1;}
+.reputation-fill { position:absolute; height:100%; }
+.reputation-fill.negative {right:50%;background:#d04c5d;}
+.reputation-fill.positive {left:50%;background:#c9a85b;}
+.reputation-scale {display:flex;justify-content:space-between;font-size:.72rem;opacity:.75;}
+.reputation-controls {display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.45rem;align-items:center;}
+.reputation-controls input { width:72px; }
+.reputation-controls button { padding:.3rem .5rem;font-size:.77rem; }
+.gift-reactions { margin:.8rem 0; }

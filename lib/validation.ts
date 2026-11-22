@@ -50,6 +50,7 @@ const schema = z.object({
     .array(
       z.object({
         id: z.string(),
+        usesRemaining: num.int().min(0).max(3).optional(),
         image: z.string().max(itemImageLimit).refine(validItemImage).optional(),
         name: z.string().max(150),
         kind: z.enum(["Item", "Arma", "Ritual", "Poder"]),

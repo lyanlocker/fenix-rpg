@@ -13,6 +13,7 @@ import type { AttackMode } from "./combat-dice";
 import type { Agent, Item } from "./rules";
 import type { Encounter, Participant } from "./model";
 import { effectiveAttributes } from "./rules";
+import { giftDefinition, giftUses } from "./jianghu-gifts";
 export type ActionCost = "standard" | "move" | "free" | "full";
 export type GrantKind = "standard" | "move" | "attack" | "meleeAttack" | "free";
 export const actionLabels: Record<ActionCost, string> = {
@@ -511,6 +512,28 @@ export function combatOptions(
   for (const stored of a.inventory) {
     const item = combatItem(stored);
     if (!eligible(a, item)) continue;
+    const gift = giftDefinition(item);
+    if (gift) {
+      const remaining = giftUses(item)!;
+      if (remaining > 0 && gift.execution !== "Reação") {
+        options.push({
+          id: item.id,
+          name: item.name,
+          item,
+          pe: gift.cost!,
+          action: executionCost(gift.execution)!,
+          effect: "generic",
+          target:
+            gift.id === "jianghu-contador-eternidade"
+              ? "self"
+              : gift.id === "jianghu-carimbo-esquecimento"
+                ? "ally"
+                : "any",
+          description: `${gift.notes} · ${remaining}/3 usos restantes.`,
+        });
+      }
+      continue;
+    }
     const name = normalizeCombatName(combatRuleName(item)),
       custom = rules[item.id],
       base = {

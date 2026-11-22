@@ -297,3 +297,23 @@ export function combatDefense(
     fixedBonus(modifiers, "attribute", a, undefined, "AGI")
   );
 }
+/** Threats have no Agent sheet; known flat defense effects still apply. */
+export function combatThreatDefense(
+  e: Encounter,
+  p: Pick<Participant, "id" | "defense">,
+) {
+  if (p.defense === undefined) return undefined;
+  return (
+    p.defense +
+    (e.combat?.effects || [])
+      .filter(
+        (effect) => effect.targetId === p.id && powerEffectActive(effect, e),
+      )
+      .flatMap((effect) => effect.power?.modifiers || [])
+      .filter(
+        (m) =>
+          m.stat === "defense" && m.scope === "all" && /^-?\d+$/.test(m.amount),
+      )
+      .reduce((amount, m) => amount + Number(m.amount), 0)
+  );
+}

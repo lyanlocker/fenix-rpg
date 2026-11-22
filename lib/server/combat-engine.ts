@@ -1,4 +1,5 @@
 import { combatRuleName, combatSkillAttribute } from "../combat-metadata";
+import { giftDefinition, giftUses } from "../jianghu-gifts";
 import { resolvePower, modifierLabel, powerAmount } from "../power-rules";
 import {
   powerContributions,
@@ -65,6 +66,7 @@ export type CombatContext = {
   revision: number;
   sheets: Record<string, Agent>;
   sheetVersions: Record<string, string>;
+  relationDice?: Record<string, number>;
 };
 export type AgentCombatPatch = {
   id: string;
@@ -154,7 +156,17 @@ export function executeCombatCommand(
     turnKey: turnKey(e),
     rolls: [],
   };
-  function addRoll(label: string, r: ReturnType<typeof check>) {
+  function addRoll(label: string, r: ReturnType<typeof check>, isTest = false) {
+    const sides = p!.agentId && context.relationDice?.[p!.agentId];
+    if (isTest && sides && [8, 10, 12].includes(sides)) {
+      const extra = roll(sides);
+      r = {
+        ...r,
+        total: r.total + extra,
+        dice: [...r.dice, extra],
+        expression: `${r.expression} +${extra} (Relação: 1d${sides})`,
+      };
+    }
     event.rolls.push({ label, ...r });
     return r;
   }
@@ -204,6 +216,7 @@ export function executeCombatCommand(
     const result = addRoll(
       skill,
       augmented(base, bonusRolls(contributions, "skill", a, undefined, skill)),
+      true,
     );
     consumePowerEffects(e, p!, "test", contributions, undefined, skill, attr);
     ledger.effects = e.combat!.effects;
@@ -216,6 +229,22 @@ export function executeCombatCommand(
       return fail((error as Error).message);
     }
   }
+  function consumeGift(item: Item) {
+    const remaining = giftUses(item);
+    if (remaining === undefined || remaining <= 0)
+      fail("O presente não possui mais utilizações.");
+    face!.inventory = face!.inventory.map((i) =>
+      i.id === item.id ? { ...i, usesRemaining: remaining - 1 } : i,
+    );
+    saveFace(p!, face!);
+    return remaining - 1;
+  }
+  const reactionItem =
+    command.kind === "use" &&
+    face?.inventory.find(
+      (i) =>
+        i.id === command.optionId && giftDefinition(i)?.execution === "Reação",
+    );
   if (command.kind === "resolve") {
     if (context.role !== "master")
       fail("Somente o mestre pode resolver esta ação.");
@@ -236,6 +265,60 @@ export function executeCombatCommand(
       event.text = `${amount} de dano final em ${target.name}. ${pending.damageRoll && !pending.damageRoll.done ? "Valor definido pelo mestre antes da rolagem de dano. " : ""}${command.note || ""}`;
     } else event.text = command.note || "Efeito conferido pelo mestre.";
     pending.resolved = true;
+  } else if (reactionItem && face) {
+    if (
+      !e.active ||
+      face.resources.pv <= 0 ||
+      [...face.conditions, ...p.conditions.split(",")].some((c) =>
+        /^(morto|inconsciente|paralisado|atordoado)$/.test(
+          normalizeCombatName(c),
+        ),
+      )
+    )
+      fail("A reação não está disponível.");
+    const gift = giftDefinition(reactionItem)!;
+    const target = e.participants.find((t) => t.id === command.targetIds?.[0]);
+    if (
+      !target ||
+      command.targetIds?.length !== 1 ||
+      (context.role === "player" && target.hidden)
+    )
+      fail("Escolha um alvo disponível.");
+    if (gift.id !== "jianghu-ultima-palavra" && !target.agentId)
+      fail("Escolha você ou um aliado.");
+    if (
+      gift.id === "jianghu-ultima-palavra" &&
+      ledger.events.some(
+        (x) =>
+          x.sourceItemId === reactionItem.id && x.targetIds.includes(target.id),
+      )
+    )
+      fail("Esta criatura já foi alvo da Retratação nesta cena.");
+    const resource = face.determination ? "pd" : "pe";
+    if (face.resources[resource] < gift.cost!) fail("Recurso insuficiente.");
+    face.resources[resource] -= gift.cost!;
+    const remaining = consumeGift(reactionItem);
+    event.label = gift.name + " · Reação";
+    event.targetIds = [target.id];
+    event.secret ||= target.hidden;
+    event.sourceItemId = reactionItem.id;
+    event.itemKind = "Item";
+    event.pending = "interpretation";
+    event.text = `${gift.notes} Alvo: ${target.name}. ${remaining}/3 usos restantes. O mestre confere o gatilho e resolve o efeito.`;
+    if (gift.id === "jianghu-dado-destino") {
+      const value = addRoll(
+        "A Última Aposta",
+        safeDice(() => rollDamageDice("1d6", roll)),
+      ).total;
+      event.text += ` Resultado do dado: ${value}.`;
+      if (value === 1)
+        event.text += ` Dano de Energia: ${
+          addRoll(
+            "Energia",
+            safeDice(() => rollDamageDice("2d6", roll)),
+          ).total
+        }.`;
+    }
   } else {
     if (!e.active) fail("Retome o combate para executar ações.");
     if (e.participants[e.turn]?.id !== p.id)
@@ -478,6 +561,29 @@ export function executeCombatCommand(
             ledger.effects.filter((x) => x.targetId === p.id),
           ).find((o) => o.id === command.optionId);
           if (!option) fail("Esta ação não está disponível na ficha.");
+          const presentGift = option.item && giftDefinition(option.item);
+          if (
+            presentGift?.id === "jianghu-contador-eternidade" &&
+            (budget.standard > 1 ||
+              budget.move > 1 ||
+              ledger.events.some(
+                (x) =>
+                  x.actorId === p.id &&
+                  x.turnKey === key &&
+                  /ação.*adicional/i.test(x.text),
+              ))
+          )
+            fail("O Contador não acumula com ações adicionais neste turno.");
+          if (
+            presentGift?.id === "jianghu-contador-eternidade" &&
+            ledger.events.some(
+              (x) =>
+                x.actorId === p.id &&
+                x.turnKey === key &&
+                x.sourceItemId === option.item?.id,
+            )
+          )
+            fail("O Contador já foi usado neste turno.");
           const targets = [...new Set(command.targetIds || [])].map((id) => {
             const t = e.participants.find((t) => t.id === id);
             if (!t || (context.role === "player" && t.hidden && t.id !== p.id))
@@ -556,6 +662,23 @@ export function executeCombatCommand(
             formula = option.formula,
             grant = option.grant,
             action = option.action;
+          if (
+            (grant || resolvedPower?.grants.length) &&
+            ledger.events.some(
+              (x) =>
+                x.actorId === p.id &&
+                x.turnKey === key &&
+                x.sourceItemId &&
+                face.inventory.some(
+                  (i) =>
+                    i.id === x.sourceItemId &&
+                    giftDefinition(i)?.id === "jianghu-contador-eternidade",
+                ),
+            )
+          )
+            fail(
+              "O Contador não acumula com outras concessões de ações neste turno.",
+            );
           if (name === "estrategista" || name === "oficial comandante") {
             if (targets.some((t) => t.id === p.id))
               fail("Esta habilidade afeta seus aliados.");
@@ -800,6 +923,9 @@ export function executeCombatCommand(
               saveFace(p, face);
             }
           }
+          if (presentGift && option.item) {
+            event.text += ` ${consumeGift(option.item)}/3 usos restantes. `;
+          }
           if (option.consume && option.item) {
             face.inventory =
               option.item.quantity === 1
@@ -811,7 +937,46 @@ export function executeCombatCommand(
                   );
             saveFace(p, face);
           }
-          if (option.effect === "power" && resolvedPower) {
+          if (presentGift) {
+            if (presentGift.id === "jianghu-contador-eternidade") {
+              budget.standard++;
+              budget.move++;
+              event.text +=
+                "Uma ação padrão e uma ação de movimento adicionais.";
+            } else {
+              event.pending = "interpretation";
+              event.text += presentGift.notes;
+              if (presentGift.id === "jianghu-chave-entreposto") {
+                event.proposedDamage = addRoll(
+                  "Dano de Energia",
+                  safeDice(() => rollDamageDice("4d8", roll)),
+                ).total;
+                event.pending = "damage";
+                for (const t of targets) {
+                  ledger.effects.push({
+                    id: `${eventId}:${t.id}`,
+                    sourceId: p.id,
+                    targetId: t.id,
+                    name: "Desbloqueio da Realidade · −5 Defesa / −10 RD",
+                    grant: "free",
+                    noRitual: false,
+                    timing: "scene",
+                    createdKey: key,
+                    power: {
+                      itemId: option.item!.id,
+                      ruleName: "Desbloqueio da Realidade",
+                      duration: "nextTurn",
+                      modifiers: [
+                        { stat: "defense", scope: "all", amount: "-5" },
+                      ],
+                    },
+                  });
+                }
+                event.text +=
+                  " O mestre confirma Reflexos, RD e o dano final; a Defesa tem penalidade até o próximo turno do portador.";
+              }
+            }
+          } else if (option.effect === "power" && resolvedPower) {
             const resolved = resolvedPower;
             const modifiers = resolved.modifiers.map((m) => ({
               ...m,
@@ -1040,6 +1205,7 @@ export function executeCombatCommand(
                 ...bonusRolls(attackContributions, "attack", face, item),
                 ...bonusRolls(attackContributions, "skill", face, item, skill),
               ]),
+              true,
             );
             let expr = weaponDamage(item);
 
@@ -1172,6 +1338,7 @@ export function executeCombatCommand(
                     "Investigação",
                   ),
                 ),
+                true,
               );
               consumePowerEffects(
                 e,
@@ -1356,6 +1523,7 @@ export function executeCombatCommand(
                   ),
                   bonusRolls(contributions, "skill", face, undefined, skill),
                 ),
+                true,
               );
               consumePowerEffects(
                 e,

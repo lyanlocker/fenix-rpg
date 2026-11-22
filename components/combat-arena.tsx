@@ -15,6 +15,7 @@ import {
   combatDefense,
 } from "@/lib/power-effects";
 import { useState } from "react";
+import { giftDefinition, giftUses } from "@/lib/jianghu-gifts";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -204,12 +205,18 @@ export default function CombatArena({
     [attackMode, setAttackMode] = useState<AttackMode>("highest"),
     [afterId, setAfterId] = useState(""),
     [delayOpen, setDelayOpen] = useState(false);
+  const [reactionTarget, setReactionTarget] = useState("");
   const mine = combat.participants.find((p) => p.mine),
     e = arenaEncounter(combat),
     p = e.participants.find((p) => p.id === mine?.id),
     budget = p ? budgetFor(e, p, agent) : null,
     myTurn = !!mine && combat.active && mine.id === combat.currentParticipantId,
     canAct = myTurn && !!agent && agent.resources.pv > 0 && !busy;
+  const reactionGifts =
+    agent?.inventory.filter(
+      (i) =>
+        giftDefinition(i)?.execution === "Reação" && (giftUses(i) ?? 0) > 0,
+    ) || [];
   const options = agent
       ? combatOptions(
           agent,
@@ -377,6 +384,54 @@ export default function CombatArena({
             : "Pausado pelo mestre"}
         </span>
       </header>
+      {!!reactionGifts.length && combat.active && (
+        <section className="panel gift-reactions">
+          <h3>Presentes da Jianghu · Reações</h3>
+          <p className="hint">
+            Podem ser usados fora do seu turno, quando o gatilho ocorrer. O
+            mestre confirma o efeito.
+          </p>
+          <label>
+            Alvo
+            <select
+              value={reactionTarget}
+              onChange={(event) => setReactionTarget(event.target.value)}
+            >
+              <option value="">Selecione</option>
+              {combat.participants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="actions">
+            {reactionGifts.map((i) => (
+              <button
+                key={i.id}
+                disabled={
+                  busy ||
+                  !agent ||
+                  agent.resources.pv <= 0 ||
+                  !reactionTarget ||
+                  agent.resources[agent.determination ? "pd" : "pe"] <
+                    giftDefinition(i)!.cost!
+                }
+                title={giftDefinition(i)!.notes}
+                onClick={() =>
+                  onCommand({
+                    kind: "use",
+                    optionId: i.id,
+                    targetIds: [reactionTarget],
+                  })
+                }
+              >
+                {i.name} · {giftUses(i)}/3 · {giftDefinition(i)!.cost} PE/PD
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="arena-turn" aria-live="polite">
         <Swords size={22} />
         <strong>
