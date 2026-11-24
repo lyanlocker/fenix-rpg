@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { rpc } from "@/lib/share";
+import { serverRpc as rpc } from "@/lib/server/neon-rpc";
 import {
   executeCombatCommand,
   CombatError,
