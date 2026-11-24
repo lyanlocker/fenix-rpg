@@ -43,12 +43,32 @@ type SharedPayload = {
   infection?: InfectionStatus;
 };
 
+export async function supabaseRpc<T>(
+  name: string,
+  body: Record<string, unknown>,
+) {
+  return requestRpc<T>(`${SUPABASE_URL}/rest/v1/rpc/${name}`, body, {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+  });
+}
+
 export async function rpc<T>(name: string, body: Record<string, unknown>) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+  if (process.env.NEXT_PUBLIC_FENIX_BACKEND === "neon") {
+    return requestRpc<T>("/api/neon/rpc", { name, body });
+  }
+  return supabaseRpc<T>(name, body);
+}
+
+async function requestRpc<T>(
+  url: string,
+  body: Record<string, unknown>,
+  headers: Record<string, string> = {},
+) {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      ...headers,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
