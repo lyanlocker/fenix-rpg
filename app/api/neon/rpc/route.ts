@@ -4,6 +4,7 @@ import {
   SyncError,
 } from "@/lib/server/github-session";
 import { neonEnabled, neonRpc, RpcError } from "@/lib/server/neon-rpc";
+import { signalRealtime } from "@/lib/server/realtime";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "private, no-store" };
@@ -23,7 +24,9 @@ export async function POST(request: Request) {
       Object.keys(input).some((key) => key !== "body" && key !== "name")
     )
       throw new RpcError("Envio inválido.", 400);
-    return Response.json(await neonRpc(input.name, input.body), { headers });
+    const result = await neonRpc(input.name, input.body);
+    await signalRealtime(input.name, input.body);
+    return Response.json(result, { headers });
   } catch (error) {
     if (error instanceof SyncError || error instanceof RpcError)
       return Response.json(

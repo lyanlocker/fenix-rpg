@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { serverRpc as rpc } from "@/lib/server/neon-rpc";
+import { signalRealtime } from "@/lib/server/realtime";
 import {
   executeCombatCommand,
   CombatError,
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
       next_encounter: result.encounter,
       agent_changes: result.patches,
     });
+    await signalRealtime("fenix_commit_combat_action", credentials);
     return Response.json(payload, { headers });
   } catch (error) {
     if (error instanceof SyncError)

@@ -200,3 +200,31 @@ test("HTTP 402 quota and 429 throttling errors enforce longer cooldowns", async 
     stop();
   }
 });
+
+test("authenticated realtime signals wake polling, with a safety interval and disconnect fallback", async () => {
+  const { timers, env, page } = environment();
+  let report: (connected: boolean, changed: boolean) => void = () => {};
+  let reads = 0, closed = false;
+  const stop = startVisiblePolling(async () => { reads++; return true; }, 3000, 15000, env, {
+    safetyInterval: 30000,
+    subscribe: (observer) => { report = observer; return () => { closed = true; }; },
+  });
+  await flush();
+  assert.equal(reads, 1);
+  report(true, true);
+  await flush();
+  assert.equal(reads, 2);
+  assert.equal([...timers.values()][0].delay, 30000);
+  report(false, false);
+  await flush();
+  assert.equal(reads, 3);
+  assert.equal([...timers.values()][0].delay, 3000);
+  page.hidden = true;
+  page.dispatchEvent(new Event("visibilitychange"));
+  report(true, true);
+  await flush();
+  assert.equal(reads, 3);
+  stop();
+  assert.equal(closed, true);
+  assert.equal(timers.size, 0);
+});

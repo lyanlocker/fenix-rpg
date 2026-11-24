@@ -1,0 +1,20 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "signals": {
+      "$environment": {
+        "agent": {
+          "$channel": {
+            ".read": "auth != null && auth.token.environment === $environment && auth.token.agent === $channel && auth.token.until > now"
+          }
+        },
+        "campaign": {
+          "$channel": {
+            ".read": "auth != null && auth.token.environment === $environment && auth.token.campaign === $channel && auth.token.until > now"
+          }
+        }
+      }
+    }
+  }
+}

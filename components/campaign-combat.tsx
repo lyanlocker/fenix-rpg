@@ -49,7 +49,7 @@ import {
 import { conditionDefinitions } from "@/lib/conditions";
 import type { Agent } from "@/lib/rules";
 import type { Encounter, Participant } from "@/lib/model";
-import { startVisiblePolling } from "@/lib/polling";
+import { startRealtimePolling } from "@/lib/realtime";
 
 export default function CampaignCombat({ campaignId }: { campaignId: string }) {
   const game = useGame();
@@ -113,7 +113,8 @@ export default function CampaignCombat({ campaignId }: { campaignId: string }) {
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 5000, 15000);
+    const key = combatMasterKey(campaignId);
+    const stop = startRealtimePolling(refresh, 5000, 15000, key ? { campaign: campaignId, token: key } : null);
     return () => {
       active = false;
       stop();

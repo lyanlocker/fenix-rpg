@@ -7,7 +7,7 @@ import {
   type BondOperation,
   type CampaignBonds,
 } from "@/lib/campaign-bonds";
-import { startVisiblePolling } from "@/lib/polling";
+import { startRealtimePolling } from "@/lib/realtime";
 
 export function useCampaignBonds(
   id: string,
@@ -24,7 +24,7 @@ export function useCampaignBonds(
     setError("");
     if (!token || !campaignId) return;
     let alive = true;
-    const stop = startVisiblePolling(async () => {
+    const stop = startRealtimePolling(async () => {
       if (pending.current) return true;
       const stamp = version.current;
       try {
@@ -43,7 +43,7 @@ export function useCampaignBonds(
           );
         return false;
       }
-    }, 10000);
+    }, 10000, 60000, { agent: id, token });
     return () => {
       alive = false;
       stop();

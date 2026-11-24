@@ -7,6 +7,7 @@ export function startVisiblePolling(
   intervalMs: number,
   maxIdleMs = 60000,
   environment = { document, window },
+  realtime?: { subscribe: (observer: (connected: boolean, changed: boolean) => void) => () => void; safetyInterval: number },
 ) {
   let stopped = false;
   let running = false;
@@ -15,6 +16,7 @@ export function startVisiblePolling(
   let failures = 0;
   let unchangedChecks = 0;
   let cooldownUntil = 0;
+  let live = false;
   const { document: page, window: clock } = environment;
   async function tick() {
     if (stopped || page.hidden) return;
@@ -45,7 +47,9 @@ export function startVisiblePolling(
           ? 0
           : failures > 0
             ? Math.min(60000, intervalMs * 2 ** failures)
-            : Math.min(maxIdleMs, intervalMs * 2 ** unchangedChecks);
+            : live && realtime
+              ? realtime.safetyInterval
+              : Math.min(maxIdleMs, intervalMs * 2 ** unchangedChecks);
         timer = clock.setTimeout(
           () => void tick(),
           Math.max(normalDelay, cooldownUntil - Date.now()),
@@ -62,10 +66,17 @@ export function startVisiblePolling(
     }
   }
   page.addEventListener("visibilitychange", visibility);
+  const unsubscribe = realtime?.subscribe((connected, changed) => {
+    if (stopped) return;
+    const disconnected = live && !connected;
+    live = connected;
+    if (changed || disconnected) void tick();
+  });
   void tick();
   return () => {
     stopped = true;
     if (timer !== undefined) clock.clearTimeout(timer);
     page.removeEventListener("visibilitychange", visibility);
+    unsubscribe?.();
   };
 }

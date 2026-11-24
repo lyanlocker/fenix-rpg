@@ -14,7 +14,7 @@ import { combatFace, type CombatCommand } from "@/lib/combat-actions";
 import { rpc } from "@/lib/share";
 import { threatArtwork } from "@/lib/threat-art";
 import type { Agent } from "@/lib/rules";
-import { startVisiblePolling } from "@/lib/polling";
+import { startRealtimePolling } from "@/lib/realtime";
 export default function PlayerCombat({
   agent,
   token,
@@ -68,7 +68,7 @@ export default function PlayerCombat({
         fetching = false;
       }
     }
-    const stop = startVisiblePolling(refresh, 3000, 15000);
+    const stop = startRealtimePolling(refresh, 3000, 15000, { agent: agent.id, token });
     return () => {
       active = false;
       stop();

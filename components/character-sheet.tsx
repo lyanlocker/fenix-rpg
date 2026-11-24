@@ -81,7 +81,7 @@ import {
   updateSharedInfection,
   type InfectionStatus,
 } from "@/lib/share";
-import { startVisiblePolling } from "@/lib/polling";
+import { startRealtimePolling } from "@/lib/realtime";
 import { giftDefinition, giftUses } from "@/lib/jianghu-gifts";
 import {
   RelationsPanel,
@@ -180,7 +180,7 @@ export default function CharacterSheet({ id }: { id: string }) {
       }
     }
     window.addEventListener("fenix:combat-mutation", combatMutation);
-    const stop = startVisiblePolling(refresh, 5000, 15000);
+    const stop = startRealtimePolling(refresh, 5000, 15000, { agent: id, token });
     return () => {
       active = false;
       window.removeEventListener("fenix:combat-mutation", combatMutation);
