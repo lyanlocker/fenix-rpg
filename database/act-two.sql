@@ -125,18 +125,22 @@ CREATE OR REPLACE FUNCTION fenix_private.act_confirm_gift(aid uuid, eid uuid, gi
  LANGUAGE plpgsql
  SET search_path TO ''
 AS $function$
-declare cid uuid; t fenix_private.act_two%rowtype; already_marked boolean;
+declare cid uuid; t fenix_private.act_two%rowtype; already_marked boolean; opening jsonb;
 begin
   select campaign_id into cid from fenix_private.act_members where agent_id=aid;
   if cid is null then return; end if;
   select * into t from fenix_private.act_two where campaign_id=cid for update;
   insert into fenix_private.act_log(campaign_id,id,kind,actor,detail) values(cid,eid,'presente',aid::text,jsonb_build_object('gift',gift)) on conflict do nothing;
   if not found then return; end if;
-  select marked into already_marked from fenix_private.act_members where campaign_id=cid and agent_id=aid;
+  select marked, dossier->0 into already_marked, opening from fenix_private.act_members where campaign_id=cid and agent_id=aid;
   if not found or not t.enabled or not (t.trigger_state='armado' or (t.individual and t.trigger_state='disparado' and not already_marked)) then return; end if;
   update fenix_private.act_two set trigger_state='disparado',first_agent=coalesce(first_agent,aid),first_event=coalesce(first_event,eid),revision=revision+1 where campaign_id=cid;
   update fenix_private.act_cast set marked=true where campaign_id=cid and agent_id=aid;
-  if t.automatic then perform fenix_private.act_send(cid,aid,gen_random_uuid(),'{"preset":"indicio","duration":4,"position":"cantos","intensity":1}'); end if;
+  if t.automatic then
+    perform fenix_private.act_send(cid,aid,gen_random_uuid(),
+      jsonb_build_object('preset','indicio','duration',4,'position','cantos','intensity',1,
+        'text',left(opening->>'text',400),'motif',opening->>'motif'));
+  end if;
 end $function$;
 
 CREATE OR REPLACE FUNCTION fenix_private.act_commit(server_token text, access_token text, requested_agent_id uuid, requested_campaign_id uuid, requested_encounter_id uuid, expected_revision integer, next_encounter jsonb, agent_changes jsonb, reaction_agent uuid)
@@ -258,7 +262,7 @@ begin
     update fenix_private.act_effect set received=clock_timestamp() where id=ack and campaign_id=m.campaign_id and agent_id=m.agent_id and received is null and ended is null and (expires is null or expires>clock_timestamp());
   end if;
   select jsonb_build_object('id',id,'remaining',case when expires is not null then greatest(0,extract(epoch from(expires-clock_timestamp()))*1000) end,
-    'settings',case when received is null then settings end)
+    'settings',settings)
   into delivery from fenix_private.act_effect where id=m.current_event and agent_id=m.agent_id and campaign_id=m.campaign_id and ended is null and (expires is null or expires>clock_timestamp());
   return fenix_private.act_board(m.campaign_id,known)||jsonb_build_object('theme',m.theme,'intensity',m.intensity,'effect',delivery);
 end $function$;

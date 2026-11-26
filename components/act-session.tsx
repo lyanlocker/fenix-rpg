@@ -40,21 +40,13 @@ export function ActSession({
     [sync, setSync] = useState(""),
     [error, setError] = useState(""),
     [effect, setEffect] = useState<Delivery | null>(null),
-    [theme, setTheme] = useState(0),
-    [reduced, setReduced] = useState(false);
+    [theme, setTheme] = useState(0);
   const refresh = useRef(() => {}),
     ack = useRef(""),
-    displayed = useRef("");
+    expired = useRef("");
   useEffect(() => {
     if (!id || !token || process.env.NEXT_PUBLIC_FENIX_BACKEND !== "neon")
       return;
-    try {
-      setReduced(localStorage.getItem("fenix.act.reduced") === "true");
-      ack.current = present
-        ? sessionStorage.getItem("fenix.act.received." + id) || ""
-        : "";
-      displayed.current = ack.current;
-    } catch {}
     let alive = true,
       request = 0,
       known = "",
@@ -91,15 +83,17 @@ export function ActSession({
         if (!present) return !!value.members;
         setTheme(value.theme ? value.intensity : 0);
         const e = value.effect;
-        if (!e) setEffect(null);
-        else if (e.settings && displayed.current !== e.id) {
-          displayed.current = e.id;
-          setEffect({
-            id: e.id,
-            settings: e.settings,
-            deadline: e.remaining === null ? null : Date.now() + e.remaining,
+        if (!e || e.id === expired.current) setEffect(null);
+        else
+          setEffect((old) => {
+            if (old?.id === e.id) return old;
+            if (!e.settings) return null;
+            return {
+              id: e.id,
+              settings: e.settings,
+              deadline: e.remaining === null ? null : Date.now() + e.remaining,
+            };
           });
-        } else setEffect((old) => (old?.id === e.id ? old : null));
         return !!value.members || !!e || value.theme;
       } catch (e) {
         if (alive && version === request) {
@@ -129,16 +123,7 @@ export function ActSession({
   function acknowledge(event: string) {
     if (ack.current === event) return;
     ack.current = event;
-    try {
-      sessionStorage.setItem("fenix.act.received." + id, event);
-    } catch {}
     refresh.current();
-  }
-  function preference(value: boolean) {
-    setReduced(value);
-    try {
-      localStorage.setItem("fenix.act.reduced", String(value));
-    } catch {}
   }
   return (
     <Context.Provider
@@ -149,10 +134,11 @@ export function ActSession({
         <Overlay
           effect={effect}
           theme={theme}
-          reduced={reduced}
-          dismiss={() => setEffect(null)}
+          onExpire={(id) => {
+            expired.current = id;
+            setEffect((old) => (old?.id === id ? null : old));
+          }}
           acknowledge={acknowledge}
-          preference={preference}
         />
       )}
     </Context.Provider>
