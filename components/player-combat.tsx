@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Dices, Swords } from "lucide-react";
+import { useAct } from "./act-session";
+import { giftDefinition } from "@/lib/jianghu-gifts";
 import { useGame } from "./game-shell";
 import { Modal } from "./ui";
 import CombatArena from "./combat-arena";
@@ -22,6 +24,7 @@ export default function PlayerCombat({
   agent: Agent;
   token: string;
 }) {
+  const act = useAct();
   const game = useGame(),
     [combat, setCombat] = useState<Combat | null>(null),
     [busy, setBusy] = useState(false),
@@ -152,6 +155,13 @@ export default function PlayerCombat({
           revision: combat.revision,
           command,
         });
+        if (
+          command.kind === "use" &&
+          face.inventory.some(
+            (item) => item.id === command.optionId && giftDefinition(item),
+          )
+        )
+          act.refresh();
         if (result.combat) setCombat(result.combat);
         if (result.agentPatch)
           game.mergeCombatAgents([{ id: agent.id, ...result.agentPatch }]);

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { Plus, ArrowRight } from "lucide-react";
 import { useGame } from "./game-shell";
 import dynamic from "next/dynamic";
+import { useAct } from "./act-session";
+import CampaignReputationBoard from "./act-board";
+const ActMaster = dynamic(() => import("./act-master"));
 const CampaignCombat = dynamic(() => import("./campaign-combat"));
 import CampaignEditor from "./campaign-editor";
 import type { Campaign } from "@/lib/model";
@@ -28,6 +31,10 @@ import { startVisiblePolling } from "@/lib/polling";
 import { campaignBonds, registerBondRoster } from "@/lib/campaign-bonds";
 import { combatMasterKey } from "@/lib/shared-combat";
 export default function Campaigns() {
+  const act = useAct();
+  useEffect(() => {
+    setSelected(new URLSearchParams(window.location.search).get("ato"));
+  }, []);
   const game = useGame(),
     [edit, setEdit] = useState<Campaign | null>(null),
     [selected, setSelected] = useState<string | null>(null),
@@ -284,8 +291,20 @@ export default function Campaigns() {
   if (game.access.isPlayer)
     return (
       <div className="page">
-        <h1>Área do mestre</h1>
-        <p>Use seu link compartilhado para acessar sua ficha.</p>
+        <h1>Minha campanha</h1>
+        {act.board ? (
+          <CampaignReputationBoard board={act.board} />
+        ) : (
+          <p>
+            {act.sync
+              ? "Nenhum ato disponível para esta ficha."
+              : "Consultando acesso à campanha…"}
+          </p>
+        )}
+        <p role="status">
+          {act.error || (act.sync && "Sincronizado às " + act.sync)}{" "}
+          <button onClick={act.refresh}>Atualizar</button>
+        </p>
       </div>
     );
   return (
@@ -330,6 +349,7 @@ export default function Campaigns() {
           <section className="panel">
             <h2>{c.name}</h2>
             <p className="prose">{c.description}</p>
+            <ActMaster key={c.id} id={c.id} />
             <button onClick={() => setEdit(c)}>Editar campanha</button>
             <button
               disabled={busyId === c.id}

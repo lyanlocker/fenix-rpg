@@ -74,6 +74,8 @@ import CharacterOverview from "./character-overview";
 import DiceRoller from "./dice-roller";
 import InfectionBar from "./infection-bar";
 import {
+  rpc,
+  loadSharedAgent,
   getShareCredentials,
   inactiveInfection,
   createSharedAgentSync,
@@ -82,6 +84,9 @@ import {
   type InfectionStatus,
 } from "@/lib/share";
 import { startVisiblePolling } from "@/lib/polling";
+import { useAct } from "./act-session";
+import { ReputationMeter } from "./act-board";
+import { signed, standing } from "@/lib/act-two";
 import { giftDefinition, giftUses } from "@/lib/jianghu-gifts";
 import {
   RelationsPanel,
@@ -103,6 +108,9 @@ export default function CharacterSheet({ id }: { id: string }) {
   const mutations = useRef({ version: 0, active: 0 });
   const game = useGame(),
     stored = game.state.agents.find((x) => x.id === id);
+  const act = useAct(),
+    ownReputation = act.board?.members.find((m) => m.id === id);
+  const giftRequest = useRef("");
   const [otherFace, setOtherFace] = useState(false),
     [section, setSection] = useState("Resumo"),
     [editing, setEditing] = useState(false),
@@ -607,7 +615,29 @@ export default function CharacterSheet({ id }: { id: string }) {
                 onInfectionAdjust={changeInfection}
                 onDoubleClickFace={faceAvailable ? toggleFace : undefined}
                 reputation={
-                  <ReputationPanel {...bonds} master={!game.access.isPlayer} />
+                  ownReputation ? (
+                    <section className="reputation-panel">
+                      <h3>Reputação</h3>
+                      <strong>
+                        {signed(ownReputation.value)} / 100
+                      </strong> · {standing(ownReputation.value)}
+                      <ReputationMeter value={ownReputation.value} />
+                      <Link
+                        href={game.accessHref(
+                          game.access.isPlayer
+                            ? "/campanhas"
+                            : "/campanhas?ato=" + stored?.campaign_id,
+                        )}
+                      >
+                        Ver equipe
+                      </Link>
+                    </section>
+                  ) : (
+                    <ReputationPanel
+                      {...bonds}
+                      master={!game.access.isPlayer}
+                    />
+                  )
                 }
               />
             ) : section === "Perícias" ? (
@@ -997,7 +1027,10 @@ export default function CharacterSheet({ id }: { id: string }) {
                           <div className="actions">
                             <button
                               disabled={busy || !i.cost || giftUses(i) === 0}
-                              onClick={() => setUseItem(i)}
+                              onClick={() => {
+                                giftRequest.current = crypto.randomUUID();
+                                setUseItem(i);
+                              }}
                             >
                               Usar · {i.cost || 0}{" "}
                               {a.determination ? "PD" : "PE"}
@@ -1276,6 +1309,25 @@ export default function CharacterSheet({ id }: { id: string }) {
                   );
                   if (!current || !giftUses(current))
                     throw Error("O presente não possui mais utilizações.");
+                  if (
+                    sharedToken &&
+                    !otherFace &&
+                    process.env.NEXT_PUBLIC_FENIX_BACKEND === "neon"
+                  ) {
+                    const consumed = await rpc<boolean>("fenix_act_use_gift", {
+                      requested_agent_id: id,
+                      share_token: sharedToken,
+                      item_id: current.id,
+                      event_id: giftRequest.current,
+                    });
+                    if (consumed) {
+                      act.refresh();
+                      const fresh = await loadSharedAgent(id, sharedToken);
+                      game.mergeSharedAgent(fresh.agent, fresh.rolls);
+                      setUseItem(null);
+                      return;
+                    }
+                  }
                   await save({
                     resources: {
                       ...agent.resources,

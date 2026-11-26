@@ -229,6 +229,7 @@ export function executeCombatCommand(
       return fail((error as Error).message);
     }
   }
+  let confirmedGift: { agentId: string; giftId: string } | undefined;
   function consumeGift(item: Item) {
     const remaining = giftUses(item);
     if (remaining === undefined || remaining <= 0)
@@ -237,6 +238,7 @@ export function executeCombatCommand(
       i.id === item.id ? { ...i, usesRemaining: remaining - 1 } : i,
     );
     saveFace(p!, face!);
+    confirmedGift = { agentId: p!.agentId!, giftId: giftDefinition(item)!.id };
     return remaining - 1;
   }
   const reactionItem =
@@ -1586,5 +1588,5 @@ export function executeCombatCommand(
     conditions: a.conditions,
     inventory: a.inventory,
   }));
-  return { encounter: e, patches, event };
+  return { encounter: e, patches, event, confirmedGift };
 }

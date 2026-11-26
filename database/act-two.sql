@@ -1,59 +1,59 @@
 -- Apply in one transaction as fenix_owner. Campaign configuration is private.
 
 create table if not exists fenix_private.act_two (
-  campaign_id uuid not null ,
-  title text not null ,
+  campaign_id uuid not null,
+  title text not null,
   enabled bool not null default false,
   pressure int4 not null default 60,
   trigger_state text not null default 'desarmado'::text,
   automatic bool not null default true,
   individual bool not null default false,
-  armed_at timestamptz  ,
-  first_agent uuid  ,
-  first_event uuid  ,
+  armed_at timestamptz,
+  first_agent uuid,
+  first_event uuid,
   revision int8 not null default 0,
   constraint act_two_pressure_check CHECK (((pressure >= 0) AND (pressure <= 100))),
   constraint act_two_trigger_state_check CHECK ((trigger_state = ANY (ARRAY['desarmado'::text, 'armado'::text, 'disparado'::text]))),
   constraint act_two_pkey PRIMARY KEY (campaign_id),
-  constraint act_two_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES fenix_combat_rooms(campaign_id)
+  constraint act_two_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES public.fenix_combat_rooms(campaign_id)
 );
 
 create table if not exists fenix_private.act_cast (
-  campaign_id uuid not null ,
-  agent_id uuid not null ,
-  "position" int4 not null ,
+  campaign_id uuid not null,
+  agent_id uuid not null,
+  "position" int4 not null,
   active bool not null default true,
   dossier jsonb not null default '[]'::jsonb,
   marked bool not null default false,
   theme bool not null default false,
   intensity int4 not null default 1,
-  current_event uuid  ,
+  current_event uuid,
   constraint act_cast_intensity_check CHECK (((intensity >= 1) AND (intensity <= 3))),
   constraint act_cast_pkey PRIMARY KEY (campaign_id, agent_id),
   constraint act_cast_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES fenix_private.act_two(campaign_id),
-  constraint act_cast_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES fenix_shared_agents(id)
+  constraint act_cast_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES public.fenix_shared_agents(id)
 );
 
 create table if not exists fenix_private.act_log (
-  campaign_id uuid not null ,
-  id uuid not null ,
-  kind text not null ,
-  actor text not null ,
-  detail jsonb not null ,
+  campaign_id uuid not null,
+  id uuid not null,
+  kind text not null,
+  actor text not null,
+  detail jsonb not null,
   at timestamptz not null default clock_timestamp(),
   constraint act_log_pkey PRIMARY KEY (campaign_id, id),
   constraint act_log_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES fenix_private.act_two(campaign_id)
 );
 
 create table if not exists fenix_private.act_effect (
-  campaign_id uuid not null ,
-  agent_id uuid not null ,
-  id uuid not null ,
-  settings jsonb not null ,
+  campaign_id uuid not null,
+  agent_id uuid not null,
+  id uuid not null,
+  settings jsonb not null,
   sent timestamptz not null default clock_timestamp(),
-  expires timestamptz  ,
-  received timestamptz  ,
-  ended timestamptz  ,
+  expires timestamptz,
+  received timestamptz,
+  ended timestamptz,
   constraint act_effect_pkey PRIMARY KEY (id),
   constraint act_effect_campaign_id_agent_id_fkey FOREIGN KEY (campaign_id, agent_id) REFERENCES fenix_private.act_cast(campaign_id, agent_id)
 );
@@ -79,7 +79,7 @@ create or replace view fenix_private.act_members as  SELECT c.campaign_id,
     COALESCE(b.reputation, 0) AS reputation
    FROM fenix_private.act_cast c
      JOIN fenix_private.act_two t USING (campaign_id)
-     JOIN fenix_shared_agents a ON a.id = c.agent_id AND (a.data ->> 'campaign_id'::text) = c.campaign_id::text
+     JOIN public.fenix_shared_agents a ON a.id = c.agent_id AND (a.data ->> 'campaign_id'::text) = c.campaign_id::text
      LEFT JOIN fenix_private.campaign_bonds b ON b.agent_id = c.agent_id AND b.campaign_id = c.campaign_id::text
   WHERE c.active AND t.enabled;
 
