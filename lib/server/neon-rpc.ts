@@ -32,6 +32,17 @@ const serverKey = [
 // Every operation is explicitly mapped to one Postgres signature. No SQL
 // identifiers or casts are ever taken from a browser request.
 const publicCalls: Readonly<Record<string, Specification>> = {
+  fenix_act_member: [
+    ...sheetKey,
+    ["known", "text", true, true],
+    ["ack", "uuid", true, true],
+  ],
+  fenix_act_master: [
+    ...roomKey,
+    ["operation", "text", true],
+    ["command", "jsonb", true],
+  ],
+  fenix_act_use_gift: [...sheetKey, ["item_id", "text"], ["event_id", "uuid"]],
   fenix_publish_agent: [
     ["agent_data", "jsonb"],
     ["supplied_master_token", "text", true, true],
@@ -98,6 +109,16 @@ const publicCalls: Readonly<Record<string, Specification>> = {
 };
 
 const serverCalls: Readonly<Record<string, Specification>> = {
+  fenix_act_commit_gift: [
+    ...serverKey,
+    ["requested_encounter_id", "uuid"],
+    ["expected_revision", "integer"],
+    ["next_encounter", "jsonb"],
+    ["agent_changes", "jsonb"],
+    ["gift_agent", "uuid"],
+    ["gift_id", "text"],
+    ["event_id", "uuid"],
+  ],
   fenix_combat_context: serverKey,
   fenix_combat_context_with_bonds: serverKey,
   fenix_commit_combat_action: [

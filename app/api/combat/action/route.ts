@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { serverRpc as rpc } from "@/lib/server/neon-rpc";
+import { neonEnabled, serverRpc as rpc } from "@/lib/server/neon-rpc";
 import {
   executeCombatCommand,
   CombatError,
@@ -104,13 +104,24 @@ export async function POST(request: Request) {
     const actorId = context.role === "player" ? context.actorId : input.actorId;
     if (!actorId) throw new SyncError("Selecione quem está agindo.", 400);
     const result = executeCombatCommand(context, input.command, actorId);
-    const payload = await rpc("fenix_commit_combat_action", {
-      ...credentials,
-      requested_encounter_id: input.encounterId,
-      expected_revision: input.revision,
-      next_encounter: result.encounter,
-      agent_changes: result.patches,
-    });
+    const gift = neonEnabled() && result.confirmedGift;
+    const payload = await rpc(
+      gift ? "fenix_act_commit_gift" : "fenix_commit_combat_action",
+      {
+        ...(gift
+          ? {
+              gift_agent: gift.agentId,
+              gift_id: gift.giftId,
+              event_id: result.event.id,
+            }
+          : {}),
+        ...credentials,
+        requested_encounter_id: input.encounterId,
+        expected_revision: input.revision,
+        next_encounter: result.encounter,
+        agent_changes: result.patches,
+      },
+    );
     return Response.json(payload, { headers });
   } catch (error) {
     if (error instanceof SyncError)

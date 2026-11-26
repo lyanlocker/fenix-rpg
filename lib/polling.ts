@@ -5,7 +5,7 @@
 export function startVisiblePolling(
   refresh: () => Promise<unknown>,
   intervalMs: number,
-  maxIdleMs = 60000,
+  maxIdleMs: number | (() => number) = 60000,
   environment = { document, window },
 ) {
   let stopped = false;
@@ -32,7 +32,8 @@ export function startVisiblePolling(
       const changed = await refresh();
       failures = 0;
       cooldownUntil = 0;
-      unchangedChecks = changed === false ? Math.min(unchangedChecks + 1, 5) : 0;
+      unchangedChecks =
+        changed === false ? Math.min(unchangedChecks + 1, 5) : 0;
     } catch (error) {
       failures = Math.min(failures + 1, 4);
       const status = (error as { status?: number } | null)?.status;
@@ -45,7 +46,10 @@ export function startVisiblePolling(
           ? 0
           : failures > 0
             ? Math.min(60000, intervalMs * 2 ** failures)
-            : Math.min(maxIdleMs, intervalMs * 2 ** unchangedChecks);
+            : Math.min(
+                typeof maxIdleMs === "function" ? maxIdleMs() : maxIdleMs,
+                intervalMs * 2 ** unchangedChecks,
+              );
         timer = clock.setTimeout(
           () => void tick(),
           Math.max(normalDelay, cooldownUntil - Date.now()),

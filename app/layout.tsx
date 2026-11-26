@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./act-two.css";
 import "./experience.css";
 import "./threat-gallery.css";
 import "./archive.css";
