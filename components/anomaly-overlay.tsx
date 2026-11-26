@@ -1,117 +1,113 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import type { Delivery } from "@/lib/act-two";
+import { useEffect, useRef, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { gsap } from "gsap";
+import { CustomEase } from "gsap/CustomEase";
+import type { Delivery, Preset } from "@/lib/act-two";
+
+gsap.registerPlugin(CustomEase);
+const approach = CustomEase.create(
+  "approach",
+  "M0,0 C0.16,0 0.18,0.51 0.4,0.52 0.57,0.53 0.6,0.55 0.69,0.76 0.79,0.98 0.88,1 1,1",
+);
+const whispers: Record<Preset, string> = {
+  indicio: "Você ouviu também?",
+  olhos: "Da última vez, você olhou para o outro lado.",
+  maos: "Você lavou as mãos. Eu ainda estava lá.",
+  ruido: "Tem outra respiração entre uma palavra sua e a próxima.",
+  pergunta: "Quando contou o que aconteceu, de quem você apagou o nome?",
+};
+
 export default function AnomalyOverlay({
   effect,
   theme,
-  reduced,
-  dismiss,
   acknowledge,
-  preference,
+  onExpire,
   preview = false,
 }: {
   effect: Delivery | null;
   theme: number;
-  reduced: boolean;
-  dismiss: () => void;
   acknowledge?: (id: string) => void;
-  preference?: (v: boolean) => void;
+  onExpire: (id: string) => void;
   preview?: boolean;
 }) {
-  const system = useReducedMotion(),
-    still = reduced || system;
-  const [visible, setVisible] = useState(true),
-    handlers = useRef({ dismiss, acknowledge });
-  handlers.current = { dismiss, acknowledge };
+  const root = useRef<HTMLElement>(null);
+  const callbacks = useRef({ acknowledge, onExpire });
   useEffect(() => {
-    function change() {
-      setVisible(!document.hidden);
-    }
-    change();
-    document.addEventListener("visibilitychange", change);
-    return () => document.removeEventListener("visibilitychange", change);
-  }, []);
+    callbacks.current = { acknowledge, onExpire };
+  }, [acknowledge, onExpire]);
   useEffect(() => {
-    if (!visible || !effect) return;
-    const remaining =
-      effect.deadline === null ? null : effect.deadline - Date.now();
-    if (remaining !== null && remaining <= 0) {
-      handlers.current.dismiss();
-      return;
+    if (!effect) return;
+    const { id, deadline } = effect;
+    function deliver() {
+      if (deadline !== null && Date.now() >= deadline)
+        callbacks.current.onExpire(id);
+      else if (!document.hidden) callbacks.current.acknowledge?.(id);
     }
-    handlers.current.acknowledge?.(effect.id);
-    if (remaining !== null) {
-      const timer = setTimeout(() => handlers.current.dismiss(), remaining);
-      return () => clearTimeout(timer);
-    }
-  }, [visible, effect]);
+    deliver();
+    document.addEventListener("visibilitychange", deliver);
+    const timer =
+      deadline === null
+        ? undefined
+        : window.setTimeout(
+            () => callbacks.current.onExpire(id),
+            Math.max(0, deadline - Date.now()),
+          );
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", deliver);
+    };
+  }, [effect]);
+
   useEffect(() => {
-    if (!visible || preview || still || !theme) return;
-    document.body.classList.add("act-shadow");
-    return () => document.body.classList.remove("act-shadow");
-  }, [theme, visible, still, preview]);
-  if (!visible) return null;
+    if (!effect || !root.current) return;
+    const media = gsap.matchMedia();
+    media.add(
+      "(prefers-reduced-motion: no-preference)",
+      () => {
+        const timeline = gsap.timeline();
+        timeline
+          .from(".act-film", { opacity: 0, duration: 0.48 })
+          .from(
+            ".act-apparition",
+            { scale: 1.14, xPercent: 3, duration: 1.4, ease: approach },
+            0,
+          )
+          .from(".act-whisper", { opacity: 0, y: 5, duration: 0.5 }, 0.18);
+      },
+      root,
+    );
+    return () => media.revert();
+  }, [effect]);
+
   const s = effect?.settings;
-  return (
+  return createPortal(
     <aside
+      ref={root}
+      className={"act-overlay" + (preview ? " act-preview" : "")}
+      data-preset={s?.preset}
+      data-position={s?.position}
+      data-motif={s?.motif}
       aria-label={preview ? "Prévia do mestre" : "Manifestação na ficha"}
-      className={
-        "act-overlay " +
-        (preview ? "act-preview " : "") +
-        "act-" +
-        (s?.position || "cantos")
-      }
-      style={
-        {
-          "--act-alpha": 0.16 + (s?.intensity || theme) * 0.09,
-        } as React.CSSProperties
-      }
+      style={{ "--act-strength": s?.intensity || theme } as CSSProperties}
     >
-      {s && !still && (
-        <motion.div
-          className={
-            "act-decoration act-" + s.preset + " motif-" + (s.motif || "")
-          }
+      {theme > 0 && (
+        <div
+          className="act-stain"
           aria-hidden="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          {s.preset === "olhos" &&
-            Array.from(
-              { length: Math.min(s.motif ? 2 : 3, s.intensity) },
-              (_, i) => (
-                <svg key={i} viewBox="0 0 100 48">
-                  <path d="M3 24Q50 -17 97 24Q50 64 3 24Z" fill="#beb3cf" />
-                  <ellipse cx="50" cy="24" rx="9" ry="17" fill="#312c40" />
-                </svg>
-              ),
-            )}
-          {s.preset === "maos" &&
-            Array.from({ length: Math.min(2, s.intensity) }, (_, i) => (
-              <svg key={i} viewBox="0 0 90 115">
-                <path
-                  fill="#aaa1ba"
-                  d="M24 114L23 88Q15 78 9 56Q7 48 13 50L26 65L17 28Q16 19 23 22L34 50L29 13Q29 6 35 9L44 47L44 6Q46 0 51 6L54 48L60 15Q62 9 66 15L63 58L72 41Q79 35 78 44L68 84L58 99L59 115Z"
-                />
-              </svg>
-            ))}
-        </motion.div>
+          style={{ opacity: 0.32 + theme * 0.13 }}
+        />
       )}
-      <div className="act-caption">
-        {preview && <small>Prévia local</small>}
-        <span role="status">
-          {s?.text ||
-            (effect ? "Uma presença observa a ficha." : "Sombra na ficha")}
-        </span>
-        {effect && <button onClick={dismiss}>Fechar efeito</button>}
-        {preference && (
-          <button aria-pressed={reduced} onClick={() => preference(!reduced)}>
-            {reduced ? "Modo reduzido ativo" : "Reduzir efeitos"}
-          </button>
-        )}
-      </div>
-    </aside>
+      {s && (
+        <div className="act-film" key={effect.id}>
+          <div className="act-apparition" aria-hidden="true" />
+          <div className="act-emulsion" aria-hidden="true" />
+          <p role="status" className="act-whisper">
+            {s.text?.trim() || whispers[s.preset]}
+          </p>
+        </div>
+      )}
+    </aside>,
+    document.body,
   );
 }

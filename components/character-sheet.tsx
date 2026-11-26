@@ -489,8 +489,6 @@ export default function CharacterSheet({ id }: { id: string }) {
               <Dices size={14} />
               Iniciativa
             </button>
-            <button onClick={() => setSection("Armas")}>Armas</button>
-            <button onClick={() => setSection("Rituais")}>Rituais</button>
             {faceAvailable && (
               <button
                 disabled={busy}
@@ -512,7 +510,7 @@ export default function CharacterSheet({ id }: { id: string }) {
           <aside className="sheet-aside">
             <section className="panel">
               <h2>Atributos</h2>
-              <p className="hint">Clique para rolar um teste.</p>
+
               <div className="attribute-dice">
                 {attributes.map((k) => (
                   <button
@@ -537,17 +535,6 @@ export default function CharacterSheet({ id }: { id: string }) {
                   onAdjust={changeInfection}
                 />
               )}
-              <details className="resource-calculation">
-                <summary>Como os máximos são calculados</summary>
-                {resourceKeys(a).map((key) => (
-                  <p key={key}>
-                    <strong>
-                      {resourceLabels[key]} {max[key]}
-                    </strong>
-                    <small>{maximumFormula(a, key)}</small>
-                  </p>
-                ))}
-              </details>
               <div className="defenses">
                 <div>
                   Defesa
@@ -576,9 +563,17 @@ export default function CharacterSheet({ id }: { id: string }) {
                 conditions={a.conditions}
                 onChange={(conditions) => save({ conditions })}
               />
-              <p className="hint">
-                Confira resistências e bônus situacionais antes de aplicar dano.
-              </p>
+              <details className="resource-calculation">
+                <summary>Como os máximos são calculados</summary>
+                {resourceKeys(a).map((key) => (
+                  <p key={key}>
+                    <strong>
+                      {resourceLabels[key]} {max[key]}
+                    </strong>
+                    <small>{maximumFormula(a, key)}</small>
+                  </p>
+                ))}
+              </details>
             </section>
           </aside>
         )}
@@ -723,21 +718,23 @@ export default function CharacterSheet({ id }: { id: string }) {
                   </div>
                 </div>
                 {section === "Armas" && (
-                  <div className="combat-tests">
-                    {[
-                      "Iniciativa",
-                      "Luta",
-                      "Pontaria",
-                      "Fortitude",
-                      "Reflexos",
-                      "Vontade",
-                    ].map((s) => (
-                      <button disabled={busy} key={s} onClick={() => test(s)}>
-                        <Dices size={15} />
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+                  <details className="sheet-tools">
+                    <summary>Testes de combate</summary>
+                    <div className="combat-tests">
+                      {[
+                        "Luta",
+                        "Pontaria",
+                        "Fortitude",
+                        "Reflexos",
+                        "Vontade",
+                      ].map((s) => (
+                        <button disabled={busy} key={s} onClick={() => test(s)}>
+                          <Dices size={15} />
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
                 )}
                 {section === "Inventário" && (
                   <p className="help">
@@ -753,24 +750,23 @@ export default function CharacterSheet({ id }: { id: string }) {
                   </p>
                 )}
                 {section === "Armas" && (
-                  <div className="accessory-toolbar">
-                    <strong>Acessórios</strong>
-                    <span>
-                      Vestimentas e utensílios também aparecem aqui para
-                      configurar perícias e maldições.
-                    </span>
-                    <div className="actions">
-                      <button onClick={() => addAccessory("Vestimenta")}>
-                        + Vestimenta
-                      </button>
-                      <button onClick={() => addAccessory("Utensílio")}>
-                        + Utensílio
-                      </button>
-                      <button onClick={() => setCatalog("Item")}>
-                        Buscar na biblioteca
-                      </button>
+                  <details className="sheet-tools">
+                    <summary>Vestimentas e utensílios</summary>
+                    <div className="accessory-toolbar">
+                      <span>Configure perícias e maldições de acessórios.</span>
+                      <div className="actions">
+                        <button onClick={() => addAccessory("Vestimenta")}>
+                          + Vestimenta
+                        </button>
+                        <button onClick={() => addAccessory("Utensílio")}>
+                          + Utensílio
+                        </button>
+                        <button onClick={() => setCatalog("Item")}>
+                          Buscar na biblioteca
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </details>
                 )}
                 {items.length === 0 ? (
                   <div className="empty">
@@ -779,16 +775,6 @@ export default function CharacterSheet({ id }: { id: string }) {
                         ? "Nenhuma arma cadastrada"
                         : "Nenhum registro nesta seção"}
                     </h3>
-                    <p>
-                      Escolha conteúdo na Biblioteca ou adicione suas próprias
-                      opções.
-                    </p>
-                    <button
-                      className="primary"
-                      onClick={() => setCatalog(kind)}
-                    >
-                      Abrir biblioteca
-                    </button>
                   </div>
                 ) : (
                   items.map(combatItem).map((i) => (

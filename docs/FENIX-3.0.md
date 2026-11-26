@@ -12,3 +12,9 @@ A ficha compartilhada mostra **Minha campanha** após a confirmação de partici
 ## Retorno de versão
 
 Desative `enabled` para a campanha afetada e restaure a implantação anterior do aplicativo. As tabelas adicionais podem permanecer instaladas. A assinatura anterior de commit de combate continua exigindo o turno do personagem. Aplique o registro de visibilidades e vínculos pré-implantação para restaurar as configurações anteriores, preservando os gastos e ajustes efetivamente realizados na sessão.
+
+## Manifestação na 3.0.1
+
+Em **Central do Ato II → Manifestação**, escolha o agente e um dos três momentos do dossiê. A frase pode ser editada antes do envio. **Prévia local** apresenta a cena só ao mestre. **Direção de cena** reúne efeito, posição, intensidade e duração. Para interromper uma cena enviada, abra **Controlar a ficha** e use **Encerrar efeito**. **Restaurar ficha** também remove a sombra persistente.
+
+A confirmação registra a entrega. A manifestação continua na ficha até o prazo ou o comando do mestre, inclusive após uma reconexão. A preferência de movimento reduzido do dispositivo apresenta a arte e o texto em composição estática.

@@ -47,11 +47,7 @@ export function useGame() {
 export default function GameShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   if (path === "/apresentacao") return children;
-  return (
-    <ExperienceProvider>
-      <WorkspaceShell>{children}</WorkspaceShell>
-    </ExperienceProvider>
-  );
+  return <WorkspaceShell>{children}</WorkspaceShell>;
 }
 
 function WorkspaceShell({ children }: { children: ReactNode }) {
@@ -92,110 +88,112 @@ function WorkspaceShell({ children }: { children: ReactNode }) {
       ? getShareCredentials(sheetId)?.masterToken || null
       : null;
   return (
-    <Context.Provider value={value}>
-      <ActSession
-        key={(sheetId || "") + token}
-        id={sheetId}
-        token={token}
-        present={access.isPlayer}
-      >
-        <a className="skip" href="#content">
-          Ir ao conteúdo
-        </a>
-        <header className="topbar">
-          <Link
-            className="logo"
-            href={accessHref(
-              access.isPlayer && access.agentId
-                ? `/agentes/${access.agentId}`
-                : "/",
-            )}
-          >
-            <Flame size={24} />
-            <span>
-              FÊNIX<small>ARQUIVOS DO IMPOSSÍVEL</small>
-            </span>
-            <b className="version-tag">3.0.0</b>
-          </Link>
-          <nav aria-label="Principal">
-            {(access.isPlayer && access.agentId
-              ? [[`/agentes/${access.agentId}`, "Minha ficha"]]
-              : [
-                  ["/", "Agentes"],
-                  ["/campanhas", "Campanhas"],
-                  ["/biblioteca", "Biblioteca"],
-                  ["/ameacas", "Ameaças"],
-                ]
-            ).map(([url, label]) => (
-              <Link
-                key={url}
-                href={accessHref(url)}
-                className={
-                  (
-                    url === "/"
-                      ? !path.startsWith("/campanhas") &&
-                        !path.startsWith("/biblioteca") &&
-                        !path.startsWith("/ameacas")
-                      : path.startsWith(url)
-                  )
-                    ? "active"
-                    : ""
-                }
+    <ExperienceProvider showSettings={access.ready && !access.isPlayer}>
+      <Context.Provider value={value}>
+        <ActSession
+          key={(sheetId || "") + token}
+          id={sheetId}
+          token={token}
+          present={access.isPlayer}
+        >
+          <a className="skip" href="#content">
+            Ir ao conteúdo
+          </a>
+          <header className="topbar">
+            <Link
+              className="logo"
+              href={accessHref(
+                access.isPlayer && access.agentId
+                  ? `/agentes/${access.agentId}`
+                  : "/",
+              )}
+            >
+              <Flame size={24} />
+              <span>
+                FÊNIX<small>ARQUIVOS DO IMPOSSÍVEL</small>
+              </span>
+              <b className="version-tag">3.0.1</b>
+            </Link>
+            <nav aria-label="Principal">
+              {(access.isPlayer && access.agentId
+                ? [[`/agentes/${access.agentId}`, "Minha ficha"]]
+                : [
+                    ["/", "Agentes"],
+                    ["/campanhas", "Campanhas"],
+                    ["/biblioteca", "Biblioteca"],
+                    ["/ameacas", "Ameaças"],
+                  ]
+              ).map(([url, label]) => (
+                <Link
+                  key={url}
+                  href={accessHref(url)}
+                  className={
+                    (
+                      url === "/"
+                        ? !path.startsWith("/campanhas") &&
+                          !path.startsWith("/biblioteca") &&
+                          !path.startsWith("/ameacas")
+                        : path.startsWith(url)
+                    )
+                      ? "active"
+                      : ""
+                  }
+                >
+                  {url === "/campanhas" ? (
+                    <Layers size={16} />
+                  ) : url === "/biblioteca" ? (
+                    <BookOpen size={16} />
+                  ) : url === "/ameacas" ? (
+                    <Skull size={16} />
+                  ) : (
+                    <UsersRound size={16} />
+                  )}
+                  {label}
+                </Link>
+              ))}
+              {access.isPlayer && (
+                <ActCampaignLink
+                  href={accessHref("/campanhas")}
+                  active={path === "/campanhas"}
+                />
+              )}
+            </nav>
+          </header>
+          <div className="mode">
+            <ShieldCheck size={12} />
+            {access.isPlayer
+              ? "Modo jogador · ficha compartilhada e sincronizada"
+              : "Sem cadastro · salvo neste navegador · exporte suas fichas para backup"}
+          </div>
+          {game.notice && (
+            <div role="alert" className="notice">
+              {game.notice}
+              <button
+                aria-label="Dispensar aviso"
+                onClick={() => game.setNotice("")}
               >
-                {url === "/campanhas" ? (
-                  <Layers size={16} />
-                ) : url === "/biblioteca" ? (
-                  <BookOpen size={16} />
-                ) : url === "/ameacas" ? (
-                  <Skull size={16} />
-                ) : (
-                  <UsersRound size={16} />
-                )}
-                {label}
-              </Link>
-            ))}
-            {access.isPlayer && (
-              <ActCampaignLink
-                href={accessHref("/campanhas")}
-                active={path === "/campanhas"}
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          {access.isPlayer &&
+            access.agentId &&
+            access.shareToken &&
+            game.state.agents.find((a) => a.id === access.agentId) && (
+              <PlayerCombat
+                key={access.agentId}
+                agent={game.state.agents.find((a) => a.id === access.agentId)!}
+                token={access.shareToken}
               />
             )}
-          </nav>
-        </header>
-        <div className="mode">
-          <ShieldCheck size={12} />
-          {access.isPlayer
-            ? "Modo jogador · ficha compartilhada e sincronizada"
-            : "Sem cadastro · salvo neste navegador · exporte suas fichas para backup"}
-        </div>
-        {game.notice && (
-          <div role="alert" className="notice">
-            {game.notice}
-            <button
-              aria-label="Dispensar aviso"
-              onClick={() => game.setNotice("")}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
-        {access.isPlayer &&
-          access.agentId &&
-          access.shareToken &&
-          game.state.agents.find((a) => a.id === access.agentId) && (
-            <PlayerCombat
-              key={access.agentId}
-              agent={game.state.agents.find((a) => a.id === access.agentId)!}
-              token={access.shareToken}
-            />
-          )}
-        <main id="content">{children}</main>
-        <footer className="site-footer">
-          FÊNIX 3.0.0 · Toda história deixa uma marca.
-          <span>Fichas de Ordem Paranormal · Projeto independente</span>
-        </footer>
-      </ActSession>
-    </Context.Provider>
+          <main id="content">{children}</main>
+          <footer className="site-footer">
+            FÊNIX 3.0.1 · Toda história deixa uma marca.
+            <span>Fichas de Ordem Paranormal · Projeto independente</span>
+          </footer>
+        </ActSession>
+      </Context.Provider>
+    </ExperienceProvider>
   );
 }
 

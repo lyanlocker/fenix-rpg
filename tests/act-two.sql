@@ -40,9 +40,21 @@ begin
   if state#>>'{effect,settings,preset}' is distinct from 'indicio' or public.fenix_act_member(b,player_b)->'effect'<>'null'::jsonb then raise exception 'Entrega incorreta';end if;
   delivery:=(state#>>'{effect,id}')::uuid;
   state:=public.fenix_act_member(a,player_a,state->>'version',delivery);
-  if state#>'{effect,settings}'<>'null'::jsonb then raise exception 'Reentrega';end if;
+  if state#>>'{effect,settings,preset}' is distinct from 'indicio' or (public.fenix_act_member(a,player_a)#>>'{effect,id}')::uuid is distinct from delivery then raise exception 'A cena sumiu após a confirmação';end if;
   update fenix_private.act_effect set expires=clock_timestamp()-interval '1 second' where id=delivery;
   if public.fenix_act_member(a,player_a)->'effect'<>'null'::jsonb then raise exception 'Evento expirado';end if;
+
+  state:=public.fenix_act_master(c,master_key);
+  delivery:=gen_random_uuid();
+  perform public.fenix_act_master(c,master_key,'enviar',jsonb_build_object('id',delivery,'revision',state->'revision','target',a,'duration',0,'preset','pergunta','position','cantos','intensity',3,'text','Ensaio'));
+  state:=public.fenix_act_member(a,player_a);
+  delivery:=(state#>>'{effect,id}')::uuid;
+  state:=public.fenix_act_member(a,player_a,null,delivery);
+  if state#>>'{effect,settings,text}' is distinct from 'Ensaio' or state#>'{effect,remaining}' is distinct from 'null'::jsonb then raise exception 'Pergunta sem prazo não persistiu'; end if;
+  if public.fenix_act_member(b,player_b)->'effect' is distinct from 'null'::jsonb then raise exception 'Pergunta entregue a outro agente'; end if;
+  state:=public.fenix_act_master(c,master_key);
+  perform public.fenix_act_master(c,master_key,'encerrar',jsonb_build_object('id',gen_random_uuid(),'revision',state->'revision','target',a));
+  if public.fenix_act_member(a,player_a,null,delivery)->'effect' is distinct from 'null'::jsonb then raise exception 'Pergunta encerrada reapareceu'; end if;
 
   -- Start a scene on B's turn. A reacts using the validated engine patch.
   insert into fenix_private.combat_service(id,token_hash) values(true,encode(extensions.digest(service_key,'sha256'),'hex')) on conflict(id) do update set token_hash=excluded.token_hash;

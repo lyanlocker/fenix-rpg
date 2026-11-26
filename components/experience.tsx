@@ -19,7 +19,13 @@ const ExperienceContext = createContext({
 });
 export const useExperience = () => useContext(ExperienceContext);
 
-export function ExperienceProvider({ children }: { children: ReactNode }) {
+export function ExperienceProvider({
+  children,
+  showSettings,
+}: {
+  children: ReactNode;
+  showSettings: boolean;
+}) {
   const [level, setLevel] = useState<MotionLevel>("full");
   const [open, setOpen] = useState(false);
   const systemReduced = useReducedMotion();
@@ -50,15 +56,17 @@ export function ExperienceProvider({ children }: { children: ReactNode }) {
       >
         <div className="experience" data-motion={reduced ? "reduced" : level}>
           {children}
-          <button
-            className="experience-settings"
-            aria-label="Preferências visuais"
-            onClick={() => setOpen(true)}
-          >
-            <SlidersHorizontal size={16} />
-            <span>Experiência</span>
-          </button>
-          {open && (
+          {showSettings && (
+            <button
+              className="experience-settings"
+              aria-label="Preferências visuais"
+              onClick={() => setOpen(true)}
+            >
+              <SlidersHorizontal size={16} />
+              <span>Experiência</span>
+            </button>
+          )}
+          {showSettings && open && (
             <Modal title="Sua experiência" onClose={() => setOpen(false)}>
               <p>
                 Escolha o ritmo visual da sua mesa. As preferências ficam neste
