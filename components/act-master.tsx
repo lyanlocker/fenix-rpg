@@ -7,6 +7,8 @@ import { startVisiblePolling } from "@/lib/polling";
 import {
   signed,
   projectedAverage,
+  effectNames,
+  type Preset,
   type Board,
   type Settings,
   type Delivery,
@@ -32,7 +34,8 @@ type RecordEntry = {
     score?: number;
     scene?: string;
     gift?: string;
-    preset?: string;
+    preset?: Preset;
+    effects?: Preset[];
   };
 };
 type Target = {
@@ -81,7 +84,8 @@ export default function ActMaster({ id }: { id: string }) {
     [automatic, setAutomatic] = useState(true),
     [individual, setIndividual] = useState(false),
     [moment, setMoment] = useState(0),
-    [preset, setPreset] = useState<Settings["preset"]>("indicio"),
+    [effects, setEffects] = useState<Preset[]>(["indicio"]),
+    [combine, setCombine] = useState(false),
     [position, setPosition] = useState<Settings["position"]>("cantos"),
     [intensity, setIntensity] = useState(1),
     [duration, setDuration] = useState(10),
@@ -178,12 +182,28 @@ export default function ActMaster({ id }: { id: string }) {
     sel = board.targets[target],
     dossier = sel?.dossier || [],
     settings: Settings = {
-      preset,
+      preset: effects[0],
+      effects,
       position,
       intensity,
-      text: (phrase ?? dossier[moment]?.text ?? "").trim(),
+      text: effects.includes("pergunta")
+        ? (phrase ?? dossier[moment]?.text ?? "").trim()
+        : undefined,
       motif: dossier[moment]?.motif,
     };
+  const readyToSend =
+    effects.length > 0 && (!effects.includes("pergunta") || !!settings.text);
+  function chooseEffect(value: Preset) {
+    if (!combine) {
+      setEffects([value]);
+      return;
+    }
+    setEffects((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
+  }
   const average = projectedAverage(board.members, ids, +amount, absolute),
     valid =
       amount.trim() !== "" &&
@@ -470,10 +490,8 @@ export default function ActMaster({ id }: { id: string }) {
                       setPhrase(null);
                       setMoment(0);
                       setIntensity(1);
-                      setPreset(
-                        board.targets[e.target.value]?.dossier[0]?.preset ||
-                          "indicio",
-                      );
+                      setEffects(["indicio"]);
+                      setCombine(false);
                       setDuration(10);
                       setPreview(null);
                     }}
@@ -497,37 +515,73 @@ export default function ActMaster({ id }: { id: string }) {
                 )}
               </div>
               <div className="act-script">
-                <label>
-                  Dossiê do agente{" "}
-                  <select
-                    aria-label="Dossiê do agente"
-                    key={target}
-                    value={moment}
-                    onChange={(e) => {
-                      const i = +e.target.value;
-                      setMoment(i);
-                      setIntensity(i + 1);
-                      setPhrase(dossier[i].text);
-                      setPreset(dossier[i].preset);
-                      setDuration(dossier[i].preset === "pergunta" ? 0 : 10);
-                    }}
-                  >
-                    {dossier.map((d, i) => (
-                      <option key={i} value={i}>
-                        {["I · Indício", "II · Intrusão", "III · Confronto"][i]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Pergunta ou frase
-                  <textarea
-                    rows={3}
-                    maxLength={400}
-                    value={phrase ?? dossier[moment]?.text ?? ""}
-                    onChange={(e) => setPhrase(e.target.value)}
-                  />
-                </label>
+                <div className="act-layer-title">
+                  <h3>Efeitos da cena</h3>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={combine}
+                      onChange={(e) => {
+                        setCombine(e.target.checked);
+                        if (!e.target.checked)
+                          setEffects([effects[0] || "indicio"]);
+                      }}
+                    />
+                    Combinar efeitos
+                  </label>
+                </div>
+                <div
+                  className="act-layer-picker"
+                  role="group"
+                  aria-label="Efeitos da cena"
+                >
+                  {(Object.keys(effectNames) as Preset[]).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={effects.includes(value)}
+                      onClick={() => chooseEffect(value)}
+                    >
+                      {effectNames[value]}
+                    </button>
+                  ))}
+                </div>
+                {effects.includes("pergunta") && (
+                  <div className="act-speech-editor">
+                    {dossier.length > 0 && (
+                      <label>
+                        Fala do dossiê
+                        <select
+                          value={moment}
+                          onChange={(e) => {
+                            const i = Number(e.target.value);
+                            setMoment(i);
+                            setPhrase(dossier[i]?.text || "");
+                          }}
+                        >
+                          {dossier.map((_, i) => (
+                            <option value={i} key={i}>
+                              {[
+                                "I · Indício",
+                                "II · Intrusão",
+                                "III · Confronto",
+                              ][i] || String(i + 1)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    <label>
+                      Pergunta ou frase
+                      <textarea
+                        rows={3}
+                        maxLength={400}
+                        value={phrase ?? dossier[moment]?.text ?? ""}
+                        onChange={(e) => setPhrase(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
             <details className="act-controls">
@@ -535,43 +589,24 @@ export default function ActMaster({ id }: { id: string }) {
                 Direção de cena ·{" "}
                 {["Indício", "Intrusão", "Confronto"][intensity - 1]}
               </summary>
-              <label>
-                Efeito{" "}
-                <select
-                  aria-label="Efeito"
-                  value={preset}
-                  onChange={(e) => {
-                    setPreset(e.target.value as Settings["preset"]);
-                    if (!duration) setDuration(5);
-                  }}
-                >
-                  {Object.entries({
-                    indicio: "Vinheta",
-                    olhos: "Olhar",
-                    maos: "Mãos",
-                    ruido: "Interferência",
-                    pergunta: "Pergunta",
-                  }).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Posição{" "}
-                <select
-                  aria-label="Posição"
-                  value={position}
-                  onChange={(e) =>
-                    setPosition(e.target.value as Settings["position"])
-                  }
-                >
-                  {["cantos", "lateral", "topo"].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
+              {effects.some(
+                (v) => v === "maos" || v === "olhos" || v === "pergunta",
+              ) && (
+                <label>
+                  Posição{" "}
+                  <select
+                    aria-label="Posição"
+                    value={position}
+                    onChange={(e) =>
+                      setPosition(e.target.value as Settings["position"])
+                    }
+                  >
+                    {["cantos", "lateral", "topo"].map((v) => (
+                      <option key={v}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
                 Intensidade{" "}
                 <select
@@ -596,14 +631,13 @@ export default function ActMaster({ id }: { id: string }) {
                       {v} segundos
                     </option>
                   ))}
-                  {preset === "pergunta" && (
-                    <option value={0}>Até o mestre encerrar</option>
-                  )}
+                  <option value={0}>Até o mestre encerrar</option>
                 </select>
               </label>
             </details>
             <div className="act-command">
               <button
+                disabled={!readyToSend}
                 onClick={() =>
                   setPreview({
                     id: crypto.randomUUID(),
@@ -615,7 +649,7 @@ export default function ActMaster({ id }: { id: string }) {
                 Prévia local
               </button>
               <button
-                disabled={!sel}
+                disabled={!sel || !readyToSend}
                 className="primary"
                 onClick={() =>
                   void run("enviar", { target, ...settings, duration })
@@ -670,7 +704,13 @@ export default function ActMaster({ id }: { id: string }) {
                 <strong>{h.kind}</strong> ·{" "}
                 {new Date(h.at).toLocaleString("pt-BR")} ·{" "}
                 {name(h.actor) || h.actor} {name(h.detail.target)}{" "}
-                {h.detail.reason} {h.detail.preset} {h.detail.gift}
+                {h.detail.reason}{" "}
+                {(
+                  h.detail.effects ?? (h.detail.preset ? [h.detail.preset] : [])
+                )
+                  .map((v) => effectNames[v] ?? v)
+                  .join(" + ")}{" "}
+                {h.detail.gift}
                 {h.detail.changes?.map((c) => (
                   <span key={c.id}>
                     {name(c.id)} · {signed(c.before)} → {signed(c.after)}
