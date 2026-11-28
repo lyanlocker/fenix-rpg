@@ -357,7 +357,8 @@ body:has(> .act-backdrop)
 }
 .act-wrist:nth-child(2) {
   left: auto;
-  right: -2%;
+  right: 0;
+  translate: 56% 0;
   bottom: 19%;
   height: clamp(13rem, 54vh, 37rem);
   --flip: -1;
@@ -384,6 +385,7 @@ body:has(> .act-backdrop)
 }
 [data-position="topo"] .act-wrist:nth-child(2) {
   right: 7%;
+  translate: none;
   top: -12%;
   bottom: auto;
   --turn: -155deg;
@@ -533,7 +535,6 @@ body:has(> .act-backdrop)
   }
   .act-wrist:nth-child(2) {
     height: 35vh;
-    right: -10%;
     bottom: 27%;
   }
   .act-wrist:nth-child(3) {
