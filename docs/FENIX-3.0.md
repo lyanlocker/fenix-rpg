@@ -18,3 +18,7 @@ Desative `enabled` para a campanha afetada e restaure a implantação anterior d
 Em **Central do Ato II → Manifestação**, escolha o agente e um dos três momentos do dossiê. A frase pode ser editada antes do envio. **Prévia local** apresenta a cena só ao mestre. **Direção de cena** reúne efeito, posição, intensidade e duração. Para interromper uma cena enviada, abra **Controlar a ficha** e use **Encerrar efeito**. **Restaurar ficha** também remove a sombra persistente.
 
 A confirmação registra a entrega. A manifestação continua na ficha até o prazo ou o comando do mestre, inclusive após uma reconexão. A preferência de movimento reduzido do dispositivo apresenta a arte e o texto em composição estática.
+
+## Direção de cena na 3.0.2
+
+Em **Manifestação**, cada botão seleciona um efeito individual. Para sobrepor efeitos, ative **Combinar efeitos** e marque os componentes desejados. **Fala** abre o dossiê e o campo de texto. **Prévia local** apresenta a composição escolhida. O indício automático do primeiro presente combina escuridão e rosto por quatro segundos.

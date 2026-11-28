@@ -194,96 +194,6 @@
 .sheet-tools + .empty {
   padding-block: 2.5rem;
 }
-.act-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  pointer-events: none;
-  user-select: none;
-  overflow: hidden;
-  isolation: isolate;
-}
-.act-film,
-.act-stain,
-.act-emulsion,
-.act-apparition {
-  position: absolute;
-  inset: 0;
-}
-.act-stain {
-  background: radial-gradient(
-    ellipse at 53% 37%,
-    transparent 40%,
-    #20161e 82%,
-    #0a070b 100%
-  );
-}
-.act-film {
-  --veil: rgb(7 6 8 / 0.89);
-  --cast: rgb(95 44 33 / 0.25);
-}
-[data-motif="rio"] .act-film,
-[data-motif="trilhos"] .act-film {
-  --cast: rgb(48 88 97 / 0.3);
-}
-[data-motif="saldo"] .act-film,
-[data-motif="registro"] .act-film {
-  --cast: rgb(104 79 39 / 0.29);
-}
-.act-emulsion {
-  background:
-    linear-gradient(0deg, var(--veil), transparent 33%),
-    radial-gradient(ellipse at center, transparent 42%, var(--cast) 98%);
-}
-.act-apparition {
-  inset: auto 0 0 auto;
-  width: clamp(16rem, 38vw, 40rem);
-  height: 83%;
-  background: url("/manifestacao/olho.webp") right center / cover no-repeat;
-  opacity: calc(0.58 + var(--act-strength) * 0.13);
-  mask-image:
-    linear-gradient(to right, transparent, #000 40%),
-    linear-gradient(to bottom, transparent, #000 25%);
-  mask-composite: intersect;
-  transform-origin: 100% 70%;
-}
-[data-preset="maos"] .act-apparition {
-  background-image: url("/manifestacao/mao.webp");
-  right: auto;
-  left: 0;
-  background-position: left center;
-  mask-image:
-    linear-gradient(to left, transparent, #000 45%),
-    linear-gradient(to bottom, transparent, #000 23%);
-  transform-origin: left bottom;
-}
-[data-preset="indicio"] .act-apparition {
-  width: clamp(9rem, 23vw, 22rem);
-  height: 52%;
-  filter: brightness(0.72);
-}
-[data-preset="ruido"] .act-apparition {
-  filter: grayscale(1) contrast(1.6);
-  mask-image:
-    repeating-linear-gradient(0deg, #000 0 2px, #0008 2px 4px),
-    linear-gradient(90deg, transparent, #000 65%);
-}
-[data-preset="pergunta"] .act-apparition {
-  height: 100%;
-  width: clamp(18rem, 46vw, 52rem);
-  filter: grayscale(0.6);
-}
-[data-position="topo"] .act-apparition {
-  bottom: auto;
-  top: -7%;
-  mask-image:
-    linear-gradient(0deg, transparent, #000 50%),
-    linear-gradient(90deg, transparent, #000 45%);
-}
-[data-position="lateral"] .act-apparition {
-  bottom: 17%;
-  height: 65%;
-}
 .act-whisper {
   position: absolute;
   left: clamp(1.5rem, 9vw, 10rem);
@@ -304,9 +214,6 @@
     0 2px 6px #090809,
     0 0 20px #080708;
 }
-[data-preset="indicio"] .act-whisper {
-  font-size: clamp(1.2rem, 2vw, 2rem);
-}
 @media (max-width: 900px) {
   .act-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -320,11 +227,6 @@
   }
   .act-master nav button {
     padding: 0.55rem 0.48rem;
-  }
-  .act-apparition,
-  [data-preset="pergunta"] .act-apparition {
-    width: 64%;
-    height: 65%;
   }
   .act-whisper {
     left: 1rem;
@@ -344,4 +246,298 @@
 }
 .act-whisper {
   isolation: isolate;
+}
+.act-layer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.act-layer-title h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+.act-layer-title label {
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+.act-layer-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.85rem;
+}
+.act-layer-picker button {
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.35rem;
+}
+.act-layer-picker button[aria-pressed="true"] {
+  color: #f4dab6;
+  background: #352c24;
+  box-shadow: inset 0 -2px #d8a66b;
+}
+.act-overlay,
+.act-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+}
+.act-overlay {
+  z-index: 99999;
+  isolation: isolate;
+}
+.act-backdrop {
+  z-index: -1;
+}
+body:has(> .act-backdrop) {
+  isolation: isolate;
+}
+body:has(> .act-backdrop)
+  :is(.panel, .overview-card, .session-dock, .combat-arena) {
+  background-color: rgb(11 16 22 / 0.68);
+  background-image: none;
+}
+.act-face {
+  position: absolute;
+  top: 0;
+  right: 1%;
+  width: clamp(25rem, 55vw, 65rem);
+  height: 92%;
+  background: url("/manifestacao/melancolia-cel.webp") center/contain no-repeat;
+  opacity: calc(0.52 + var(--act-strength) * 0.13);
+  transform-origin: 50% 40%;
+}
+.act-backdrop[data-position="lateral"] .act-face {
+  right: -9%;
+  top: 12%;
+}
+.act-backdrop[data-position="topo"] .act-face {
+  right: 18%;
+  top: -15%;
+}
+.act-film,
+.act-stain,
+.act-static,
+.act-hands {
+  position: absolute;
+  inset: 0;
+}
+.act-stain {
+  background: radial-gradient(
+    ellipse at 52% 42%,
+    rgb(6 3 9 / 0.19) 8%,
+    rgb(7 4 11 / 0.64) 70%,
+    #070509 100%
+  );
+  opacity: calc(0.48 + var(--act-strength) * 0.14);
+}
+.act-wrist {
+  position: absolute;
+  bottom: -4%;
+  left: 1%;
+  height: clamp(18rem, 66vh, 48rem);
+  aspect-ratio: 384/640;
+  transform-origin: 50% 100%;
+  --turn: 20deg;
+  --flip: 1;
+  --entry: 0s;
+  --beat: 3.7s;
+  transform: rotate(var(--turn)) scaleX(var(--flip));
+}
+.act-wrist i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url("/manifestacao/maos-ciclo.webp") 100% 0 / 300% 100% no-repeat;
+  filter: drop-shadow(0 2px 2px #100c13);
+  mask-image: linear-gradient(to bottom, #000 0 89%, transparent);
+}
+.act-wrist:nth-child(2) {
+  left: auto;
+  right: -2%;
+  bottom: 19%;
+  height: clamp(13rem, 54vh, 37rem);
+  --flip: -1;
+  --turn: -65deg;
+  --entry: 0.32s;
+  --beat: 4.5s;
+}
+.act-wrist:nth-child(3) {
+  bottom: auto;
+  top: -8%;
+  left: 24%;
+  height: clamp(12rem, 41vh, 28rem);
+  --turn: 165deg;
+  --entry: 0.6s;
+  --beat: 4.1s;
+  transform-origin: 50% 45%;
+}
+[data-position="topo"] .act-wrist:first-child {
+  left: 5%;
+  top: -14%;
+  bottom: auto;
+  --turn: 160deg;
+  transform-origin: 50% 45%;
+}
+[data-position="topo"] .act-wrist:nth-child(2) {
+  right: 7%;
+  top: -12%;
+  bottom: auto;
+  --turn: -155deg;
+  transform-origin: 50% 45%;
+}
+[data-position="lateral"] .act-wrist:first-child {
+  left: -7%;
+  bottom: 36%;
+  --turn: 66deg;
+}
+.act-static {
+  overflow: hidden;
+  opacity: calc(0.19 + var(--act-strength) * 0.09);
+  background: #49464c;
+}
+.act-static canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+.act-static::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    #0a0a0a65 2px 3px
+  );
+}
+.act-static i {
+  position: absolute;
+  inset: 8% 0 auto;
+  height: 8%;
+  background: linear-gradient(
+    0deg,
+    transparent,
+    #bdbdbd66 64%,
+    #37373777 82%,
+    transparent
+  );
+  mix-blend-mode: multiply;
+}
+[data-position="topo"] .act-whisper {
+  bottom: auto;
+  top: max(12%, env(safe-area-inset-top));
+}
+[data-position="lateral"] .act-whisper {
+  bottom: 35%;
+  left: 6%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .act-face {
+    animation:
+      act-develop 1.6s ease-out both,
+      act-reflection 6.8s 1.6s ease-in-out infinite alternate;
+  }
+  .act-stain {
+    animation: act-darken 0.9s ease-out both;
+  }
+  .act-wrist {
+    animation:
+      act-reach 1.25s var(--entry) cubic-bezier(0.13, 0.6, 0.25, 1) both,
+      act-feel var(--beat) calc(1.25s + var(--entry)) ease-in-out infinite
+        alternate;
+  }
+  .act-wrist i {
+    animation: act-fingers var(--beat) var(--entry) steps(1, end) infinite;
+  }
+  .act-static i {
+    animation: act-tracking 3.9s linear infinite;
+  }
+  .act-whisper {
+    animation: act-darken 0.55s ease-out both;
+  }
+}
+@keyframes act-develop {
+  from {
+    clip-path: inset(0 0 100%);
+    filter: brightness(0.22);
+    transform: translateY(2%);
+  }
+  to {
+    clip-path: inset(0);
+    filter: brightness(1);
+    transform: translateY(0);
+  }
+}
+@keyframes act-reflection {
+  to {
+    transform: scale(1.045) rotate(-1.4deg);
+  }
+}
+@keyframes act-darken {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes act-reach {
+  from {
+    opacity: 0;
+    transform: rotate(var(--turn)) scaleX(var(--flip)) translateY(72%);
+  }
+}
+@keyframes act-feel {
+  to {
+    transform: rotate(calc(var(--turn) + 6deg)) scaleX(var(--flip))
+      translateY(-3%);
+  }
+}
+@keyframes act-fingers {
+  0%,
+  89%,
+  100% {
+    background-position: 0% 0;
+  }
+  23%,
+  73% {
+    background-position: 50% 0;
+  }
+  39% {
+    background-position: 100% 0;
+  }
+}
+@keyframes act-tracking {
+  from {
+    transform: translateY(-250%);
+  }
+  to {
+    transform: translateY(1200%);
+  }
+}
+@media (max-width: 600px) {
+  .act-face {
+    width: 94vw;
+    height: 72%;
+    top: 10%;
+    right: -9%;
+  }
+  .act-backdrop[data-position="topo"] .act-face {
+    right: 0;
+  }
+  .act-wrist {
+    height: 42vh;
+    left: -9%;
+  }
+  .act-wrist:nth-child(2) {
+    height: 35vh;
+    right: -10%;
+    bottom: 27%;
+  }
+  .act-wrist:nth-child(3) {
+    height: 28vh;
+    top: -4%;
+  }
 }

@@ -11,7 +11,15 @@ export type Board = {
   average: number | null;
 };
 export type Preset = "olhos" | "maos" | "ruido" | "pergunta" | "indicio";
+export const effectNames: Record<Preset, string> = {
+  indicio: "Escuridão",
+  maos: "Mãos brancas",
+  olhos: "Rosto da Melancolia",
+  ruido: "Interferência",
+  pergunta: "Fala",
+};
 export type Settings = {
+  effects?: Preset[];
   preset: Preset;
   position: "cantos" | "lateral" | "topo";
   intensity: number;

@@ -56,6 +56,20 @@ begin
   perform public.fenix_act_master(c,master_key,'encerrar',jsonb_build_object('id',gen_random_uuid(),'revision',state->'revision','target',a));
   if public.fenix_act_member(a,player_a,null,delivery)->'effect' is distinct from 'null'::jsonb then raise exception 'Pergunta encerrada reapareceu'; end if;
 
+  perform fenix_private.act_send(c,a,gen_random_uuid(),'{"preset":"ruido","position":"topo","intensity":2,"duration":5,"text":"Texto antigo"}');
+  state:=public.fenix_act_member(a,player_a);
+  if state#>'{effect,settings,effects}' is distinct from '["ruido"]'::jsonb or state#>>'{effect,settings,text}' is not null then raise exception 'Interferência trouxe fala'; end if;
+  perform fenix_private.act_send(c,a,gen_random_uuid(),'{"effects":["indicio","olhos","maos","pergunta"],"position":"lateral","intensity":3,"duration":0,"text":"   Ensaio   "}');
+  state:=public.fenix_act_member(a,player_a);
+  if state#>'{effect,settings,effects}' is distinct from '["indicio","olhos","maos","pergunta"]'::jsonb or state#>>'{effect,settings,text}' is distinct from 'Ensaio' then raise exception 'Composição incompleta'; end if;
+  foreach patch in array array['[]'::jsonb,'["maos","maos"]','["inesperado"]','"ruido"','["pergunta"]'] loop
+    denied:=false;
+    begin
+      perform fenix_private.act_send(c,a,gen_random_uuid(),jsonb_build_object('effects',patch,'duration',4,'intensity',2,'position','cantos'));
+    exception when raise_exception then denied:=true; end;
+    if not denied then raise exception 'Composição inválida aceita'; end if;
+  end loop;
+  if public.fenix_act_member(a,player_a)#>>'{effect,settings,text}' is distinct from 'Ensaio' then raise exception 'Comando recusado interrompeu a cena'; end if;
   -- Start a scene on B's turn. A reacts using the validated engine patch.
   insert into fenix_private.combat_service(id,token_hash) values(true,encode(extensions.digest(service_key,'sha256'),'hex')) on conflict(id) do update set token_hash=excluded.token_hash;
   insert into public.fenix_combat_members(agent_id,campaign_id) values(a,c),(b,c);

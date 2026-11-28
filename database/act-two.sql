@@ -107,15 +107,24 @@ CREATE OR REPLACE FUNCTION fenix_private.act_send(cid uuid, aid uuid, eid uuid, 
  SET search_path TO ''
 AS $function$
 declare seconds int := (settings->>'duration')::int; strength int := (settings->>'intensity')::int;
+  layers jsonb := coalesce(settings->'effects',jsonb_build_array(settings->>'preset'));
+  phrase text;
 begin
-  if coalesce(settings->>'preset','') not in ('indicio','olhos','maos','ruido','pergunta')
+  if jsonb_typeof(layers) <> 'array' then raise exception 'Efeitos inválidos'; end if;
+  if jsonb_array_length(layers) not between 1 and 5
+    or not (layers <@ '["indicio","olhos","maos","ruido","pergunta"]'::jsonb)
+    or (select count(distinct value) from jsonb_array_elements(layers)) <> jsonb_array_length(layers)
     or coalesce(settings->>'position','') not in ('topo','lateral','cantos')
     or strength is null or strength not between 1 and 3 or seconds is null
-    or not(seconds between 2 and 12 or (seconds=0 and settings->>'preset'='pergunta'))
-    or length(coalesce(settings->>'text',''))>400 then raise exception 'Efeito inválido'; end if;
+    or not (seconds between 2 and 12 or seconds=0)
+    then raise exception 'Efeito inválido'; end if;
+  if layers ? 'pergunta' then
+    phrase:=btrim(settings->>'text');
+    if coalesce(length(phrase),0) not between 1 and 400 then raise exception 'Informe a fala da cena'; end if;
+  end if;
   update fenix_private.act_effect set ended=clock_timestamp() where campaign_id=cid and agent_id=aid and ended is null;
   insert into fenix_private.act_effect(campaign_id,agent_id,id,settings,expires)
-  values(cid,aid,eid,jsonb_build_object('motif',case when settings->>'motif' in ('rio','trilhos','saldo','registro','grade','porta') then settings->>'motif' end,'preset',settings->>'preset','position',settings->>'position','intensity',strength,'text',btrim(settings->>'text')),
+  values(cid,aid,eid,jsonb_build_object('motif',case when settings->>'motif' in ('rio','trilhos','saldo','registro','grade','porta') then settings->>'motif' end,'preset',layers->>0,'effects',layers,'position',settings->>'position','intensity',strength,'text',phrase),
     case when seconds>0 then clock_timestamp()+make_interval(secs=>seconds) end);
   update fenix_private.act_cast set current_event=eid,intensity=strength where campaign_id=cid and agent_id=aid;
 end $function$;
@@ -139,7 +148,7 @@ begin
   if t.automatic then
     perform fenix_private.act_send(cid,aid,gen_random_uuid(),
       jsonb_build_object('preset','indicio','duration',4,'position','cantos','intensity',1,
-        'text',left(opening->>'text',400),'motif',opening->>'motif'));
+        'effects',jsonb_build_array('indicio','olhos'),'motif',opening->>'motif'));
   end if;
 end $function$;
 
@@ -331,7 +340,7 @@ begin
         automatic=coalesce((command->>'automatic')::boolean,true),individual=coalesce((command->>'individual')::boolean,false) where campaign_id=cid;
       if operation='armar' then update fenix_private.act_cast set marked=false where campaign_id=cid; end if;
     elsif operation='enviar' then
-      perform fenix_private.act_send(cid,aid,rid,command); details:=jsonb_build_object('target',aid,'preset',command->>'preset');
+      perform fenix_private.act_send(cid,aid,rid,command); details:=jsonb_build_object('target',aid,'preset',command->>'preset','effects',command->'effects');
     elsif operation='tema' then
       update fenix_private.act_cast set theme=true,intensity=coalesce((command->>'intensity')::int,1) where campaign_id=cid and agent_id=aid;
       details:=jsonb_build_object('target',aid);
